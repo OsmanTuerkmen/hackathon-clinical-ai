@@ -69,6 +69,24 @@ def test_read_only_console_can_query_the_cohort(data_dir, desk):
     assert answer["truncated"]
 
 
+def test_console_allows_export_snapshots_and_stops_long_queries(data_dir, desk):
+    result = _spe_result(data_dir, desk)
+    permit_id = result["spe"]["permit_id"]
+    snapshot = settings.console_query(
+        desk.root, permit_id, "SELECT i FROM range(1500) t(i)", limit=1000,
+    )
+    assert snapshot["row_count"] == 1000
+    assert snapshot["truncated"]
+
+    with pytest.raises(settings.ConsoleError, match="Query stopped after 5 s"):
+        settings.console_query(
+            desk.root,
+            permit_id,
+            "SELECT SUM(a.range * b.range) FROM range(1000000) AS a "
+            "CROSS JOIN range(1000000) AS b",
+        )
+
+
 def test_preview_and_blocked_download_audit(data_dir, desk):
     result = _spe_result(data_dir, desk)
     preview = settings.preview(desk.root, result["spe"]["permit_id"], limit=2)

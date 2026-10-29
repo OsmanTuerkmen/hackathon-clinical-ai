@@ -172,6 +172,19 @@ class Registry:
             flags.append({"id": "reidentification",
                           "en": "The request wants to link data to named people (re-identification, Art. 61(3)).",
                           "de": "Der Antrag will Daten mit namentlich bekannten Personen verknüpfen (Re-Identifizierung, Art. 61(3))."})
+        allowed = {purpose["category"] for purpose in features["allowed"]}
+        if allowed and allowed <= {"public_health", "policy", "statistics"} and otype != "public_authority":
+            flags.append({
+                "id": "art53_2_reserved",
+                "de": (
+                    "Zwecke nach Art. 53 Abs. 1 lit. a–c sind öffentlichen Stellen vorbehalten "
+                    "(Art. 53 Abs. 2). Die Behörde soll prüfen, ob der Antrag in deren Auftrag erfolgt."
+                ),
+                "en": (
+                    "Purposes under Art. 53(1)(a)–(c) are reserved for public sector bodies "
+                    "(Art. 53(2)). Staff should check whether the applicant acts on behalf of one."
+                ),
+            })
         if re.search(r"\bmy patients?\b|\bfor (?:the )?treatment of\b", request.get("purpose", ""), re.I):
             flags.append({"id": "primary_use",
                           "en": "Data about one's own patients for treatment is primary use (ELGA), not EHDS secondary use.",

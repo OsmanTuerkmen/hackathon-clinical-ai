@@ -30,13 +30,13 @@ class Audit:
                     entry = json.loads(line)
                     self._seq, self._prev = entry["seq"], entry["hash"]
 
-    def log(self, action, request_id=None, actor="system", **details):
+    def log(self, event, request_id=None, actor="system", **details):
         with self._lock:
             entry = {
                 "seq": self._seq + 1,
                 "time": dt.datetime.now(dt.timezone.utc).isoformat(timespec="milliseconds"),
                 "actor": actor,
-                "action": action,
+                "action": event,
                 "request_id": request_id,
                 "details": details,
                 "prev": self._prev,

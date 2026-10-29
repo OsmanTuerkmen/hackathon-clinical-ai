@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -20,6 +21,7 @@ TABLE_COLUMNS = {
     "patients": "patient_id, sex, birth_date, region, data_holder",
 }
 MAX_CONSOLE_ROWS = 200
+MAX_EXPORT_ROWS = 1000
 PERMIT_RE = re.compile(r"^DP-[A-Za-z0-9_-]{1,96}$")
 LOINC_RE = re.compile(r"^\d{1,6}-\d$")
 
@@ -210,7 +212,7 @@ def _strip_comments(sql):
 def console_query(root, permit_id, sql, limit=MAX_CONSOLE_ROWS):
     statement = _strip_comments(sql)
     try:
-        limit = max(0, min(int(limit), MAX_CONSOLE_ROWS))
+        limit = max(0, min(int(limit), MAX_EXPORT_ROWS))
     except (TypeError, ValueError) as exc:
         raise ConsoleError("Row limit must be an integer") from exc
     folder = _permit_folder(root, permit_id)
@@ -220,11 +222,34 @@ def console_query(root, permit_id, sql, limit=MAX_CONSOLE_ROWS):
         raise ConsoleError("SPE permit or workspace does not exist")
     try:
         with readonly(workspace_path) as con:
-            cursor = con.execute(statement)
-            rows = cursor.fetchmany(limit + 1)
-            truncated = len(rows) > limit
-            rows = rows[:limit]
-            columns = [description[0] for description in cursor.description or []]
+            timed_out = threading.Event()
+
+            def interrupt():
+                timed_out.set()
+                try:
+                    con.interrupt()
+                except duckdb.Error:
+                    pass
+
+            timer = threading.Timer(5, interrupt)
+            timer.daemon = True
+            timer.start()
+            try:
+                cursor = con.execute(statement)
+                rows = cursor.fetchmany(limit + 1)
+                if timed_out.is_set():
+                    raise ConsoleError("Query stopped after 5 s")
+                truncated = len(rows) > limit
+                rows = rows[:limit]
+                columns = [description[0] for description in cursor.description or []]
+            except ConsoleError:
+                raise
+            except duckdb.Error as exc:
+                if timed_out.is_set():
+                    raise ConsoleError("Query stopped after 5 s") from exc
+                raise
+            finally:
+                timer.cancel()
     except ConsoleError:
         raise
     except duckdb.Error as exc:
