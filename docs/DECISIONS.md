@@ -38,3 +38,29 @@ ohne Opt-out) plus `manifest.json` und `audit.jsonl`. Download ist immer gesperr
 Status: angenommen.
 Interne Doku (`docs/`) auf Deutsch; README, UI-Texte und Begründungen auf Englisch (Anträge, Daten und
 Jury-Abgabe sind englisch).
+
+## ADR-006: Small-Cell-Regel exakt wie vorgegeben, keine Komplement-Unterdrückung
+
+Status: angenommen (2026-10-29).
+Kontext: Prozentwerte mit Zähler und Nenner ≥ 10 können trotzdem eine kleine Differenz (Nenner − Zähler < 10)
+verraten. Optionen: (a) Regel der Aufgabe exakt umsetzen, (b) zusätzlich Komplement unterdrücken.
+Entscheidung: (a). Die Regel ist in der Aufgabe fest vorgegeben und die erwarteten Zahlen hängen davon ab.
+Die Lücke wird in README und TODO als bekannte Grenze genannt.
+
+## ADR-007: Zweckregeln satzbezogen, LLM darf nur verschärfen
+
+Status: angenommen (2026-10-29).
+Kontext: Wortlisten über den ganzen Antrag erzeugten Fehl-Ablehnungen (z. B. „HR“ als Hazard Ratio,
+„matched with controls“, „insurance“ und „exclude“ in verschiedenen Sätzen).
+Entscheidung: Alle Teilmuster einer Art.-54-Regel müssen im selben Satz stehen; „HR“ zählt nur als Abteilung;
+Datenabgleich nur mit Personenlisten. LLM-Belege brauchen ≥ 3 wörtliche Wörter; eine SPE-Begründung zählt nur,
+wenn auch die Regel im Zitat greift. So kann das LLM eine Ablehnung auslösen, aber nie allein Zugang zu
+Einzeldaten öffnen.
+
+## ADR-008: Terminologie lieber „manuelle Prüfung“ als falscher Code
+
+Status: angenommen (2026-10-29).
+Entscheidung: Datenabgleich nur bei Jaccard > 0,5 oder wenn alle Wörter des Begriffs in genau einer Beschreibung
+stehen; Qualifier direkt vor einem Lexikonbegriff („pulmonary hypertension“) heben den Treffer auf. Nicht
+abbildbare Begriffe gehen an das Personal statt falsche Zahlen zu liefern. Zeilenzahlen in der Staff-Ansicht
+zählen nur Patienten ohne Opt-out.
