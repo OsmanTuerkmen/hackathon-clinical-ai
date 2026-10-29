@@ -10,6 +10,7 @@ REQUESTS_DIR = Path(os.environ.get("DESK_REQUESTS_DIR", ROOT / "requests"))
 NEW_REQUESTS_DIR = ROOT / "new_requests"
 WEB_DIR = ROOT / "web"
 SPE_DIR = Path(os.environ.get("DESK_SPE_DIR", ROOT / "spe_workspaces"))
+STATE_DIR = Path(os.environ.get("DESK_STATE_DIR", ROOT / "state"))  # persistent case register (no patient data)
 REPORTS_DIR = ROOT / "reports"
 
 # data/README.md: "The data runs until 31 December 2025. Use that date as the reference date

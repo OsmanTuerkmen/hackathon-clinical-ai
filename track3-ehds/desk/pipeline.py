@@ -6,6 +6,7 @@ import json
 import threading
 import time
 import traceback
+from pathlib import Path
 
 from . import policy
 from .audit import audit_spe, audit_statistics
@@ -25,7 +26,7 @@ DECISION_LABELS = {
 
 
 class Desk:
-    def __init__(self, store: DataStore | None = None, spe_dir=None, planner=None):
+    def __init__(self, store: DataStore | None = None, spe_dir=None, planner=None, state_dir=None):
         self.store = store or get_store()
         self.spe = SPEManager(self.store, spe_dir) if spe_dir else SPEManager(self.store)
         self.catalog = self.store.code_catalog()
@@ -33,6 +34,15 @@ class Desk:
         self.cases: list[dict] = []
         self._lock = threading.Lock()
         self._counter = 0
+        self.case_file = Path(state_dir) / "cases.jsonl" if state_dir else None
+        if self.case_file and self.case_file.exists():  # the case register survives restarts
+            for line in self.case_file.read_text(encoding="utf-8").splitlines():
+                try:
+                    self.cases.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+            self.cases = self.cases[-500:]
+            self._counter = max((int(c["case_id"][2:]) for c in self.cases), default=0)
 
     # ------------------------------------------------------------------ main entry
     def process(self, raw, source: str = "api") -> dict:
@@ -136,6 +146,7 @@ class Desk:
             return
         case["result"] = {"kind": "spe", "cohort_size": manifest["cohort_size"],
                           "workspace_id": manifest["workspace_id"], "tables": manifest["tables"],
+                          "permit_token": manifest["permit_token"],
                           "download_policy": "blocked", "storage": manifest["storage"]}
         case["fulfilment"] = {"status": "SPE_READY",
                               "message": "Pseudonymised records were copied into an isolated secure processing "
@@ -146,6 +157,10 @@ class Desk:
             self.cases.append(case)
             if len(self.cases) > 500:
                 self.cases = self.cases[-500:]
+            if self.case_file:
+                self.case_file.parent.mkdir(parents=True, exist_ok=True)
+                with self.case_file.open("a", encoding="utf-8") as f:
+                    f.write(json.dumps(case, ensure_ascii=False, default=str) + "\n")
         return case
 
     def get_case(self, case_id: str) -> dict | None:

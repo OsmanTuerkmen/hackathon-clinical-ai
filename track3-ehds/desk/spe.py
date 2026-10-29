@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import hmac
 import json
 import re
+import secrets
 import shutil
 import sqlite3
 import threading
@@ -27,12 +29,24 @@ BLOCK_MESSAGE = ("Download blocked. Under the data permit, pseudonymised records
                  "or model weights, may leave it after review by the health data access body (Art. 73(2)).")
 
 
+ANALYSES = {("conditions", "icd10"), ("medications", "atc"), ("observations", "loinc"), ("encounters", "type"),
+            ("encounters", "primary_icd10"), ("encounters", "data_holder"), ("patients", "sex"), ("patients", "region"),
+            ("patients", "data_holder")}
+
+
 class SPEManager:
     def __init__(self, store: DataStore, base_dir: Path | str = SPE_DIR):
         self.store = store
         self.base = Path(base_dir)
-        self.access_log: list[dict] = []
         self.lock = threading.RLock()
+        self.log_file = self.base / "access_log.jsonl"
+        self.access_log: list[dict] = []
+        if self.log_file.exists():  # the access log survives restarts (Art. 73(1)(e))
+            for line in self.log_file.read_text(encoding="utf-8").splitlines():
+                try:
+                    self.access_log.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
 
     @staticmethod
     def workspace_id(request: dict) -> str:
@@ -81,10 +95,12 @@ class SPEManager:
                                  "filter": ({"loinc": rt["loinc"]} if rt.get("loinc") else None)}
             finally:
                 ro.close()
+            token = secrets.token_urlsafe(18)
             manifest = {
                 "workspace_id": wid,
                 "request_id": request.get("id"),
                 "permit": permit,
+                "permit_token_sha256": hashlib.sha256(token.encode()).hexdigest(),
                 "cohort_size": len(cohort_ids),
                 "tables": tables,
                 "storage": f"spe_workspaces/{wid}/workspace.sqlite (isolated database, one per permit)",
@@ -94,7 +110,7 @@ class SPEManager:
             }
             (wdir / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
             self.log(wid, "workspace_created", "ok", f"{len(cohort_ids)} patients, tables {sorted(tables)}")
-        return manifest
+        return {**manifest, "permit_token": token}
 
     def manifest(self, wid: str) -> dict:
         p = self.path(wid) / "manifest.json"
@@ -105,8 +121,38 @@ class SPEManager:
     def log(self, wid: str, action: str, result: str, detail: str = "", actor: str = "system") -> dict:
         entry = {"time": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "workspace_id": wid,
                  "actor": actor, "action": action, "result": result, "detail": detail}
-        self.access_log.append(entry)
+        with self.lock:
+            self.access_log.append(entry)
+            self.base.mkdir(parents=True, exist_ok=True)
+            with self.log_file.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         return entry
+
+    def analyse(self, wid: str, token: str | None, table: str, column: str) -> tuple[int, dict]:
+        """Aggregate analysis inside the SPE by the permit holder; the output passes the small-cell rule and is the
+        only kind of result that may leave the environment (Art. 73(2))."""
+        manifest = self.manifest(wid)
+        if not token or not hmac.compare_digest(hashlib.sha256(token.encode()).hexdigest(),
+                                                manifest.get("permit_token_sha256", "")):
+            self.log(wid, f"analysis:{table}.{column}", "DENIED", "missing or invalid permit token", "unknown")
+            return 401, {"error": "permit_token_required",
+                         "message": "Only the holder of the data permit can work inside this environment (Art. 73(1)(a))."}
+        if (table, column) not in ANALYSES or table not in manifest["tables"]:
+            return 400, {"error": "analysis_not_allowed", "message": f"{table}.{column} is not available in this SPE.",
+                         "allowed": sorted(f"{t}.{c}" for t, c in ANALYSES if t in manifest["tables"])}
+        from . import disclosure as D
+        ro = sqlite3.connect(f"file:{self.path(wid) / 'workspace.sqlite'}?mode=ro", uri=True)
+        try:
+            rows = ro.execute(f"SELECT {column}, COUNT(DISTINCT patient_id) FROM {table} WHERE {column} IS NOT NULL "
+                              f"GROUP BY {column} ORDER BY {column}").fetchall()
+        finally:
+            ro.close()
+        out = [{"value": v, "patients": D.count_cell(n)} for v, n in rows]
+        masked = sum(1 for r in out if r["patients"] == D.LT10)
+        self.log(wid, f"analysis:{table}.{column}", "ok", f"{len(out)} groups, {masked} masked", "permit holder")
+        return 200, {"table": table, "column": column, "rows": out,
+                     "note": "Aggregated inside the SPE; counts below 10 are shown as <10. This output passed the "
+                             "disclosure check and may be exported."}
 
     def request_download(self, wid: str, table: str | None = None, actor: str = "applicant") -> tuple[int, dict]:
         """Every record download is refused; the attempt is logged."""

@@ -70,6 +70,40 @@ class ServerTest(unittest.TestCase):
         self.assertNotRegex(body.decode(), r"p-[0-9a-f]{8}", "manifest must not contain records")
         self.assertGreaterEqual(sum(e["result"] == "BLOCKED" for e in info["access_log"]), 3)
 
+    def test_spe_analysis_needs_the_permit_token_and_masks_small_cells(self):
+        status, body = self.call("/api/submit", json.dumps(SPE_REQUEST).encode())
+        res = json.loads(body)["result"]
+        wid, token = res["workspace_id"], res["permit_token"]
+        q = json.dumps({"table": "conditions", "column": "icd10"}).encode()
+        status, body = self.call(f"/api/spe/{wid}/analyse", q)
+        self.assertEqual(status, 401)
+        req = urllib.request.Request(self.base + f"/api/spe/{wid}/analyse", data=q, method="POST",
+                                     headers={"X-Permit-Token": token})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            out = json.loads(r.read())
+        self.assertEqual({row["value"] for row in out["rows"]}, {"I48.0", "I48.2"})
+        self.assertTrue(all(row["patients"] == "<10" for row in out["rows"]))
+        self.assertNotRegex(json.dumps(out), r"p-[0-9a-f]{8}")
+        bad = urllib.request.Request(self.base + f"/api/spe/{wid}/analyse", method="POST",
+                                     data=json.dumps({"table": "conditions", "column": "patient_id"}).encode(),
+                                     headers={"X-Permit-Token": token})
+        try:
+            urllib.request.urlopen(bad, timeout=10)
+            self.fail("patient-level column accepted")
+        except urllib.error.HTTPError as e:
+            with e:
+                self.assertEqual(e.code, 400)
+
+    def test_case_register_and_access_log_survive_a_restart(self):
+        state = self.tmp / "state"
+        desk = Desk(store=self.desk.store, spe_dir=self.tmp / "spe", state_dir=state)
+        case = desk.process(SPE_REQUEST)
+        desk.spe.request_download(case["result"]["workspace_id"])
+        again = Desk(store=self.desk.store, spe_dir=self.tmp / "spe", state_dir=state)
+        self.assertEqual(again.get_case(case["case_id"])["fingerprint"], case["fingerprint"])
+        self.assertTrue(any(e["result"] == "BLOCKED" for e in again.spe.log_for(case["result"]["workspace_id"])))
+        self.assertNotRegex((state / "cases.jsonl").read_text(), r"p-[0-9a-f]{8}")
+
     def test_workspace_and_data_files_are_not_served(self):
         for path in ("/static/../spe_workspaces/x/workspace.sqlite", "/static/%2e%2e/data/patients.csv",
                      "/static/../desk/config.py", "/api/requests/expected", "/api/spe/../../data/download"):
@@ -103,7 +137,10 @@ class ServerTest(unittest.TestCase):
         with ThreadPoolExecutor(max_workers=8) as pool:
             results = list(pool.map(lambda p: self.call("/api/submit", p), payloads))
         self.assertTrue(all(s == 200 for s, _ in results))
-        answers = {json.dumps(json.loads(b)["result"], sort_keys=True) for s, b in results}
+        answers = set()
+        for _, b in results:  # the per-permit token is a credential, not part of the answer
+            res = {k: v for k, v in json.loads(b)["result"].items() if k != "permit_token"}
+            answers.add(json.dumps(res, sort_keys=True))
         self.assertEqual(len(answers), 2, "identical requests must give identical answers under load")
 
     def test_statistical_answer_over_http(self):

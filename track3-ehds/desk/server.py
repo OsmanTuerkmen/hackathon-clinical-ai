@@ -24,7 +24,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlparse
 
 from . import __version__
-from .config import HOST, NEW_REQUESTS_DIR, PORT, REQUESTS_DIR, WEB_DIR
+from .config import HOST, NEW_REQUESTS_DIR, PORT, REQUESTS_DIR, STATE_DIR, WEB_DIR
 from .pipeline import Desk, applicant_view, staff_view
 from .request_schema import MAX_BYTES
 
@@ -194,6 +194,18 @@ def make_handler(app: App):
             if m:
                 self._body()
                 return self._download(m.group(1), m.group(2))
+            m = re.fullmatch(r"/api/spe/([a-z0-9-]+)/analyse", path)
+            if m:
+                body = self._body()
+                if body is None:
+                    return
+                try:
+                    q = json.loads(body or b"{}")
+                    status, payload = app.desk.spe.analyse(m.group(1), self.headers.get("X-Permit-Token"),
+                                                           str(q.get("table", "")), str(q.get("column", "")))
+                except (KeyError, json.JSONDecodeError, AttributeError):
+                    return self._json(404, {"error": "unknown workspace or invalid body"})
+                return self._json(status, payload)
             if path == "/api/evaluate":
                 self._body()
                 from .evaluate import evaluate
@@ -231,7 +243,7 @@ def serve(host: str | None = None, port: int | None = None) -> None:
     t0 = time.perf_counter()
     from .llm import from_environment
     planner = from_environment()
-    app = App(Desk(planner=planner))
+    app = App(Desk(planner=planner, state_dir=STATE_DIR))
     s = app.desk.store.stats
     print(f"Loaded {s['patients_eligible']} patients ({s['patients_opted_out']} opted-out patients excluded) "
           f"in {time.perf_counter() - t0:.1f} s")
