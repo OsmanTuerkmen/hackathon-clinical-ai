@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- EHDS Access Desk ---
+# Patient data never enters the repo (CSV source lives in ../track3)
+*.csv
+# Generated SPE copies, caches, local DuckDB files
+var/
+*.duckdb
+*.duckdb.wal
+# Local Claude Code state and worktrees
+.claude/
