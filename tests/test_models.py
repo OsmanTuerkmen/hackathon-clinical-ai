@@ -228,3 +228,33 @@ def test_canonical_json_keeps_non_ascii_and_sorts_nested_keys():
     nested = json.loads(text)["metrics"][0]
     assert list(nested) == sorted(nested)
     assert text.index('"metrics"') < text.index('"population"')
+
+
+# --- fix wave M1: CodeSet prefix validation ---------------------------------
+
+
+@pytest.mark.parametrize("system", ["icd10", "atc", "loinc"])
+@pytest.mark.parametrize("prefix", ["", "   "])
+def test_codeset_rejects_empty_prefix(system, prefix):
+    with pytest.raises(ValidationError):
+        CodeSet(system=system, prefixes=[prefix], label="x", source="explicit")
+
+
+def test_codeset_normalises_icd10_and_atc_prefixes():
+    assert CodeSet(system="icd10", prefixes=[" e11 "], label="x", source="explicit").prefixes == ["E11"]
+    assert CodeSet(system="atc", prefixes=["a10ba02"], label="x", source="explicit").prefixes == ["A10BA02"]
+    assert CodeSet(system="icd10", prefixes=["n39.0"], label="x", source="explicit").prefixes == ["N39.0"]
+
+
+@pytest.mark.parametrize("prefix", ["4548-4", "4548", "4548-", " 62238-1 "])
+def test_codeset_accepts_loinc_prefixes(prefix):
+    assert CodeSet(system="loinc", prefixes=[prefix], label="x", source="explicit").prefixes == [prefix.strip()]
+
+
+@pytest.mark.parametrize(
+    ("system", "prefix"),
+    [("loinc", "E11"), ("loinc", "4548-44"), ("icd10", "4548-4"), ("atc", "E 11"), ("icd10", "E11%")],
+)
+def test_codeset_rejects_malformed_prefix(system, prefix):
+    with pytest.raises(ValidationError):
+        CodeSet(system=system, prefixes=[prefix], label="x", source="explicit")

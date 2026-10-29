@@ -6,11 +6,15 @@ Pure data models with validation only; no business logic.
 from __future__ import annotations
 
 import json
+import re
 from datetime import date
 from decimal import Decimal
 from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
+
+_ICD_ATC_PREFIX = re.compile(r"[A-Z][0-9A-Z.]*")
+_LOINC_PREFIX = re.compile(r"[0-9]+(-[0-9]?)?")
 
 EncounterType = Literal["inpatient", "outpatient", "emergency"]
 
@@ -52,6 +56,26 @@ class CodeSet(_Frozen):
     prefixes: list[str] = Field(min_length=1)
     label: str
     source: Literal["explicit", "lexicon", "data_match", "llm"]
+
+    @field_validator("prefixes")
+    @classmethod
+    def _normalise_prefixes(cls, prefixes: list[str], info: ValidationInfo) -> list[str]:
+        """Strip blanks, reject empty prefixes (they would match every code) and check the code shape."""
+        system = info.data.get("system")
+        out: list[str] = []
+        for raw in prefixes:
+            prefix = raw.strip()
+            if not prefix:
+                raise ValueError("code prefix must not be empty")
+            if system == "loinc":
+                if not _LOINC_PREFIX.fullmatch(prefix):
+                    raise ValueError(f"'{prefix}' is not a LOINC code prefix (digits, optional hyphen and check digit)")
+            elif system in ("icd10", "atc"):
+                prefix = prefix.upper()
+                if not _ICD_ATC_PREFIX.fullmatch(prefix):
+                    raise ValueError(f"'{prefix}' is not a valid {system} code prefix")
+            out.append(prefix)
+        return out
 
 
 class AgeCriterion(_Frozen):
