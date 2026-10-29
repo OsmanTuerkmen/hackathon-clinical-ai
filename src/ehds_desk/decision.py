@@ -41,8 +41,11 @@ _NEGATION_CUE = re.compile(
     r"|exclud\w* any)\b",
     re.I,
 )
-# A clause boundary ends the reach of a negation cue ("Not for research, only for advertising").
-_CLAUSE_BOUNDARY = re.compile(r"[,;:]|\b(but|only|however|instead|rather)\b", re.I)
+# A clause boundary ends the reach of a negation cue ("Not for research, only for advertising"). A comma is
+# deliberately none: it also separates the items of a negated list ("will not use it for marketing, advertising").
+_CLAUSE_BOUNDARY = re.compile(r"[;:]|\b(but|only|however|instead|rather)\b", re.I)
+# A short insertion right after a cue ("will not, under any circumstances, use ...") must not use up the window.
+_PARENTHETICAL_AFTER_CUE = re.compile(r"(?P<cue>\b(?:not|never|no)),[^,;:]{1,40},", re.I)
 # Phrases that contain a negation word without negating the purpose.
 _NOT_A_NEGATION = re.compile(r"\b(not only|no doubt|without (delay|hesitation))\b", re.I)
 
@@ -163,6 +166,7 @@ def _negated(sentence: str, start: int) -> bool:
     """Is the hit at `start` negated? Only the clause of the hit counts: the look-back window ends at
     the last clause boundary before the hit, and phrases that merely look negative are ignored."""
     prefix = _NOT_A_NEGATION.sub(lambda m: " " * len(m.group()), sentence[:start])
+    prefix = _PARENTHETICAL_AFTER_CUE.sub(lambda m: m.group("cue"), prefix)
     window = prefix[-NEGATION_WINDOW:]
     boundaries = list(_CLAUSE_BOUNDARY.finditer(window))
     if boundaries:

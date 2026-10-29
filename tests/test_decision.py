@@ -365,6 +365,10 @@ def test_statistics_request_with_pseudonymised_format_stays_step2():
         "We evaluate a workplace health promotion programme for employees.",
         "We compare outcomes of patients with private insurance, excluding children.",
         "We study non-alcoholic fatty liver disease and consumer behaviour.",
+        "We will not use the data for marketing, advertising or sales.",
+        "We will not use the data for marketing, or for advertising.",
+        "We will not use the data for marketing, nor for advertising.",
+        "We will not, under any circumstances, use the data for advertising.",
     ],
 )
 def test_legitimate_wording_is_not_prohibited(purpose):
@@ -396,6 +400,8 @@ def test_prohibited_wording_stays_prohibited(purpose, category):
     assert category in categories(assess_purpose(make_request(purpose=purpose)).prohibited)
 
 
+# Known limitation (deliberately not asserted either way): a comma is not a clause boundary, so a comma splice such as
+# "We will not use it for research, we plan an advertising campaign." may slip through the negation guard.
 def test_negation_only_guards_the_hit_in_the_same_sentence():
     request = make_request(purpose="We do not do research. We will use the data for advertising.")
     assert "54(c)" in categories(assess_purpose(request).prohibited)
