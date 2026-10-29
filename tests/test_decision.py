@@ -390,3 +390,31 @@ def test_prohibited_wording_stays_prohibited(purpose, category):
 def test_negation_only_guards_the_hit_in_the_same_sentence():
     request = make_request(purpose="We do not do research. We will use the data for advertising.")
     assert "54(c)" in categories(assess_purpose(request).prohibited)
+
+
+def test_step4_reason_names_what_was_actually_requested():
+    with_format = make_request(
+        purpose="Research on hypertension treatment in general practice.",
+        requested_as="health data access application",
+        requested_format="pseudonymised records",
+    )
+    joined = " ".join(decide(with_format, assess_purpose(with_format)).reasons)
+    assert "You asked for pseudonymised records" in joined
+
+    without_format = make_request(
+        purpose="Research on hypertension treatment in general practice.",
+        requested_as="health data access application",
+        requested_format="aggregated tables",
+    )
+    decision = decide(without_format, assess_purpose(without_format))
+    joined = " ".join(decision.reasons)
+    assert decision.trace[3].status == "matched"
+    assert "You asked for pseudonymised records" not in joined
+    assert "You submitted a data access application" in joined
+
+    no_format = make_request(
+        purpose="Research on hypertension treatment in general practice.",
+        requested_as="health data access application",
+        requested_format=None,
+    )
+    assert "You asked for pseudonymised records" not in " ".join(decide(no_format, assess_purpose(no_format)).reasons)

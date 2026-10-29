@@ -378,13 +378,19 @@ def decide(request: AccessRequest, assessment: PurposeAssessment) -> Decision:
             warnings=warnings,
         )
 
+    fmt = (request.requested_format or "").lower()
+    asked_for = (
+        "You asked for pseudonymised records"
+        if "record" in fmt or "pseudonym" in fmt
+        else "You submitted a data access application"
+    )
     return Decision(
         outcome="APPROVE_STATISTICAL",
         articles=["53", "66", "69", "71"],
         headline="Approved as anonymised statistics instead of pseudonymised records",
         reasons=[
             purpose_reason,
-            "You asked for pseudonymised records but did not explain why anonymised statistics would not be "
+            f"{asked_for} but did not explain why anonymised statistics would not be "
             "enough. Under data minimisation (Art. 66(2) and Art. 68(3)) you therefore receive anonymised statistics "
             "(Art. 69).",
             "If you need record-level data, send a new application that explains why anonymised statistics "
