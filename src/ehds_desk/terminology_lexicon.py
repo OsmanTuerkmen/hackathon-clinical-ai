@@ -18,6 +18,27 @@ class LexEntry:
     label: str
 
 
+# A lexicon hit directly preceded by one of these (normalised) tokens names a different
+# condition ("pulmonary hypertension", "hemorrhagic stroke", "drug-induced depression").
+# lookup() then returns None so the term goes to manual review instead of a wrong mapping.
+QUALIFIER_EXCLUSIONS: frozenset[str] = frozenset(
+    {
+        "pulmonary",
+        "hemorrhagic",
+        "haemorrhagic",
+        "gestational",
+        "respiratory",
+        "secondary",
+        "portal",
+        "intracranial",
+        "intracerebral",
+        "subarachnoid",
+        "ocular",
+        "neonatal",
+        "induced",  # drug-induced / steroid-induced
+    }
+)
+
 LEXICON: list[LexEntry] = [
     # --- ICD-10 -------------------------------------------------------------------------
     LexEntry(
@@ -25,6 +46,7 @@ LEXICON: list[LexEntry] = [
             "type 2 diabetes",
             "type 2 diabetes mellitus",
             "diabetes mellitus type 2",
+            "diabetes type 2",
             "type 2 diabetic",
             "t2dm",
             "t2d",
@@ -39,6 +61,7 @@ LEXICON: list[LexEntry] = [
             "type 1 diabetes",
             "type 1 diabetes mellitus",
             "diabetes mellitus type 1",
+            "diabetes type 1",
             "type 1 diabetic",
             "t1dm",
             "t1d",
@@ -50,7 +73,13 @@ LEXICON: list[LexEntry] = [
         "type 1 diabetes mellitus",
     ),
     LexEntry(
-        ("hypertension", "high blood pressure", "arterial hypertension", "essential hypertension"),
+        (
+            "hypertension",
+            "high blood pressure",
+            "elevated blood pressure",
+            "arterial hypertension",
+            "essential hypertension",
+        ),
         "icd10",
         ("I10",),
         "essential hypertension",
@@ -125,7 +154,13 @@ LEXICON: list[LexEntry] = [
         "obesity",
     ),
     LexEntry(
-        ("chronic kidney disease", "ckd", "chronic renal insufficiency"),
+        (
+            "chronic kidney disease",
+            "kidney disease",
+            "ckd",
+            "chronic renal insufficiency",
+            "renal failure",
+        ),
         "icd10",
         ("N18",),
         "chronic kidney disease",
@@ -143,6 +178,7 @@ LEXICON: list[LexEntry] = [
             "femoral fracture",
             "fracture of the femur",
             "femoral neck fracture",
+            "fractured hip",
             "broken hip",
         ),
         "icd10",
@@ -162,7 +198,12 @@ LEXICON: list[LexEntry] = [
         "urinary tract infection",
     ),
     LexEntry(
-        ("myocardial infarction", "acute myocardial infarction", "heart attack"),
+        (
+            "myocardial infarction",
+            "myocardial infarct",
+            "acute myocardial infarction",
+            "heart attack",
+        ),
         "icd10",
         ("I21",),
         "myocardial infarction",
@@ -224,7 +265,13 @@ LEXICON: list[LexEntry] = [
         "direct oral anticoagulants (DOAC)",
     ),
     LexEntry(
-        ("oral anticoagulant", "anticoagulant", "blood thinner"),
+        (
+            "oral anticoagulant",
+            "oral anticoagulation",
+            "anticoagulant",
+            "anticoagulation",
+            "blood thinner",
+        ),
         "atc",
         ("B01AA", "B01AF"),
         "oral anticoagulants",
@@ -292,7 +339,9 @@ LEXICON: list[LexEntry] = [
             "hemoglobin a1c",
             "haemoglobin a1c",
             "glycated hemoglobin",
+            "glycated haemoglobin",
             "glycosylated hemoglobin",
+            "glycosylated haemoglobin",
         ),
         "loinc",
         ("4548-4",),

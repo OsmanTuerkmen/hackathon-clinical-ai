@@ -23,6 +23,26 @@ def term(db):
         ("SGLT2 inhibitor", "atc", ["A10BK"]),
         ("HbA1c", "loinc", ["4548-4"]),
         ("body mass index", "loinc", ["39156-5"]),
+        ("diabetes type 2", "icd10", ["E11"]),
+        ("diabetes type II", "icd10", ["E11"]),
+        ("type II diabetes", "icd10", ["E11"]),
+        ("T2DM", "icd10", ["E11"]),
+        ("diabetes type 1", "icd10", ["E10"]),
+        ("diabetes type I", "icd10", ["E10"]),
+        ("oral anticoagulation", "atc", ["B01AA", "B01AF"]),
+        ("anticoagulation", "atc", ["B01AA", "B01AF"]),
+        ("myocardial infarct", "icd10", ["I21"]),
+        ("heart attack", "icd10", ["I21"]),
+        ("fractured hip", "icd10", ["S72"]),
+        ("femoral neck fracture", "icd10", ["S72"]),
+        ("kidney disease", "icd10", ["N18"]),
+        ("renal failure", "icd10", ["N18"]),
+        ("CKD", "icd10", ["N18"]),
+        ("high blood pressure", "icd10", ["I10"]),
+        ("elevated blood pressure", "icd10", ["I10"]),
+        ("essential hypertension", "icd10", ["I10"]),
+        ("glycated haemoglobin", "loinc", ["4548-4"]),
+        ("glycated hemoglobin", "loinc", ["4548-4"]),
     ],
 )
 def test_lookup_lexicon(term, text, system, prefixes):
@@ -50,6 +70,52 @@ def test_lookup_data_match(term):
     assert cs.system == "atc"
     assert cs.prefixes == ["R03AK06"]
     assert cs.source == "data_match"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "pulmonary hypertension",
+        "pulmonary arterial hypertension",
+        "hemorrhagic stroke",
+        "haemorrhagic stroke",
+        "respiratory depression",
+        "gestational diabetes mellitus type 2",
+        "drug-induced depression",
+        "secondary hypertension",
+    ],
+)
+def test_lookup_qualifier_guard(term, text):
+    assert term.lookup(text) is None
+
+
+def test_lookup_borderline_data_match_rejected(term):
+    # Jaccard exactly 0.5 against "Systolic blood pressure", not a subset -> must not narrow.
+    assert term.lookup("diastolic blood pressure") is None
+
+
+def test_lookup_subset_data_match_accepted(term):
+    cs = term.lookup("fluticasone")
+    assert cs is not None
+    assert cs.prefixes == ["R03AK06"]
+    assert cs.source == "data_match"
+
+
+def test_lookup_ambiguous_subset_data_match_rejected(term):
+    # "diabetes" is a subset of both E11.65 and E11.9 descriptions: must not pick one.
+    assert term.lookup("diabetes") is None
+
+
+def test_lookup_longest_synonym_wins(term):
+    assert term.lookup("direct oral anticoagulants").prefixes == ["B01AF"]
+    assert term.lookup("oral anticoagulants").prefixes == ["B01AA", "B01AF"]
+
+
+def test_verify_system_mismatch_warns(term):
+    cs = CodeSet(system="atc", prefixes=["A10"], label="antidiabetics", source="lexicon")
+    m = term.verify("antidiabetics", cs, "conditions")
+    assert m.matches == []
+    assert m.warning and "icd10" in m.warning
 
 
 def test_lookup_unknown(term):
