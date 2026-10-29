@@ -1,0 +1,19 @@
+{
+  "id": "N04",
+  "submitted": "2026-10-29T21:30:00+01:00",
+  "applicant": {
+    "name": "Stefan Leitner",
+    "organisation": "Donau Consumer Finance AG, risk department",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "We want to improve our credit scoring: applicants from regions with many chronic heart conditions should get stricter loan conditions.",
+  "question": "How many adults have heart failure or atrial fibrillation, by region?",
+  "definitions": [
+    "Adult = aged 18 or older on 31 December 2025.",
+    "Heart failure = any condition with an ICD-10 code starting with I50.",
+    "Atrial fibrillation = any condition with an ICD-10 code starting with I48.",
+    "Report per region: adults with heart failure or atrial fibrillation."
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "N06",
+  "submitted": "2026-10-29T21:50:00+01:00",
+  "applicant": {
+    "name": "Dr. Jakob Wallner",
+    "organisation": "Austrian public health institute, cardiovascular prevention programme",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Public health surveillance of cardiovascular prevention: how often adults with type 2 diabetes receive statin therapy in each region.",
+  "question": "How many adults with type 2 diabetes have an active statin prescription, by region?",
+  "definitions": [
+    "Adult = aged 18 or older on 31 December 2025.",
+    "A medication is active on 31 December 2025 if start_date is on or before that day and end_date is empty or on or after that day.",
+    "Report per region: adults with type 2 diabetes, how many of them have an active statin and that share in %, one decimal."
+  ]
+}

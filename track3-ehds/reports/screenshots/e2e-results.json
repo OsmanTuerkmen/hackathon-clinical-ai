@@ -1,0 +1,67 @@
+[
+  {
+    "name": "App loads with request list",
+    "ok": true,
+    "detail": "17 requests listed"
+  },
+  {
+    "name": "Simulation label is visible",
+    "ok": true,
+    "detail": "Hackathon simulation · synthetic data only · not a real gove…"
+  },
+  {
+    "name": "R10 nicotine pouches -> REJECT, Art. 54, no data queried",
+    "ok": true,
+    "detail": "answered in 104 ms"
+  },
+  {
+    "name": "R08 statistics -> APPROVE_STATISTICAL with <10 and suppressed cells",
+    "ok": true,
+    "detail": "9 regions, small cells masked, NÖ 15 / 27.2"
+  },
+  {
+    "name": "R01 statistics -> prevalence table",
+    "ok": true,
+    "detail": "Wien 3 247 adults, 263 with T2D, 8.1 %"
+  },
+  {
+    "name": "R05 -> APPROVE_SPE, exact cohort 1152, record types listed",
+    "ok": true,
+    "detail": "cohort 1 152; Conditions (ICD-10):all of the cohort's rows | Medications (ATC):all of the cohort's rows | Observations (LOINC):LOINC 4548-4 only"
+  },
+  {
+    "name": "R05 download attempt is blocked (HTTP 403)",
+    "ok": true,
+    "detail": "Download blocked · HTTP 403"
+  },
+  {
+    "name": "N01 new request: primary_icd10 + hospital grouping",
+    "ok": true,
+    "detail": "Klinikum Nord:66, Klinikum Süd:60, Klinikum West:31"
+  },
+  {
+    "name": "Pasted custom request (edited JSON) is processed",
+    "ok": true,
+    "detail": "female:104, male:105"
+  },
+  {
+    "name": "Invalid JSON gives a clear error",
+    "ok": true,
+    "detail": "Problems found invalid JSON: Expecting ',' delimiter (line 1, column 39)"
+  },
+  {
+    "name": "Staff view shows decision trace, privacy checks, plan and SQL",
+    "ok": true,
+    "detail": "all sections present"
+  },
+  {
+    "name": "Evaluation tab shows the five metrics",
+    "ok": true,
+    "detail": "10/10 Correct decisions (decision + articles) | 6/6 Correct numbers (approved requests) | 0 Privacy leaks | 10/10 Consistent across 3 runs | 0.24 s Slowest answer (R09), target < 60 s"
+  },
+  {
+    "name": "No browser console errors (incl. CSP violations)",
+    "ok": true,
+    "detail": "0 errors"
+  }
+]

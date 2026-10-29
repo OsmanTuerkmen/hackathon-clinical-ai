@@ -1,0 +1,20 @@
+{
+  "id": "N03",
+  "submitted": "2026-10-29T21:20:00+01:00",
+  "applicant": {
+    "name": "Dr. Felix Brandner",
+    "organisation": "Medical University research group for digital cardiology",
+    "country": "AT"
+  },
+  "requested_as": "health data access application",
+  "requested_format": "pseudonymised records",
+  "purpose": "We develop and validate a machine-learning model that predicts unplanned readmission after a heart failure hospital stay. The model needs each patient's individual sequence of stays and diagnoses; aggregated statistics cannot capture these trajectories.",
+  "question": "Provide pseudonymised encounters, conditions and medications for adults with heart failure who had at least one inpatient stay. Only model weights and validation metrics will leave the environment.",
+  "definitions": [
+    "Adult = aged 18 or older on 31 December 2025.",
+    "Heart failure = any condition with an ICD-10 code starting with I50.",
+    "Inpatient stay = encounter with type 'inpatient'.",
+    "Cohort = adults with heart failure who had at least one inpatient stay.",
+    "Report the size of the cohort you would make available."
+  ]
+}

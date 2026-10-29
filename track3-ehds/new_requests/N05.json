@@ -1,0 +1,20 @@
+{
+  "id": "N05",
+  "submitted": "2026-10-29T21:40:00+01:00",
+  "applicant": {
+    "name": "Prof. Miriam Gasser",
+    "organisation": "University hospital, nephrology research group",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Research on kidney function in chronic kidney disease to improve referral guidelines for nephrology care.",
+  "question": "Among patients with chronic kidney disease, what share has a latest eGFR below 45, by sex and age band?",
+  "definitions": [
+    "Chronic kidney disease = any condition with an ICD-10 code starting with N18.",
+    "Use the latest eGFR (LOINC 62238-1) per patient; patients without an eGFR are left out.",
+    "Reduced kidney function = latest eGFR below 45.",
+    "Age bands on 31 December 2025: 0-64, 65-79, 80+.",
+    "Report per sex and age band: patients with chronic kidney disease, how many of them have reduced kidney function and that share in %, one decimal."
+  ]
+}

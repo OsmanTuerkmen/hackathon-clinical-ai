@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Health Data Access Desk · EHDS hackathon simulation</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="sim-banner" id="sim-banner" role="note">
+    <strong>Hackathon simulation</strong> · synthetic data only · <strong>not a real government approval system</strong>
+    · decisions are generated automatically by rules for demonstration
+  </div>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">HDAB</div>
+      <div>
+        <h1>Health Data Access Desk</h1>
+        <p>European Health Data Space · secondary use · Regulation (EU) 2025/327, Chapter IV</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="applicant" role="tab" id="tab-applicant">Applicant portal</button>
+      <button class="tab" data-tab="staff" role="tab" id="tab-staff">Access body staff</button>
+      <button class="tab" data-tab="evaluation" role="tab" id="tab-evaluation">Evaluation</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ============================== APPLICANT ============================== -->
+    <section class="view active" id="view-applicant">
+      <div class="grid">
+        <div class="panel">
+          <h2><span class="step">1</span> Choose, paste or upload a request</h2>
+          <div class="request-list" id="request-list" aria-label="Example requests"></div>
+          <label class="label" for="request-json">Request JSON (same format as requests/R01.json)</label>
+          <textarea id="request-json" spellcheck="false" placeholder="Select a request above, paste JSON here or upload a file"></textarea>
+          <div class="actions">
+            <label class="btn secondary file-btn">Upload JSON…<input type="file" id="file-input" accept=".json,application/json"></label>
+            <button class="btn primary" id="submit-btn">Submit request</button>
+          </div>
+          <p class="hint" id="editor-hint">Only the request text is processed; patient-level data never leaves the desk.</p>
+        </div>
+
+        <div class="panel" id="answer-panel">
+          <h2><span class="step">2</span> Decision of the health data access body</h2>
+          <div id="answer-empty" class="empty">Submit a request to see the decision, the legal basis and the answer.</div>
+          <div id="answer" class="hidden">
+            <div class="decision" id="decision">
+              <div class="decision-label" id="decision-label"></div>
+              <div class="decision-code" id="decision-code"></div>
+            </div>
+            <div class="articles" id="articles"></div>
+            <p class="reason" id="reason"></p>
+            <ul class="notes" id="decision-notes"></ul>
+            <div class="meta" id="meta"></div>
+            <h2 class="result-title"><span class="step">3</span> <span id="result-title">Answer</span></h2>
+            <div id="result"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== STAFF ============================== -->
+    <section class="view" id="view-staff">
+      <div class="grid staff-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Case register</h2>
+            <button class="btn secondary small" id="refresh-cases">Refresh</button>
+          </div>
+          <table class="cases" id="cases-table">
+            <thead><tr><th>Case</th><th>Request</th><th>Decision</th><th>Art.</th><th>Privacy</th><th>ms</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <p class="hint">Cases submitted in this session (in memory). Click a case for the full audit trail.</p>
+        </div>
+        <div class="panel" id="case-detail">
+          <div class="empty">Select a case to see the request, the decision trace, the interpreted query plan, the
+            generated SQL and the privacy checks.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== EVALUATION ============================== -->
+    <section class="view" id="view-evaluation">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Metrics on the 10 supplied requests</h2>
+          <button class="btn primary" id="run-eval">Run evaluation (R01–R10 × 3 runs)</button>
+        </div>
+        <p class="hint">The harness submits every request three times (fresh data load per run) and only afterwards
+          compares decisions, articles and numbers with <code>requests/expected.json</code>. The expected file is never
+          used to produce an answer.</p>
+        <div id="eval-cards" class="cards"></div>
+        <div id="eval-table"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    AIM Austria Hackathon · Track 3 European Health Data Space · Prototype for demonstration only. All patients are
+    synthetic. The decision engine is deterministic and rule-based; it cites the articles it applied.
+  </footer>
+</body>
+</html>
