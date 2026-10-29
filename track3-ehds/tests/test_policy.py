@@ -43,6 +43,15 @@ class ProhibitedPurposeTest(unittest.TestCase):
             d = policy.decide(req(purpose))
             self.assertEqual((d.outcome, d.articles), (policy.REJECT, ["54"]), purpose)
 
+    def test_evasive_wording_is_never_auto_approved(self):
+        for purpose in ("Research to optimise our customer acquisition in regions with many diabetics.",
+                        "We study regional prescribing so we can target physicians in regions with low use of our drug.",
+                        "Research for the go-to-market strategy of a new inhaler.",
+                        "Our underwriting team studies diabetes prevalence to improve risk research.",
+                        "Study to identify specific patients with heart failure so that our nurses can contact them."):
+            d = policy.decide(req(purpose))
+            self.assertIn(d.outcome, (policy.REJECT, policy.NO_DECISION), purpose)
+
     def test_benign_mentions_are_not_rejected(self):
         for purpose in ("Post-marketing surveillance of SGLT2 inhibitor safety for the medicines agency.",
                         "Research to evaluate a smoking cessation programme and support tobacco control policy.",

@@ -138,6 +138,41 @@ PROHIBITED_RULES = [
       r"compulsive use)\b"]),
 ]
 
+# Second line of defence: wording that does not match an explicit Art. 54 rule but suggests commercial,
+# insurance, employment or individual-level use. Such requests are never approved automatically.
+RED_FLAGS = [
+    ("commercial relationship with the people concerned",
+     r"\b(?:our|their|its) (?:customers?|clients?|policyholders?|members?|employees?|staff|workforce|applicants?|"
+     r"subscribers?|consumers?)\b"),
+    ("customer targeting or profiling",
+     r"\b(?:customer|client|consumer)s? (?:acquisition|segmentation|targeting|retention|profil\w*|scor\w*|base|lists?|"
+     r"data(?:base)?)\b"),
+    ("targeting prescribers or consumers", r"\btarget\w* (?:\w+ ){0,2}(?:prescribers|physicians|doctors|consumers|"
+                                           r"customers|buyers|pharmacies)\b"),
+    ("pricing, profit or competition", r"\b(?:pric(?:e|es|ing)|profit\w*|revenue|market share|competitors?|"
+                                       r"commercial (?:advantage|strateg\w*)|business case|go-to-market|product launch|"
+                                       r"brand\w*)\b"),
+    ("insurance underwriting or credit", r"\b(?:underwrit\w*|actuar\w*|insurability|premiums?|loans?|lending|"
+                                         r"mortgages?|credit)\b"),
+    ("employment decisions", r"\b(?:employers?|human resources|hr department|hiring|recruit\w*|job applicants?|"
+                             r"contract renewals?|sick leave of (?:our|the) )\b"),
+    ("identifying or contacting individual people",
+     r"\b(?:identify\w*|find|locate|contact\w*|reach out to|name)\b[^.]{0,30}?\b(?:individual|specific|named|single|"
+     r"particular|these|those) (?:patients?|persons?|people|individuals)\b"),
+]
+
+
+def detect_red_flags(req: dict) -> list[Finding]:
+    found: list[Finding] = []
+    for fname, text in _fields(req)[:2]:
+        for sent in sentences(text):
+            clean = _strip_benign(sent)
+            for label, pat in RED_FLAGS:
+                if re.search(pat, clean, I) and not any(f.label == label for f in found):
+                    found.append(Finding("54", label, sent, fname))
+    return found
+
+
 # --------------------------------------------------------------------------- Art. 53 patterns
 PURPOSE_RULES = [
     ("53(1)(a)", "public health and quality of care",
@@ -294,6 +329,14 @@ def decide(req: dict) -> Decision:
                         "data was queried.", trace, purposes, [], None, notes)
     trace.append({"step": "1b", "rule": "Allowed purpose recognised? (Art. 53)", "result": "yes",
                   "evidence": [f"Art. {p.point}: {p.label} - \"{p.evidence}\"" for p in purposes]})
+    flags = detect_red_flags(req)
+    trace.append({"step": "1c", "rule": "Signals of commercial or individual-level use? (Art. 54 safeguard)",
+                  "result": "yes" if flags else "no", "evidence": [f"{f.label} - \"{f.evidence}\"" for f in flags]})
+    if flags:
+        return Decision(NO_DECISION, [], "The purpose does not match an explicit prohibited use, but it shows signals "
+                        "of possible commercial or individual-level use (" + "; ".join(f.label for f in flags) +
+                        "). The desk does not approve such requests automatically: the case is referred to staff for "
+                        "an Art. 54 review and no data was queried.", trace, purposes, flags, None, notes)
     purpose_text = _purpose_phrase(purposes)
 
     if req["requested_as"] == "health data request":
