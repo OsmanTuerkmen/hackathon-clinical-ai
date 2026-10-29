@@ -7,7 +7,7 @@ the ladder looks at besides the request itself, so the same inputs always give t
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from .law import ART53_POINTS, ART54_POINTS
@@ -26,10 +26,21 @@ class _Rule:
     category: str
     all_of: tuple[re.Pattern[str], ...]
     none_of: tuple[re.Pattern[str], ...] = ()
+    negatable: bool = False  # a negation cue shortly before the first all_of hit discards the hit
 
 
 def _rx(*patterns: str) -> tuple[re.Pattern[str], ...]:
     return tuple(re.compile(p, re.I) for p in patterns)
+
+
+# A hit that a negation cue precedes within this many characters ("no attempt at re-identification",
+# "will not use the data for marketing") states the opposite of a prohibited purpose.
+NEGATION_WINDOW = 40
+_NEGATION_CUE = re.compile(
+    r"\b(no|not|never|without|will not|won't|do not|does not|must not|prohibit\w*|prevent\w*|avoid\w*"
+    r"|exclud\w* any)\b",
+    re.I,
+)
 
 
 PROHIBITED_RULES: tuple[_Rule, ...] = (
@@ -37,7 +48,9 @@ PROHIBITED_RULES: tuple[_Rule, ...] = (
         "54(b)",  # insurance
         _rx(
             r"\binsur(ance|er)\b|\bpremium",
-            r"premium|pricing|risk[- ]based|underwrit|exclu|tariff|contribution",
+            r"premium|pricing|risk[- ]based|underwrit|tariff|contribution"
+            r"|exclu\w* (them |customers |persons |people |patients )?from "
+            r"(cover|coverage|insurance|policy|policies|contracts?)",
         ),
     ),
     _Rule(
@@ -52,9 +65,11 @@ PROHIBITED_RULES: tuple[_Rule, ...] = (
         _rx(
             r"(?-i:\bHR\b)\s*(department|team|manager)|human resources|\bemployees?\b|\bstaff list"
             r"|job (offer|applicant|candidate)s?",
-            r"contract|hir(e|ing)|dismiss|recruit|selection of (staff|employees|applicants|candidates)|promot"
+            r"contract|hir(e|ing)|dismiss|recruit|selection of (staff|employees|applicants|candidates)"
+            r"|promot(e|ion|ions) (of|to) (staff|employees|workers)|promotion decisions"
             r"|sick leave|absenteeism",
         ),
+        _rx(r"health promotion"),
     ),
     _Rule(
         "54(a)",  # re-identification / disadvantage
@@ -74,17 +89,22 @@ PROHIBITED_RULES: tuple[_Rule, ...] = (
             r"|sales (rep|representative|force|visit|campaign|target)"
             r"|target\w* (our )?(ads|customers|prescribers|physicians)",
         ),
+        _rx(r"post-?marketing|marketing authori[sz]ation|social marketing"),
     ),
     _Rule(
         "54(d)",  # harmful products
         _rx(
             r"nicotine|tobacco|cigarette|\bvap(e|ing)\b|alcoholic|\bspirits\b|liquor|gambling|betting|weapon"
             r"|firearm|illicit drug",
-            r"product|flavou?r|brand|launch|position|sell|sales|consumer|portfolio",
+            r"product|flavou?r|brand|launch|position|sell|sales|consumer (product|market|brand)s?|portfolio",
         ),
-        _rx(r"cessation|quit(ting)?\b|stop(ping)? smoking|withdrawal|replacement therapy|harms? (of|caused by)"),
+        _rx(
+            r"cessation|quit(ting)?\b|stop(ping)? smoking|withdrawal|replacement therapy|harms? (of|caused by)"
+            r"|non-?alcoholic"
+        ),
     ),
 )
+PROHIBITED_RULES = tuple(replace(rule, negatable=True) for rule in PROHIBITED_RULES)
 
 PERMITTED_RULES: tuple[_Rule, ...] = (
     _Rule(
@@ -135,9 +155,18 @@ def _sentences(text: str) -> list[str]:
     return [sentence for sentence in out if sentence]
 
 
+def _negated(sentence: str, start: int) -> bool:
+    return _NEGATION_CUE.search(sentence[max(0, start - NEGATION_WINDOW) : start]) is not None
+
+
 def _rule_matches(rule: _Rule, sentence: str) -> bool:
-    """A rule applies to one sentence only: every all_of pattern matches and no none_of pattern does."""
-    return all(p.search(sentence) for p in rule.all_of) and not any(p.search(sentence) for p in rule.none_of)
+    """A rule applies to one sentence only: every all_of pattern matches and no none_of pattern does.
+    For a negatable rule at least one hit of the first all_of pattern must not follow a negation cue."""
+    if not all(p.search(sentence) for p in rule.all_of) or any(p.search(sentence) for p in rule.none_of):
+        return False
+    if rule.negatable:
+        return any(not _negated(sentence, m.start()) for m in rule.all_of[0].finditer(sentence))
+    return True
 
 
 def _apply_rule(rule: _Rule, text: str) -> Evidence | None:

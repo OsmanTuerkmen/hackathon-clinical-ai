@@ -350,3 +350,43 @@ def test_statistics_request_with_pseudonymised_format_stays_step2():
     decision = decide(request, assess_purpose(request))
     assert decision.articles == ["53", "69", "71"]
     assert [s.status for s in decision.trace] == ["not_matched", "matched", "not_evaluated", "not_evaluated"]
+
+
+# --- fix wave M1: prohibited-rule false positives ---------------------------
+
+
+@pytest.mark.parametrize(
+    "purpose",
+    [
+        "The data will be pseudonymised and no attempt at re-identification will be made.",
+        "We will not use the data for marketing or advertising.",
+        "Post-marketing safety study of SGLT2 inhibitors in older adults.",
+        "Research on stroke after the marketing authorisation of DOACs.",
+        "We evaluate a workplace health promotion programme for employees.",
+        "We compare outcomes of patients with private insurance, excluding children.",
+        "We study non-alcoholic fatty liver disease and consumer behaviour.",
+    ],
+)
+def test_legitimate_wording_is_not_prohibited(purpose):
+    assert assess_purpose(make_request(purpose=purpose)).prohibited == []
+
+
+@pytest.mark.parametrize(
+    ("purpose", "category"),
+    [
+        ("Our HR department will use the results to decide on contract renewals.", "54(b)"),
+        ("We will match the records with our employee list.", "54(a)"),
+        ("We plan an advertising campaign for physicians.", "54(c)"),
+        ("We use the data to set insurance premiums.", "54(b)"),
+        ("We develop new e-cigarette flavours for young consumers.", "54(d)"),
+        ("We exclude customers from insurance cover based on their diagnoses.", "54(b)"),
+        ("We decide on the promotion of employees by diagnosis.", "54(b)"),
+    ],
+)
+def test_prohibited_wording_stays_prohibited(purpose, category):
+    assert category in categories(assess_purpose(make_request(purpose=purpose)).prohibited)
+
+
+def test_negation_only_guards_the_hit_in_the_same_sentence():
+    request = make_request(purpose="We do not do research. We will use the data for advertising.")
+    assert "54(c)" in categories(assess_purpose(request).prohibited)
