@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import urllib.error
 import urllib.request
 from typing import Callable
 
@@ -136,13 +137,18 @@ def _codes_not_in_data(plan: dict, catalog: dict) -> set[str]:
 def _http_json(url: str, headers: dict, body: dict) -> dict:
     req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), method="POST",
                                  headers={"Content-Type": "application/json", **headers})
-    with urllib.request.urlopen(req, timeout=45) as r:
-        return json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=45) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as exc:
+        with exc:
+            raise RuntimeError(f"provider answered HTTP {exc.code}") from None
 
 
 def from_environment() -> LLMPlanner | None:
     provider = (os.environ.get("DESK_LLM_PROVIDER") or "").strip().lower()
     model = (os.environ.get("DESK_LLM_MODEL") or "").strip()
+    base = (os.environ.get("DESK_LLM_BASE_URL") or "").strip().rstrip("/")  # e.g. an EU-hosted gateway or a test server
     if not provider:
         return None
     if not model:
@@ -153,7 +159,7 @@ def from_environment() -> LLMPlanner | None:
             raise SystemExit("ANTHROPIC_API_KEY is not set")
 
         def transport(system: str, user: str) -> str:
-            out = _http_json("https://api.anthropic.com/v1/messages",
+            out = _http_json(f"{base or 'https://api.anthropic.com'}/v1/messages",
                              {"x-api-key": key, "anthropic-version": "2023-06-01"},
                              {"model": model, "max_tokens": 4000, "temperature": 0, "system": system,
                               "messages": [{"role": "user", "content": user}]})
@@ -164,7 +170,7 @@ def from_environment() -> LLMPlanner | None:
             raise SystemExit("OPENAI_API_KEY is not set")
 
         def transport(system: str, user: str) -> str:
-            out = _http_json("https://api.openai.com/v1/chat/completions", {"Authorization": f"Bearer {key}"},
+            out = _http_json(f"{base or 'https://api.openai.com'}/v1/chat/completions", {"Authorization": f"Bearer {key}"},
                              {"model": model, "temperature": 0, "response_format": {"type": "json_object"},
                               "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]})
             return out["choices"][0]["message"]["content"]
