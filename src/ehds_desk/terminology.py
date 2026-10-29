@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict
 
 from .data import Database
 from .models import CodeSet
-from .terminology_lexicon import LEXICON, QUALIFIER_EXCLUSIONS, LexEntry
+from .terminology_lexicon import BENIGN_WORDS, LEXICON, QUALIFIER_EXCLUSIONS, STOP_WORDS, LexEntry
 
 System = Literal["icd10", "atc", "loinc"]
 Table = Literal["conditions", "primary_icd10", "medications", "observations"]
@@ -70,6 +70,11 @@ def tokens(text: str) -> list[str]:
     return [_singular(w) for w in _NON_ALNUM.sub(" ", t).split()]
 
 
+def content_tokens(text: str) -> list[str]:
+    """``tokens`` without the filler words of definition bodies ("an active prescription of")."""
+    return [w for w in tokens(text) if w not in STOP_WORDS]
+
+
 def _find_run(haystack: list[str], needle: list[str]) -> int:
     """Index of the first whole-word occurrence of ``needle`` in ``haystack``, else -1."""
     n = len(needle)
@@ -117,10 +122,10 @@ class Terminology:
                 self._by_system[system].setdefault(code, desc)
 
         self._lex_tokens: list[tuple[list[str], LexEntry]] = [
-            (tokens(s), e) for e in LEXICON for s in e.synonyms
+            (content_tokens(s), e) for e in LEXICON for s in e.synonyms
         ]
         self._desc_tokens: dict[str, list[tuple[str, str, set[str]]]] = {
-            system: [(code, desc, set(tokens(desc))) for code, desc in sorted(d.items())]
+            system: [(code, desc, set(content_tokens(desc))) for code, desc in sorted(d.items())]
             for system, d in self._by_system.items()
         }
 
@@ -140,7 +145,7 @@ class Terminology:
         return {s: sorted(d.items()) for s, d in self._by_system.items()}
 
     def lookup(self, text: str, system: System | None = None) -> CodeSet | None:
-        words = tokens(text)
+        words = content_tokens(text)
         if not words:
             return None
 
@@ -154,10 +159,14 @@ class Terminology:
                 if best is None or key > best[:2]:
                     best = (*key, start, entry)
         if best is not None:
-            start, e = best[2], best[3]
+            n, _chars, start, e = best
             if start > 0 and words[start - 1] in QUALIFIER_EXCLUSIONS:
                 # A different condition ("pulmonary hypertension"): do not map, do not
                 # fall back to a looser match; the term goes to manual review.
+                return None
+            if any(w not in BENIGN_WORDS for w in (*words[:start], *words[start + n :])):
+                # The synonym covers only part of the term ("insulin resistance"): mapping it
+                # would silently widen or change the meaning, so it goes to manual review.
                 return None
             return CodeSet(
                 system=e.system, prefixes=list(e.prefixes), label=e.label, source="lexicon"

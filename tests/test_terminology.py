@@ -35,8 +35,8 @@ def term(db):
         ("heart attack", "icd10", ["I21"]),
         ("fractured hip", "icd10", ["S72"]),
         ("femoral neck fracture", "icd10", ["S72"]),
-        ("kidney disease", "icd10", ["N18"]),
-        ("renal failure", "icd10", ["N18"]),
+        ("chronic kidney disease", "icd10", ["N18"]),
+        ("chronic renal failure", "icd10", ["N18"]),
         ("CKD", "icd10", ["N18"]),
         ("high blood pressure", "icd10", ["I10"]),
         ("elevated blood pressure", "icd10", ["I10"]),
@@ -56,7 +56,8 @@ def test_lookup_lexicon(term, text, system, prefixes):
 def test_lookup_whole_word_only(term):
     # "insulin" inside another word must not match the insulin synonym
     assert term.lookup("insulinoma", system="atc") is None
-    assert term.lookup("insulin pump", system="atc").prefixes == ["A10A"]
+    # a trailing word the synonym does not cover goes to manual review, not to a guess
+    assert term.lookup("insulin pump", system="atc") is None
 
 
 def test_lookup_respects_system(term):
@@ -169,3 +170,60 @@ def test_catalogue(term):
     assert any(code == "J18.9" for code, _ in cat["icd10"])
     assert ("A10BA02", "Metformin") in cat["atc"]
     assert any(code == "4548-4" for code, _ in cat["loinc"])
+
+
+# --- fix wave M1: partial lexicon hits and definition bodies ----------------
+
+
+@pytest.mark.parametrize(
+    ("text", "system"),
+    [
+        ("insulin resistance", None),
+        ("insulin resistance", "atc"),
+        ("polycystic kidney disease", None),
+        ("heart failure with preserved ejection fraction", None),
+        ("hypertension medication", "atc"),
+        ("renal failure", None),
+        ("a diagnosis of gout", None),
+        ("any diagnosis of gout", None),
+        ("patients", None),
+    ],
+)
+def test_lookup_unmapped_or_partial_goes_to_manual_review(term, text, system):
+    assert term.lookup(text, system=system) is None
+
+
+@pytest.mark.parametrize(
+    ("text", "system", "prefixes", "source"),
+    [
+        ("type 2 diabetes", None, ["E11"], "lexicon"),
+        ("a diagnosis of asthma", None, ["J45"], "lexicon"),
+        ("any diagnosis of asthma", None, ["J45"], "lexicon"),
+        ("active prescription of metformin", None, ["A10BA02"], "lexicon"),
+        ("latest HbA1c value", None, ["4548-4"], "lexicon"),
+        ("oral anticoagulants", None, ["B01AA", "B01AF"], "lexicon"),
+        ("essential hypertension", None, ["I10"], "lexicon"),
+        ("hypertension medication", None, ["I10"], "lexicon"),
+        ("at least one diagnosis of atrial fibrillation", None, ["I48"], "lexicon"),
+        ("patients with a history of heart failure", None, ["I50"], "lexicon"),
+        ("carcinoma of the breast", None, ["C50"], "lexicon"),
+        ("an active prescription of salmeterol/fluticasone", "atc", ["R03AK06"], "data_match"),
+        ("an active prescription of salmeterol/fluticasone", None, ["R03AK06"], "data_match"),
+    ],
+)
+def test_lookup_strips_filler_words(term, text, system, prefixes, source):
+    cs = term.lookup(text, system=system)
+    assert cs is not None, text
+    assert cs.prefixes == prefixes
+    assert cs.source == source
+
+
+def test_lookup_hypertension_medication_is_icd10_not_atc(term):
+    assert term.lookup("hypertension medication").system == "icd10"
+
+
+def test_broad_kidney_terms_no_longer_map_to_ckd_lexicon_entry(term):
+    # "renal failure" / "kidney disease" also cover N17-N19, so the N18 lexicon entry must not claim them.
+    assert term.lookup("renal failure") is None
+    cs = term.lookup("kidney disease")
+    assert cs is None or cs.source == "data_match"

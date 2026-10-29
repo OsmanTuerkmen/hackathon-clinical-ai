@@ -1,6 +1,6 @@
 """Plain-English synonyms -> code prefixes (ICD-10, ATC, LOINC). Pure data, no logic.
 
-Synonyms are matched whole-word after normalisation (see ``terminology.normalise``), so
+Synonyms are matched whole-word after normalisation (see ``terminology.tokens``), so
 plural forms, case and punctuation need not be listed. Order matters only for ties.
 """
 
@@ -37,6 +37,25 @@ QUALIFIER_EXCLUSIONS: frozenset[str] = frozenset(
         "neonatal",
         "induced",  # drug-induced / steroid-induced
     }
+)
+
+# Filler words of definition bodies ("an active prescription of X", "any diagnosis of Y"). lookup()
+# drops them from the input and from the synonyms before matching. Normalised (singular) forms.
+STOP_WORDS: frozenset[str] = frozenset(
+    {
+        "a", "an", "the", "any", "of", "with", "for", "on", "in", "at", "least", "one", "all", "who",
+        "have", "has", "had", "is", "are", "be", "being", "patient", "people", "person", "active",
+        "current", "prescription", "prescribed", "diagnosis", "diagnosed", "diagnose", "condition",
+        "value", "measurement", "record", "latest", "last", "code", "using", "taking", "treated",
+        "treatment",
+    }
+)  # fmt: skip
+
+# Words that may stay next to a lexicon hit without changing its meaning. Any other leftover content
+# word ("insulin RESISTANCE", "polycystic kidney disease") means the synonym covers only part of the
+# term: lookup() then returns None and the term goes to manual review.
+BENIGN_WORDS: frozenset[str] = frozenset(
+    {"history", "adult", "level", "therapy", "drug", "medication", "use", "user"}
 )
 
 LEXICON: list[LexEntry] = [
@@ -156,10 +175,9 @@ LEXICON: list[LexEntry] = [
     LexEntry(
         (
             "chronic kidney disease",
-            "kidney disease",
             "ckd",
             "chronic renal insufficiency",
-            "renal failure",
+            "chronic renal failure",
         ),
         "icd10",
         ("N18",),
