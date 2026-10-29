@@ -36,6 +36,17 @@ Then open **http://127.0.0.1:8000**. Use `python3 -m desk serve --port 8080` to 
 | Browser end-to-end test (22 checks, needs Node ≥ 22 and Chrome) | `node tests/e2e/browser_flow.mjs http://127.0.0.1:8000` |
 | Process one file on the command line | `python3 -m desk run new_requests/N01.json [--staff]` |
 
+### Running it online
+
+Use a host that runs a long-lived Python process with a writable disk, e.g. Render, Railway, Fly.io or a
+small VM.
+- Start command: `cd track3-ehds && python3 -m desk`.
+- If the platform sets `$PORT`, the desk binds to `0.0.0.0:$PORT` by itself. Otherwise set `DESK_HOST` and
+  `DESK_PORT`.
+- No build step and no dependencies are needed.
+- Serverless platforms such as Vercel functions are not a good fit: the desk keeps the data in memory and
+  writes SPE workspaces and the case register to disk.
+
 ## Results on the 10 supplied requests
 
 Actual output of `python3 -m desk evaluate --save` ([reports/evaluation.txt](reports/evaluation.txt)):
@@ -74,8 +85,18 @@ and only after the answers have been produced. No runtime code path reads it.
 | **Applicant: R05 SPE, exact cohort, blocked download** | **Staff: decision trace, privacy checks, plan, SQL** |
 | ![R05](reports/screenshots/03-r05-spe-download-blocked.png) | ![Staff](reports/screenshots/05-staff-view.png) |
 
-- **Applicant portal:** pick one of R01–R10 or our new requests N01–N07 (with a search filter), or paste
-  or upload JSON. *Format*, *Clear* and Ctrl/⌘ + Enter help when editing a request live.
+- **Applicant portal:** the applicant fills in a form, never raw JSON. The form asks for:
+  - name, organisation and country;
+  - request type and format;
+  - purpose and question;
+  - one field per definition.
+
+  The desk builds and stores the request in the challenge JSON format behind the scenes. Other ways in:
+  - *Upload request file* fills the form from a JSON file;
+  - *Load an example* fills it with R01–R10 or N01–N08;
+  - a collapsed *Advanced* panel shows or accepts raw JSON (for the jury).
+
+  Ctrl/⌘ + Enter submits.
 - **Decision:** the banner shows an icon, the cited articles (hover for a one-line summary of each article),
   a plain-language reason, the answer time, whether patient data was queried and the number of privacy
   checks passed.
@@ -339,7 +360,7 @@ CSV files directly. That calculation shares no code with the desk.
 
 | Time | Action | What to say |
 |---|---|---|
-| 0:00 | Open http://127.0.0.1:8000 | "A Health Data Access Desk for EHDS secondary use. This is a hackathon simulation with synthetic data, as the banner says." |
+| 0:00 | Open http://127.0.0.1:8000 | "A Health Data Access Desk for EHDS secondary use. This is a hackathon simulation with synthetic data, as the badge in the header says." |
 | 0:10 | Select **R10** → *Submit* | "A nicotine-pouch company wants COPD statistics. It is rejected under Art. 54(1)(d) before any data is touched: *Patient data queried: no*." |
 | 0:30 | Select **R08** → *Submit* | "A research request, approved as anonymised statistics under Art. 53 and 69. The numbers come from a query plan generated from the definitions. Regions under 10 show `<10` and the means are suppressed. Opted-out patients are excluded and values are rounded half-up." |
 | 0:55 | Select **R05** → *Submit*, then click **Download records** | "A model-training application that explains why aggregates are not enough, so it gets an SPE under Art. 53, 66, 68 and 73. Exactly 1 152 patients are selected, with only conditions, medications and HbA1c values copied in. A download attempt returns HTTP 403 and is logged." |

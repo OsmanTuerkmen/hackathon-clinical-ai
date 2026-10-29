@@ -21,5 +21,6 @@ REFERENCE_YEAR = 2025
 # Small-cell rule from the challenge README.
 SMALL_CELL_THRESHOLD = 10
 
-HOST = os.environ.get("DESK_HOST", "127.0.0.1")
-PORT = int(os.environ.get("DESK_PORT", "8000"))
+# Hosting platforms (Render, Railway, Fly.io, ...) set $PORT and expect the app on all interfaces.
+HOST = os.environ.get("DESK_HOST") or ("0.0.0.0" if os.environ.get("PORT") else "127.0.0.1")
+PORT = int(os.environ.get("DESK_PORT") or os.environ.get("PORT") or "8000")

@@ -197,7 +197,29 @@ try {
     await shot("04-n01-new-request");
     return s;
   });
+  await step("Applicant fills in the form (no JSON visible) and gets an answer", async () => {
+    const jsonVisible = await evaluate(`document.querySelector('#json-advanced').open`);
+    await evaluate(`(() => {
+      document.querySelector('#clear-btn').click();
+      const set = (sel, v) => { const e = document.querySelector(sel); e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); };
+      set('#f-name', 'Dr. Form Test'); set('#f-org', 'University hospital research unit'); set('#f-country', 'AT');
+      set('#f-purpose', 'Scientific research on heart failure care to improve treatment quality.');
+      set('#f-question', 'How many patients have heart failure, by hospital?');
+      set('#f-defs .def-input', 'Heart failure = any condition with an ICD-10 code starting with I50.');
+      document.querySelector('#add-def').click();
+      set('#f-defs .def-row:last-child .def-input', 'Report per hospital: patients with heart failure.');
+      window.__prevCase = ${text("#meta")};
+      document.querySelector('#submit-btn').click();
+    })()`);
+    await waitFor(`${text("#meta")} !== window.__prevCase && ${text("#meta")}.includes("Request WEB-")`, 30000, "form answer");
+    const rows = await evaluate(`[...document.querySelectorAll('#stat-table tbody tr')].map(tr => [...tr.cells].map(c => c.innerText.trim()).join(':'))`);
+    if (jsonVisible || rows.length !== 3) throw new Error(`json visible=${jsonVisible} rows=${JSON.stringify(rows)}`);
+    await shot("08-form-request");
+    return `JSON hidden; ${rows.join(", ")}`;
+  });
   await step("Pasted custom request (edited JSON) is processed", async () => {
+    await evaluate(`document.querySelector('#json-advanced').open = true`);
+    await sleep(200);
     const custom = {
       id: "PASTE-1", applicant: { name: "Demo", organisation: "Jury test", country: "AT" },
       requested_as: "health data request", requested_format: "anonymised statistics",
@@ -232,9 +254,9 @@ try {
     const { root } = await send("DOM.getDocument", { depth: -1 });
     const { nodeId } = await send("DOM.querySelector", { nodeId: root.nodeId, selector: "#file-input" });
     await send("DOM.setFileInputFiles", { nodeId, files: [path] });
-    await waitFor(`document.querySelector('#request-json').value.includes('UPLOAD-1')`, 5000, "uploaded JSON");
+    await waitFor(`document.querySelector('#f-purpose').value === 'Research on asthma.' && document.querySelector('#request-json').value.includes('UPLOAD-1')`, 5000, "uploaded request in the form");
     rmSync(path, { force: true });
-    return "uploaded file loaded";
+    return "uploaded file filled the form";
   });
   await step("Ctrl+Enter submits the edited request", async () => {
     await evaluate(`window.__prevCase = ${text("#meta")}; document.querySelector('#request-json').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }))`);

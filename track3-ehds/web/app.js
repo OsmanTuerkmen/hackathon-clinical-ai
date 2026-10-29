@@ -134,53 +134,155 @@ function renderRequestList() {
 }
 $("#request-filter").addEventListener("input", renderRequestList);
 
-async function pickRequest(id) {
-  const res = await fetch(`/api/requests/${encodeURIComponent(id)}`);
-  const text = await res.text();
-  let pretty = text;
-  try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch (e) { /* keep raw */ }
-  $("#request-json").value = pretty;
+// ------------------------------------------------------------------ applicant: request form
+// The applicant fills in a form; the JSON in the challenge format is built behind the scenes (and stored by the
+// desk). Power users can still upload a file or open the advanced JSON panel.
+const form = { id: null, edited: false };
+const jsonBox = $("#request-json");
+const advanced = $("#json-advanced");
+
+function autoGrow(t) {
+  t.style.height = "auto";
+  t.style.height = `${Math.max(38, t.scrollHeight + 2)}px`;
+}
+
+function addDefRow(value = "", focus = false) {
+  const t = el("textarea", { class: "def-input", rows: "1", spellcheck: "false",
+    placeholder: $("#f-defs").children.length ? "e.g. Report per region: adults, adults with type 2 diabetes, prevalence (%)."
+      : "e.g. Adult = aged 18 or older on 31 December 2025." });
+  t.value = value;
+  t.addEventListener("input", () => autoGrow(t));
+  const row = el("div", { class: "def-row" }, el("span", { class: "def-no" }), t,
+    el("button", { type: "button", class: "def-del", title: "Remove this definition", "aria-label": "Remove definition",
+      onclick: () => { row.remove(); renumber(); markEdited(); } }, "×"));
+  $("#f-defs").append(row);
+  renumber();
+  requestAnimationFrame(() => autoGrow(t));
+  if (focus) t.focus();
+}
+
+function renumber() {
+  [...document.querySelectorAll("#f-defs .def-no")].forEach((s, i) => { s.textContent = String(i + 1); });
+}
+
+function requestToForm(r) {
+  const ap = (r && typeof r.applicant === "object" && r.applicant) || {};
+  $("#f-name").value = ap.name || "";
+  $("#f-org").value = ap.organisation || "";
+  $("#f-country").value = ap.country || "";
+  const type = r.requested_as === "health data access application" ? r.requested_as : "health data request";
+  document.querySelectorAll('input[name="f-type"]').forEach(i => { i.checked = i.value === type; });
+  $("#f-format").value = r.requested_format === "pseudonymised records" ? "pseudonymised records" : "anonymised statistics";
+  $("#f-purpose").value = typeof r.purpose === "string" ? r.purpose : "";
+  $("#f-question").value = typeof r.question === "string" ? r.question : "";
+  $("#f-defs").replaceChildren();
+  const defs = Array.isArray(r.definitions) ? r.definitions.filter(d => typeof d === "string") : [];
+  (defs.length ? defs : [""]).forEach(d => addDefRow(d));
+  ["#f-purpose", "#f-question"].forEach(s => autoGrow($(s)));
+  form.id = r.id ? String(r.id) : null;
+  form.edited = false;
+}
+
+function formToRequest() {
+  const id = form.id ? (form.edited && !form.id.endsWith("-edited") ? `${form.id}-edited` : form.id)
+    : `WEB-${new Date().toISOString().slice(0, 19).replace(/\D/g, "")}`;
+  return {
+    id,
+    submitted: new Date().toISOString(),
+    applicant: { name: $("#f-name").value.trim(), organisation: $("#f-org").value.trim(),
+      country: $("#f-country").value.trim().toUpperCase() },
+    requested_as: document.querySelector('input[name="f-type"]:checked').value,
+    requested_format: $("#f-format").value,
+    purpose: $("#f-purpose").value.trim(),
+    question: $("#f-question").value.trim(),
+    definitions: [...document.querySelectorAll("#f-defs .def-input")].map(t => t.value.trim()).filter(Boolean),
+  };
+}
+
+function markEdited() {
+  form.edited = true;
+  if (advanced.open) jsonBox.value = JSON.stringify(formToRequest(), null, 2);
+}
+
+function selectExample(id) {
   selectedRequest = id;
   document.querySelectorAll(".req").forEach(b => b.classList.toggle("selected", b.dataset.id === id));
-  $("#editor-hint").textContent = `Loaded ${id}. Edit the JSON if you like, then submit (Ctrl/⌘ + Enter).`;
 }
+
+function loadRequestText(text, label) {
+  try {
+    const r = JSON.parse(text);
+    requestToForm(r);
+    jsonBox.value = JSON.stringify(r, null, 2);
+    $("#editor-hint").textContent = `Loaded ${label}. Check or edit the fields, then submit (Ctrl/⌘ + Enter).`;
+  } catch (e) {
+    jsonBox.value = text;
+    advanced.open = true;
+    $("#editor-hint").textContent = `${label} is not valid JSON (${e.message}). It is shown in the advanced panel.`;
+  }
+}
+
+async function pickRequest(id) {
+  const res = await fetch(`/api/requests/${encodeURIComponent(id)}`);
+  loadRequestText(await res.text(), id);
+  selectExample(id);
+}
+
+$("#request-form").addEventListener("submit", ev => ev.preventDefault());
+$("#request-form").addEventListener("input", (ev) => {
+  if (ev.target.matches("textarea")) autoGrow(ev.target);
+  markEdited();
+});
+$("#request-form").addEventListener("change", markEdited);
+$("#add-def").addEventListener("click", () => addDefRow("", true));
+document.querySelectorAll('input[name="f-type"]').forEach(i => i.addEventListener("change", () => {
+  // sensible default: records only make sense for an access application
+  if (i.checked && i.value === "health data request") $("#f-format").value = "anonymised statistics";
+}));
 
 $("#file-input").addEventListener("change", async (ev) => {
   const file = ev.target.files[0];
   if (!file) return;
-  const text = await file.text();
-  let pretty = text;
-  try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch (e) { /* invalid JSON is reported on submit */ }
-  $("#request-json").value = pretty;
-  selectedRequest = null;
-  document.querySelectorAll(".req").forEach(b => b.classList.remove("selected"));
-  $("#editor-hint").textContent = `Loaded file ${file.name}.`;
+  loadRequestText(await file.text(), `file ${file.name}`);
+  selectExample(null);
   ev.target.value = "";
 });
 
+advanced.addEventListener("toggle", () => {
+  if (advanced.open) {
+    jsonBox.value = JSON.stringify(formToRequest(), null, 2);
+  } else {
+    try { const r = JSON.parse(jsonBox.value); const keepId = r.id; requestToForm(r); form.id = keepId || form.id; } catch (e) { /* keep the form */ }
+  }
+});
+jsonBox.addEventListener("input", () => {
+  try { requestToForm(JSON.parse(jsonBox.value)); } catch (e) { /* submitted as typed while the panel is open */ }
+});
 $("#format-btn").addEventListener("click", () => {
   try {
-    $("#request-json").value = JSON.stringify(JSON.parse($("#request-json").value), null, 2);
+    jsonBox.value = JSON.stringify(JSON.parse(jsonBox.value), null, 2);
     $("#editor-hint").textContent = "JSON formatted.";
   } catch (e) {
     $("#editor-hint").textContent = `Not valid JSON yet: ${e.message}`;
   }
 });
 $("#clear-btn").addEventListener("click", () => {
-  $("#request-json").value = "";
-  selectedRequest = null;
-  document.querySelectorAll(".req").forEach(b => b.classList.remove("selected"));
-  $("#request-json").focus();
+  requestToForm({});
+  jsonBox.value = "";
+  selectExample(null);
+  $("#editor-hint").textContent = "Ctrl/⌘ + Enter submits. Only the request text is processed; patient-level data never leaves the desk.";
+  $("#f-purpose").focus();
 });
-$("#request-json").addEventListener("keydown", (ev) => {
+$("#request-panel").addEventListener("keydown", (ev) => {
   if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); submitRequest(); }
 });
 $("#submit-btn").addEventListener("click", submitRequest);
+requestToForm({});
 
 async function submitRequest() {
   const btn = $("#submit-btn");
-  const text = $("#request-json").value.trim();
-  if (!text) { $("#editor-hint").textContent = "Paste or select a request first."; return; }
+  const text = advanced.open ? jsonBox.value.trim() : JSON.stringify(formToRequest());
+  if (!text) { $("#editor-hint").textContent = "Fill in the form, load an example or upload a request first."; return; }
   if (btn.disabled) return;
   btn.disabled = true;
   btn.replaceChildren(el("span", { class: "spinner" }), "Processing…");
@@ -640,5 +742,5 @@ function renderEvaluation(rep) {
 }
 
 // ------------------------------------------------------------------ start
-loadRequests().then(() => pickRequest("R10"));
+loadRequests();
 api("/api/evaluation").then(({ body }) => { if (body && body.metrics) renderEvaluation(body); });

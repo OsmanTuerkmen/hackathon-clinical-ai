@@ -7,7 +7,7 @@
   {
     "name": "Simulation label is visible",
     "ok": true,
-    "detail": "Hackathon simulation · synthetic data only · not a real gove…"
+    "detail": "Hackathon simulation · synthetic data · not a real governmen…"
   },
   {
     "name": "Data status pill shows the synthetic dataset",
@@ -22,7 +22,7 @@
   {
     "name": "R10 nicotine pouches -> REJECT, Art. 54, no data queried",
     "ok": true,
-    "detail": "answered in 103 ms; stepper stops at the purpose check"
+    "detail": "answered in 114 ms; stepper stops at the purpose check"
   },
   {
     "name": "R08 statistics -> APPROVE_STATISTICAL with <10 and suppressed cells",
@@ -55,6 +55,11 @@
     "detail": "Klinikum Nord:66, Klinikum Süd:60, Klinikum West:31"
   },
   {
+    "name": "Applicant fills in the form (no JSON visible) and gets an answer",
+    "ok": true,
+    "detail": "JSON hidden; Klinikum Nord:114, Klinikum Süd:116, Klinikum West:64"
+  },
+  {
     "name": "Pasted custom request (edited JSON) is processed",
     "ok": true,
     "detail": "female:104, male:105"
@@ -72,7 +77,7 @@
   {
     "name": "File upload fills the editor",
     "ok": true,
-    "detail": "uploaded file loaded"
+    "detail": "uploaded file filled the form"
   },
   {
     "name": "Ctrl+Enter submits the edited request",
@@ -97,7 +102,7 @@
   {
     "name": "Evaluation tab shows the five metrics",
     "ok": true,
-    "detail": "10/10 Correct decisions (decision + articles) | 6/6 Correct numbers (approved requests) | 0 Privacy leaks | 10/10 Consistent across 3 runs | 0.23 s Slowest answer (R09), target < 60 s"
+    "detail": "10/10 Correct decisions (decision + articles) | 6/6 Correct numbers (approved requests) | 0 Privacy leaks | 10/10 Consistent across 3 runs | 0.25 s Slowest answer (R09), target < 60 s"
   },
   {
     "name": "Mobile layout (390 px) has no horizontal overflow",
