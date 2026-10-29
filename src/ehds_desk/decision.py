@@ -41,6 +41,10 @@ _NEGATION_CUE = re.compile(
     r"|exclud\w* any)\b",
     re.I,
 )
+# A clause boundary ends the reach of a negation cue ("Not for research, only for advertising").
+_CLAUSE_BOUNDARY = re.compile(r"[,;:]|\b(but|only|however|instead|rather)\b", re.I)
+# Phrases that contain a negation word without negating the purpose.
+_NOT_A_NEGATION = re.compile(r"\b(not only|no doubt|without (delay|hesitation))\b", re.I)
 
 
 PROHIBITED_RULES: tuple[_Rule, ...] = (
@@ -156,7 +160,14 @@ def _sentences(text: str) -> list[str]:
 
 
 def _negated(sentence: str, start: int) -> bool:
-    return _NEGATION_CUE.search(sentence[max(0, start - NEGATION_WINDOW) : start]) is not None
+    """Is the hit at `start` negated? Only the clause of the hit counts: the look-back window ends at
+    the last clause boundary before the hit, and phrases that merely look negative are ignored."""
+    prefix = _NOT_A_NEGATION.sub(lambda m: " " * len(m.group()), sentence[:start])
+    window = prefix[-NEGATION_WINDOW:]
+    boundaries = list(_CLAUSE_BOUNDARY.finditer(window))
+    if boundaries:
+        window = window[boundaries[-1].end() :]
+    return _NEGATION_CUE.search(window) is not None
 
 
 def _rule_matches(rule: _Rule, sentence: str) -> bool:

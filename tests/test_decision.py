@@ -381,6 +381,15 @@ def test_legitimate_wording_is_not_prohibited(purpose):
         ("We develop new e-cigarette flavours for young consumers.", "54(d)"),
         ("We exclude customers from insurance cover based on their diagnoses.", "54(b)"),
         ("We decide on the promotion of employees by diagnosis.", "54(b)"),
+        ("Not for research, only for advertising.", "54(c)"),
+        ("We will not share the data but we use it for advertising.", "54(c)"),
+        ("We study alcohol; the data is not used for marketing, but for our advertising campaign.", "54(c)"),
+        ("Not only research: we also run an advertising campaign for physicians.", "54(c)"),
+        ("There is no doubt we will use the data for marketing to physicians.", "54(c)"),
+        ("We will use the data without delay for advertising.", "54(c)"),
+        ("We will use the data without hesitation for advertising.", "54(c)"),
+        ("However, we will use the data for advertising.", "54(c)"),
+        ("We will not use it for research, instead we plan an advertising campaign.", "54(c)"),
     ],
 )
 def test_prohibited_wording_stays_prohibited(purpose, category):
