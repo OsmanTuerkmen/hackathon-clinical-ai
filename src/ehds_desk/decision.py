@@ -50,14 +50,18 @@ PROHIBITED_RULES: tuple[_Rule, ...] = (
     _Rule(
         "54(b)",  # employment
         _rx(
-            r"\bemployees?\b|\bstaff list|\bHR\b|human resources|job (offer|applicant|candidate)",
-            r"contract|hir(e|ing)|dismiss|recruit|select|promot|sick leave|absen",
+            r"(?-i:\bHR\b)\s*(department|team|manager)|human resources|\bemployees?\b|\bstaff list"
+            r"|job (offer|applicant|candidate)s?",
+            r"contract|hir(e|ing)|dismiss|recruit|selection of (staff|employees|applicants|candidates)|promot"
+            r"|sick leave|absenteeism",
         ),
     ),
     _Rule(
         "54(a)",  # re-identification / disadvantage
         _rx(
-            r"match\w* (the |our |these )?(records|data)?\s*with"
+            r"match\w* (the |our |these |their )?(records|data|patients)?\s*(with|against) "
+            r"(our|their|the|an?|a list of)\s+[\w ]{0,25}"
+            r"(employee|staff|customer|client|member|applicant|policyholder)s?"
             r"|re-?identif"
             r"|identify (which|individual|specific) (patients|persons|people|employees|customers)"
             r"|who has been diagnosed",
@@ -121,28 +125,26 @@ def _normalise(text: str) -> str:
     return " ".join(text.split()).casefold()
 
 
-def _sentence_around(text: str, pos: int) -> str:
+def _sentences(text: str) -> list[str]:
+    out: list[str] = []
     start = 0
     for m in _SENTENCE_END.finditer(text):
-        if pos <= m.start():
-            return text[start : m.start()].strip()
+        out.append(text[start : m.start()].strip())
         start = m.end()
-    return text[start:].strip()
+    out.append(text[start:].strip())
+    return [sentence for sentence in out if sentence]
+
+
+def _rule_matches(rule: _Rule, sentence: str) -> bool:
+    """A rule applies to one sentence only: every all_of pattern matches and no none_of pattern does."""
+    return all(p.search(sentence) for p in rule.all_of) and not any(p.search(sentence) for p in rule.none_of)
 
 
 def _apply_rule(rule: _Rule, text: str) -> Evidence | None:
-    first_match = None
-    for i, pattern in enumerate(rule.all_of):
-        m = pattern.search(text)
-        if m is None:
-            return None
-        if i == 0:
-            first_match = m
-    if any(p.search(text) for p in rule.none_of):
-        return None
-    assert first_match is not None
-    quote = _sentence_around(text, first_match.start())
-    return Evidence(source="rules", category=rule.category, quote=quote)
+    for sentence in _sentences(text):
+        if _rule_matches(rule, sentence):
+            return Evidence(source="rules", category=rule.category, quote=sentence)
+    return None
 
 
 def _apply_rules(rules: tuple[_Rule, ...], text: str) -> list[Evidence]:
@@ -177,16 +179,30 @@ def request_kind(request: AccessRequest) -> RequestKind:
 # --- Purpose assessment -----------------------------------------------------
 
 
+MIN_LLM_QUOTE_WORDS = 3
+
+
 def _verified_llm_evidence(
-    llm_items: list[Evidence], allowed: set[str], known: list[Evidence], full_text_norm: str
+    llm_items: list[Evidence],
+    allowed: set[str],
+    known: list[Evidence],
+    full_text_norm: str,
+    must_match: _Rule | None = None,
 ) -> list[Evidence]:
-    """LLM evidence counts only with a known category and a quote that appears verbatim in the request."""
+    """LLM evidence counts only with a known category, a quote of at least three words that appears verbatim
+    in the request and, if `must_match` is given, a quote that the rule-based pattern also recognises."""
     seen = {(e.category, _normalise(e.quote)) for e in known}
     out: list[Evidence] = []
     for item in llm_items:
         quote_norm = _normalise(item.quote)
         key = (item.category, quote_norm)
-        if item.category not in allowed or not quote_norm or quote_norm not in full_text_norm or key in seen:
+        if (
+            item.category not in allowed
+            or len(quote_norm.split()) < MIN_LLM_QUOTE_WORDS
+            or quote_norm not in full_text_norm
+            or key in seen
+            or (must_match is not None and not _rule_matches(must_match, item.quote))
+        ):
             continue
         seen.add(key)
         out.append(Evidence(source="llm", category=item.category, quote=item.quote.strip()))
@@ -205,7 +221,7 @@ def assess_purpose(request: AccessRequest, llm: PurposeAssessment | None = None)
         prohibited += _verified_llm_evidence(llm.prohibited, set(ART54_POINTS), prohibited, text_norm)
         permitted += _verified_llm_evidence(llm.permitted, set(ART53_POINTS), permitted, text_norm)
         if is_access:
-            spe += _verified_llm_evidence(llm.spe_justification, {SPE_CATEGORY}, spe, text_norm)
+            spe += _verified_llm_evidence(llm.spe_justification, {SPE_CATEGORY}, spe, text_norm, SPE_RULE)
 
     return PurposeAssessment(prohibited=prohibited, permitted=permitted, spe_justification=spe)
 

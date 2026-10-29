@@ -248,3 +248,105 @@ def test_decision_is_deterministic(settings):
     a = decide(request, assess_purpose(request)).model_dump()
     b = decide(request, assess_purpose(request)).model_dump()
     assert a == b
+
+
+# --- fix round 1: sentence-scoped rules and conservative LLM merge ------------
+
+
+def test_hazard_ratio_hr_is_not_employment():
+    request = make_request(purpose="Report the HR (hazard ratio) for patients selected by age band.")
+    assert assess_purpose(request).prohibited == []
+
+
+def test_matched_case_control_is_not_reidentification():
+    request = make_request(purpose="Cases were matched with controls by age and sex.")
+    assert assess_purpose(request).prohibited == []
+
+
+def test_rule_patterns_must_co_occur_in_one_sentence():
+    request = make_request(
+        purpose="We study coverage under public insurance.",
+        definitions=["Exclude patients under 18."],
+    )
+    assert assess_purpose(request).prohibited == []
+
+
+def test_matching_with_employee_list_is_reidentification():
+    request = make_request(purpose="We will match the records with our employee list")
+    assert "54(a)" in categories(assess_purpose(request).prohibited)
+
+
+def test_hr_department_renewing_contracts_is_employment():
+    request = make_request(purpose="The HR department wants to know which team members to renew contracts for.")
+    assert "54(b)" in categories(assess_purpose(request).prohibited)
+
+
+def test_llm_spe_justification_needs_rule_pattern_in_quote():
+    request = make_request(
+        purpose="Research on hypertension treatment in general practice.",
+        question="Provide pseudonymised records of adults with hypertension.",
+        requested_as="health data access application",
+        requested_format="pseudonymised records",
+    )
+    llm = PurposeAssessment(
+        prohibited=[],
+        permitted=[],
+        spe_justification=[
+            Evidence(source="llm", category="66(3)", quote="Provide pseudonymised records of adults with hypertension")
+        ],
+    )
+    assessment = assess_purpose(request, llm)
+    assert assessment.spe_justification == []
+    decision = decide(request, assessment)
+    assert decision.outcome == "APPROVE_STATISTICAL" and decision.articles == ["53", "66", "69", "71"]
+    assert decision.trace[3].status == "matched"
+
+
+def test_llm_spe_justification_not_duplicated_when_rules_found_it():
+    request = make_request(
+        purpose="Research on rare outcomes. We need patient-level data for this.",
+        requested_as="health data access application",
+    )
+    llm = PurposeAssessment(
+        prohibited=[],
+        permitted=[],
+        spe_justification=[Evidence(source="llm", category="66(3)", quote="We need patient-level data for this")],
+    )
+    assessment = assess_purpose(request, llm)
+    assert len(assessment.spe_justification) == 1
+    assert assessment.spe_justification[0].source == "rules"
+
+
+def test_llm_quote_with_two_words_is_discarded():
+    request = make_request(purpose="We plan a loyalty scheme. Customers with asthma get a different offer.")
+    llm = PurposeAssessment(
+        prohibited=[Evidence(source="llm", category="54(a)", quote="loyalty scheme")],
+        permitted=[Evidence(source="llm", category="53(1)(e)", quote="loyalty scheme")],
+        spe_justification=[],
+    )
+    assessment = assess_purpose(request, llm)
+    assert assessment.prohibited == [] and assessment.permitted == []
+
+
+def test_llm_evidence_with_unknown_category_is_discarded():
+    quote = "Customers with asthma get a different offer"
+    request = make_request(purpose=f"We plan a loyalty scheme. {quote}.", requested_as="health data access application")
+    llm = PurposeAssessment(
+        prohibited=[Evidence(source="llm", category="99(z)", quote=quote)],
+        permitted=[Evidence(source="llm", category="53(1)(z)", quote=quote)],
+        spe_justification=[Evidence(source="llm", category="66(9)", quote=quote)],
+    )
+    assessment = assess_purpose(request, llm)
+    assert assessment.prohibited == [] and assessment.permitted == [] and assessment.spe_justification == []
+
+
+def test_statistics_request_with_pseudonymised_format_stays_step2():
+    request = make_request(
+        purpose="Research on diabetes prevention.",
+        requested_as="health data request",
+        requested_format="pseudonymised records",
+    )
+    assert request_kind(request) == "statistics_request"
+    decision = decide(request, assess_purpose(request))
+    assert decision.articles == ["53", "69", "71"]
+    assert [s.status for s in decision.trace] == ["not_matched", "matched", "not_evaluated", "not_evaluated"]
