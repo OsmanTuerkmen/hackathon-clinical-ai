@@ -183,6 +183,12 @@ try {
     await shot("03-r05-spe-download-blocked");
     return t.split("\n")[0] + " + access log shown";
   });
+  await step("R05 permit holder runs an aggregate analysis inside the SPE", async () => {
+    await evaluate(`document.querySelector('#spe-analyse-btn').click()`);
+    await waitFor(`document.querySelectorAll('#spe-analysis-table tbody tr').length > 0`, 10000, "analysis table");
+    const rows = await evaluate(`[...document.querySelectorAll('#spe-analysis-table tbody tr')].map(tr => tr.innerText.replace(/\\t/g, ':'))`);
+    return `${rows.length} groups, e.g. ${rows.slice(0, 2).join(", ")}`;
+  });
   await step("N01 new request: primary_icd10 + hospital grouping", async () => {
     await submit("N01");
     const rows = await evaluate(`[...document.querySelectorAll('#stat-table tbody tr')].map(tr => [...tr.cells].map(c => c.innerText.trim()))`);
@@ -206,10 +212,16 @@ try {
     if (rows.length !== 2) throw new Error(JSON.stringify(rows));
     return rows.join(", ");
   });
-  await step("N07 unsupported definition: approved but clearly not produced", async () => {
+  await step("N07 derived value: mean and median length of stay by hospital", async () => {
     await submit("N07");
+    const rows = await evaluate(`[...document.querySelectorAll('#stat-table tbody tr')].map(tr => [...tr.cells].map(c => c.innerText.trim()).join(':'))`);
+    if (rows.join(", ") !== "Klinikum Nord:421:7.4:7.0, Klinikum Süd:382:7.6:8.0, Klinikum West:276:7.6:8.0") throw new Error(JSON.stringify(rows));
+    return rows.join(", ");
+  });
+  await step("N08 maximum is refused with a privacy reason", async () => {
+    await submit("N08");
     const t = await evaluate(text("#result"));
-    if (!/could not be interpreted safely/.test(t) || !/end_date minus start_date/.test(t)) throw new Error(t);
+    if (!/single patient/.test(t)) throw new Error(t);
     return t.split("\n").slice(0, 2).join(" ");
   });
   await step("File upload fills the editor", async () => {

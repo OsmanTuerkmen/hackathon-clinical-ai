@@ -336,13 +336,14 @@ function renderStatistics(root, res, view) {
   for (const c of res.columns) {
     if (c.type === "count") max[c.id] = Math.max(1, ...res.rows.map(r => typeof r.cells[c.id] === "number" ? r.cells[c.id] : 0));
   }
+  const show = (c, v) => (c.type === "count" ? fmt(v) : Number(v).toFixed(1));  // one decimal, also for 7.0
   const cell = (c, v) => {
     if (isMasked(v)) return el("td", { class: "num" }, masked(v));
-    if (c.type !== "count" && c.type !== "percent") return el("td", { class: "num", text: fmt(v) });
+    if (c.type !== "count" && c.type !== "percent") return el("td", { class: "num", text: show(c, v) });
     const width = c.type === "percent" ? Math.min(100, v) : (100 * v) / max[c.id];
     const bar = el("span", { class: `bar${c.type === "percent" ? " pct" : ""}` });
     bar.style.width = `${Math.max(2, width)}%`;
-    return el("td", { class: "num" }, el("div", { class: "cellbar" }, el("span", { class: "track" }, bar), el("span", { text: fmt(v) })));
+    return el("td", { class: "num" }, el("div", { class: "cellbar" }, el("span", { class: "track" }, bar), el("span", { text: show(c, v) })));
   };
   const head = el("tr", {},
     (res.dimensions.length ? res.dimensions : [{ label: "Group" }]).map(d => el("th", { text: d.label })),
@@ -419,6 +420,37 @@ function renderSpe(root, res) {
   } }, icon("download"), "Download records (CSV)");
   root.append(el("div", { class: "actions" }, btn,
     el("span", { class: "hint", text: "Try it: record downloads are refused and logged (Art. 73)." })), out);
+
+  // aggregate analysis inside the SPE by the permit holder; only the disclosure-checked output may leave
+  const ANALYSES = [["conditions", "icd10", "diagnoses by ICD-10 code"], ["medications", "atc", "prescriptions by ATC code"],
+    ["observations", "loinc", "measurements by LOINC code"], ["encounters", "type", "encounters by type"],
+    ["encounters", "primary_icd10", "stays by main diagnosis"], ["encounters", "data_holder", "encounters by hospital"],
+    ["patients", "sex", "patients by sex"], ["patients", "region", "patients by region"]];
+  const options = ANALYSES.filter(([t]) => t in res.tables);
+  if (!options.length || !res.permit_token) return;
+  const select = el("select", { id: "spe-analysis", class: "search" },
+    options.map(([t, c, label]) => el("option", { value: `${t}.${c}`, text: `${TABLE_TITLES[t]}: ${label}` })));
+  const resultBox = el("div", { id: "spe-analysis-result" });
+  const run = el("button", { class: "btn secondary small", id: "spe-analyse-btn", type: "button", onclick: async () => {
+    const [table, column] = select.value.split(".");
+    const r = await api(`/api/spe/${res.workspace_id}/analyse`, { method: "POST",
+      headers: { "Content-Type": "application/json", "X-Permit-Token": res.permit_token }, body: JSON.stringify({ table, column }) });
+    if (!r.ok) { resultBox.replaceChildren(el("div", { class: "callout amber" }, el("p", { text: (r.body && r.body.message) || `HTTP ${r.status}` }))); return; }
+    const rows = r.body.rows;
+    resultBox.replaceChildren(el("div", { class: "table-wrap" }, el("table", { id: "spe-analysis-table" },
+      el("thead", {}, el("tr", {}, el("th", { text: column }), el("th", { class: "num", text: "Patients" }))),
+      el("tbody", {}, rows.map(x => el("tr", {}, el("td", { text: String(x.value) }),
+        el("td", { class: "num" }, isMasked(x.patients) ? masked(x.patients) : fmt(x.patients))))))),
+      el("p", { class: "hint", text: r.body.note }),
+      el("div", { class: "result-actions" }, el("button", { class: "btn secondary small", type: "button", onclick: () =>
+        downloadCsv({ dimensions: [{ label: column }], columns: [{ id: "p", label: "Patients" }],
+          rows: rows.map(x => ({ group: [String(x.value)], label: String(x.value), cells: { p: x.patients } })) },
+          { request_id: `${res.workspace_id}-${table}-${column}` }) }, icon("download"), "Export aggregated result (CSV)")));
+  } }, "Run aggregate query");
+  root.append(el("div", { class: "callout blue spe-console" },
+    el("h3", {}, icon("shield"), "Work inside the secure processing environment"),
+    el("p", { text: "As permit holder you can run aggregate analyses on the copied records. Results pass the small-cell rule before they may leave the environment; records themselves never do." }),
+    el("div", { class: "actions" }, select, run), resultBox));
 }
 
 // ------------------------------------------------------------------ staff

@@ -9,7 +9,7 @@
     "privacy_leaks": 0,
     "consistent": 10,
     "runs": 3,
-    "slowest_ms": 219.1,
+    "slowest_ms": 229.4,
     "slowest_request": "R09",
     "mode": "in-process (fresh data load per run)"
   },
@@ -24,12 +24,12 @@
       "numbers_ok": true,
       "problems": [],
       "leaks": [],
-      "ms": 187.7,
+      "ms": 183.3,
       "fingerprint": "e4efb1357fcce6f3",
       "download_status": null,
       "fulfilment": "RELEASED",
       "consistent": true,
-      "ms_max": 187.7
+      "ms_max": 183.3
     },
     "R02": {
       "decision": "REJECT",
@@ -57,12 +57,12 @@
       "numbers_ok": true,
       "problems": [],
       "leaks": [],
-      "ms": 137.2,
+      "ms": 127.3,
       "fingerprint": "07472fdb4560d6d0",
       "download_status": null,
       "fulfilment": "RELEASED",
       "consistent": true,
-      "ms_max": 137.2
+      "ms_max": 141.9
     },
     "R04": {
       "decision": "REJECT",
@@ -92,12 +92,12 @@
       "numbers_ok": true,
       "problems": [],
       "leaks": [],
-      "ms": 160.7,
+      "ms": 163.9,
       "fingerprint": "c54418091e915554",
       "download_status": 403,
       "fulfilment": "SPE_READY",
       "consistent": true,
-      "ms_max": 160.7
+      "ms_max": 165.4
     },
     "R06": {
       "decision": "REJECT",
@@ -125,12 +125,12 @@
       "numbers_ok": true,
       "problems": [],
       "leaks": [],
-      "ms": 97.6,
+      "ms": 97.9,
       "fingerprint": "d87efef79b40a5ac",
       "download_status": null,
       "fulfilment": "RELEASED",
       "consistent": true,
-      "ms_max": 97.6
+      "ms_max": 101.1
     },
     "R08": {
       "decision": "APPROVE_STATISTICAL",
@@ -142,12 +142,12 @@
       "numbers_ok": true,
       "problems": [],
       "leaks": [],
-      "ms": 157.4,
+      "ms": 156.5,
       "fingerprint": "0b7bf9886d4379f5",
       "download_status": null,
       "fulfilment": "RELEASED",
       "consistent": true,
-      "ms_max": 159.1
+      "ms_max": 169.8
     },
     "R09": {
       "decision": "APPROVE_STATISTICAL",
@@ -160,12 +160,12 @@
       "numbers_ok": true,
       "problems": [],
       "leaks": [],
-      "ms": 205.8,
+      "ms": 215.9,
       "fingerprint": "3f5475573b2cda9f",
       "download_status": null,
       "fulfilment": "RELEASED",
       "consistent": true,
-      "ms_max": 219.1
+      "ms_max": 229.4
     },
     "R10": {
       "decision": "REJECT",

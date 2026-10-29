@@ -2,7 +2,7 @@
   {
     "name": "App loads with request list",
     "ok": true,
-    "detail": "17 requests listed"
+    "detail": "18 requests listed"
   },
   {
     "name": "Simulation label is visible",
@@ -22,7 +22,7 @@
   {
     "name": "R10 nicotine pouches -> REJECT, Art. 54, no data queried",
     "ok": true,
-    "detail": "answered in 104 ms; stepper stops at the purpose check"
+    "detail": "answered in 103 ms; stepper stops at the purpose check"
   },
   {
     "name": "R08 statistics -> APPROVE_STATISTICAL with <10 and suppressed cells",
@@ -45,6 +45,11 @@
     "detail": "Download blocked · HTTP 403 + access log shown"
   },
   {
+    "name": "R05 permit holder runs an aggregate analysis inside the SPE",
+    "ok": true,
+    "detail": "13 groups, e.g. C50.9:14, E11.65:283"
+  },
+  {
     "name": "N01 new request: primary_icd10 + hospital grouping",
     "ok": true,
     "detail": "Klinikum Nord:66, Klinikum Süd:60, Klinikum West:31"
@@ -55,7 +60,12 @@
     "detail": "female:104, male:105"
   },
   {
-    "name": "N07 unsupported definition: approved but clearly not produced",
+    "name": "N07 derived value: mean and median length of stay by hospital",
+    "ok": true,
+    "detail": "Klinikum Nord:421:7.4:7.0, Klinikum Süd:382:7.6:8.0, Klinikum West:276:7.6:8.0"
+  },
+  {
+    "name": "N08 maximum is refused with a privacy reason",
     "ok": true,
     "detail": "The request could not be interpreted safely "
   },
@@ -87,7 +97,7 @@
   {
     "name": "Evaluation tab shows the five metrics",
     "ok": true,
-    "detail": "10/10 Correct decisions (decision + articles) | 6/6 Correct numbers (approved requests) | 0 Privacy leaks | 10/10 Consistent across 3 runs | 0.22 s Slowest answer (R09), target < 60 s"
+    "detail": "10/10 Correct decisions (decision + articles) | 6/6 Correct numbers (approved requests) | 0 Privacy leaks | 10/10 Consistent across 3 runs | 0.23 s Slowest answer (R09), target < 60 s"
   },
   {
     "name": "Mobile layout (390 px) has no horizontal overflow",

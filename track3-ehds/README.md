@@ -32,8 +32,8 @@ Then open **http://127.0.0.1:8000**. Use `python3 -m desk serve --port 8080` to 
 | Start the web app | `python3 -m desk` |
 | Evaluate R01–R10 three times against `expected.json` | `python3 -m desk evaluate` (add `--save` to write `reports/`) |
 | Same evaluation through the running web server | `python3 -m desk evaluate --url http://127.0.0.1:8000` |
-| Unit and integration tests (76) | `python3 -m unittest discover -s tests -t .` |
-| Browser end-to-end test (20 checks, needs Node ≥ 22 and Chrome) | `node tests/e2e/browser_flow.mjs http://127.0.0.1:8000` |
+| Unit and integration tests (87) | `python3 -m unittest discover -s tests -t .` |
+| Browser end-to-end test (22 checks, needs Node ≥ 22 and Chrome) | `node tests/e2e/browser_flow.mjs http://127.0.0.1:8000` |
 | Process one file on the command line | `python3 -m desk run new_requests/N01.json [--staff]` |
 
 ## Results on the 10 supplied requests
@@ -226,8 +226,11 @@ If any check fails, the answer is **withheld** rather than released.
   - The model's JSON plan must pass the same IR validator before any query. Unknown codes are flagged, and
     staff see *"LLM-assisted, staff review recommended"*.
   - Decisions are never delegated to the model.
-  - **This path has only been tested with a mocked model** (`tests/test_llm_fallback.py`). No API key was
-    used during development.
+  - Tested over real HTTP against a local server that speaks both wire formats, Anthropic Messages and OpenAI
+    Chat Completions (`tests/test_llm_http.py`). The test covers headers, request bodies, response parsing and
+    fail-closed behaviour on provider errors. `DESK_LLM_BASE_URL` points it at another endpoint, e.g. an
+    EU-hosted gateway. A run against the real provider still needs your API key; none was available during
+    development.
 
 ## New test requests (not in the challenge repository)
 
@@ -239,9 +242,10 @@ If any check fails, the answer is **withheld** rather than released.
 | [N04](new_requests/N04.json) | credit scoring → prohibited | `REJECT`, Art. 54(1)(b) |
 | [N05](new_requests/N05.json) | latest eGFR threshold (< 45), sex × age band, percentages | 6 cells, e.g. female 80+: 89 / 48 / 53.9 % |
 | [N06](new_requests/N06.json) | plain English only ("type 2 diabetes", "statin") → vocabulary codes E11*, C10AA* | per region, e.g. Wien 263 / 109 / 41.4 % |
-| [N07](new_requests/N07.json) | unsupported derived value (length of stay) | approved, **no numbers produced**, clear reason |
+| [N07](new_requests/N07.json) | derived value: mean and median length of stay (end_date − start_date), by hospital | Nord 421 stays / 7.4 / 7.0 days, Süd 382 / 7.6 / 8.0, West 276 / 7.6 / 8.0 |
+| [N08](new_requests/N08.json) | maximum length of stay | approved, **refused**: a maximum describes a single patient |
 
-`tests/test_new_requests.py` checks N01–N06 against an independent brute-force calculation that reads the
+`tests/test_new_requests.py` checks N01–N07 against an independent brute-force calculation that reads the
 CSV files directly. That calculation shares no code with the desk.
 
 ## Tests
@@ -279,12 +283,20 @@ CSV files directly. That calculation shares no code with the desk.
   - "first" or "most" are never silently dropped.
 - `tests/test_supplied_requests.py`: R01–R10 against `expected.json`, zero queries for rejections, results
   independent of ID and applicant, determinism, unchanged challenge files.
-- `tests/test_llm_fallback.py`: only request text is sent, invalid proposals are refused, the model is not
-  called when the rules succeed.
-- `tests/e2e/browser_flow.mjs`: headless Chrome through the DevTools protocol (no npm packages), 20 checks:
-  - the demo flow: R10 rejection, R08/R01 statistics, R05 SPE with blocked download and access log, N01,
+- `tests/test_llm_fallback.py`, `tests/test_llm_http.py`: only request text is sent, invalid proposals are
+  refused, the model is not called when the rules succeed, both provider wire formats work over HTTP, and
+  provider errors fail closed.
+- Derived values and persistence:
+  - length of stay is suppressed below 10 distinct patients, even when there are more stays;
+  - minimum and maximum are refused;
+  - a period named only in the question is refused;
+  - the case register and SPE access log survive a restart;
+  - SPE analyses need the permit token and mask small cells.
+- `tests/e2e/browser_flow.mjs`: headless Chrome through the DevTools protocol (no npm packages), 22 checks:
+  - the demo flow: R10 rejection, R08/R01 statistics, R05 SPE with blocked download, access log and an
+    aggregate analysis inside the SPE, N01,
   - the processing steps and the CSV export,
-  - N07's clear refusal,
+  - N07 length of stay and N08's refusal,
   - file upload, Ctrl+Enter, pasted and invalid JSON,
   - an XSS payload, which is rendered as text and never as HTML,
   - the staff view and the evaluation tab,
@@ -297,13 +309,17 @@ CSV files directly. That calculation shares no code with the desk.
 
 - **Supported phrasings.** The rule-based interpreter supports the shapes above and many variations, such as
   hospital or year grouping, thresholds on the latest measurement, onset or start-date filters,
-  "at least N stays", and/or/not, and plain-English vocabulary terms. Phrasings outside this grammar are
-  refused with an explanation rather than guessed (N07). The optional LLM fallback is meant to widen
-  coverage, but it is untested against a live model.
-- **Unsupported computations:** derived values such as length of stay, date differences, incidence over
-  person-time and statistics other than counts, percentages, means and medians.
-- **Decisions are keyword rules.** They cite their evidence, but adversarial wording could evade them. A real
-  access body would keep human review.
+  "at least N stays", and/or/not, plain-English vocabulary terms, and length of stay and age as values.
+  Phrasings outside this grammar are refused with an explanation rather than guessed. The optional LLM
+  fallback widens coverage; it has been tested over HTTP against a local API-compatible server, not
+  against the real provider.
+- **Statistics that are refused on purpose:** minimum and maximum, because they reveal single patients
+  (N08). Incidence over person-time and other statistics beyond counts, percentages, means and medians
+  are not supported.
+- **Decisions are keyword rules with a safety net.** Explicit Art. 54 rules reject. A second layer sends
+  any wording with commercial, insurance, employment or individual-level signals to staff review
+  (`NO_DECISION`) instead of approving it. That layer produces no false flags on R01–R10 or N01–N08.
+  Determined adversarial wording could still get through, so a real access body would keep human review.
 - **Art. 53(2)** (purposes (a)–(c) reserved for public bodies) is only a staff note, because the challenge
   forbids deciding by applicant identity.
 - **Defaults when a term is undefined.** "Adults" or "children" without a definition default to 18+ and
@@ -312,9 +328,12 @@ CSV files directly. That calculation shares no code with the desk.
 - **Small-cell rule.** It is applied exactly as specified (counts, percentages, means). There is no
   secondary suppression, and encounter counts from fewer than 10 distinct patients are only flagged to
   staff.
-- **Simulated SPE.** The SPE is a local SQLite file per permit, with no remote desktop, user accounts or
-  egress review workflow. The case register is in memory and is lost on restart. There is no login and no
-  identity verification.
+- **SPE (simulated).** The SPE is a local SQLite file per permit.
+  - Each permit issues a token (only its hash is stored). The permit holder can run whitelisted aggregate
+    analyses inside the SPE and export them after the small-cell check.
+  - Record downloads are always blocked.
+  - The case register (`state/cases.jsonl`, no patient data) and the SPE access log are persisted.
+  - There is no remote desktop, no login and no identity verification beyond the permit token.
 
 ## Two-minute demo script
 
