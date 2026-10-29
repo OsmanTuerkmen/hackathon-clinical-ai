@@ -48,13 +48,7 @@ def main():
             oracle = json.load(f)
         extra = (_load(os.path.join(ROOT, "demo", "requests", "D*.json"))
                  + _load(os.path.join(ROOT, "tests", "oracle", "requests", "T*.json")))
-        own = []
-        for req in official + extra:
-            r = desk.process(req, use_cache=False, actor="evaluation")
-            problems = (evaluation.compare_strict(r, oracle[req["id"]], desk.root)
-                        + evaluation.leak_check(r, desk.store.opted_ids, desk.root))
-            own.append({"id": req["id"], "decision": r["decision"]["decision"],
-                        "expected": oracle[req["id"]]["decision"], "ok": not problems, "problems": problems})
+        own = evaluation.run_strict(desk, official + extra, oracle)
 
     if args.json:
         print(json.dumps({"official": res, "own": own}, indent=1, ensure_ascii=False))

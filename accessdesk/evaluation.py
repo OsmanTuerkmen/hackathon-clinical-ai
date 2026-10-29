@@ -200,6 +200,19 @@ def compare_strict(result, exp, root=None):
     return problems
 
 
+def run_strict(desk, requests, oracle):
+    """Strict check of requests against the pandas oracle (tests/oracle/expected.json)."""
+    out = []
+    for req in requests:
+        if req["id"] not in oracle:
+            continue
+        r = desk.process(req, use_cache=False, actor="evaluation")
+        problems = compare_strict(r, oracle[req["id"]], desk.root) + leak_check(r, desk.store.opted_ids, desk.root)
+        out.append({"id": req["id"], "decision": r["decision"]["decision"],
+                    "expected": oracle[req["id"]]["decision"], "ok": not problems, "problems": problems})
+    return out
+
+
 def run(desk, requests, runs=3):
     in_store = opted_out_in_store(desk.store)
     rows = []
