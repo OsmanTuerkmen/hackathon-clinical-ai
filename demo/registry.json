@@ -1,0 +1,582 @@
+{
+ "note": "SIMULATION for the hackathon demo. Real deployments use ID Austria / EU Digital Identity Wallet and credentials from real issuers. One credential (Max Mustermann) is deliberately forged.",
+ "issuers": {
+  "id-austria": {
+   "name": "ID Austria (simulated eID)",
+   "kind": "eid",
+   "public_key": "9e1750dd25dace11e43b95042c5250c79fdde664bbc7258ff114c89d9c9df35d"
+  },
+  "eudi-it": {
+   "name": "EU Digital Identity Wallet, Italy (simulated)",
+   "kind": "eid",
+   "public_key": "193fe8f7585f9bfcc04918b6e15a7afde9b5f51fa7d89f23184a2868aa714453"
+  },
+  "eudi-se": {
+   "name": "EU Digital Identity Wallet, Sweden (simulated)",
+   "kind": "eid",
+   "public_key": "ba3c808419533e8c75d66343b25cba2b8bbad7198a31e464f71edfd4b6a0cb46"
+  },
+  "eudi-de": {
+   "name": "EU Digital Identity Wallet, Germany (simulated)",
+   "kind": "eid",
+   "public_key": "6fe50ac82e37ff95aa04f77a8654282db44049902124b30510b1d2c67359d876"
+  },
+  "firmenbuch": {
+   "name": "Business register / Firmenbuch (simulated)",
+   "kind": "organisation",
+   "public_key": "1c354918c23b2df7a4894950a6fd6ff71655dacabebf96fdf997aec792b62576"
+  },
+  "ror": {
+   "name": "Research Organization Registry (simulated)",
+   "kind": "organisation",
+   "public_key": "3cbf68c599b31eb13fbe727b302ff322880e9b71e1829c7f7f421978bde07ad2"
+  },
+  "gov-at": {
+   "name": "Austrian public-sector directory (simulated)",
+   "kind": "organisation",
+   "public_key": "655fa3ec12e89b71975608daf8bbc90df9ff89d9497ecfdc776f6cf8b066ff46"
+  },
+  "usp-mandate": {
+   "name": "e-mandate service / elektronische Vollmacht (simulated)",
+   "kind": "mandate",
+   "public_key": "77a4ee38e672662ce00ce3ecff7f8b5ba15441c13664953b286038eb30dbcda2"
+  },
+  "aerztekammer": {
+   "name": "Austrian Medical Chamber / Ärztekammer (simulated)",
+   "kind": "profession",
+   "public_key": "27f4d015e0653546eeea8704fe2d466330df78a3c54233613791b4f6f4c442a0"
+  }
+ },
+ "wallets": [
+  {
+   "holder": "Dr. Sophie Lechner",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "id-austria",
+     "claims": {
+      "name": "Sophie Lechner",
+      "birth_date": "1984-05-11",
+      "country": "AT",
+      "assurance": "high"
+     },
+     "signature": "cd14dc83cb347fbe73d74c1dde88b66ba37bfdac8034666168dc9385ff6c029415499faf221b561d4aa0951a1c6b7572e4c7e209eb122a88f256519548377300"
+    },
+    {
+     "type": "organisation",
+     "issuer": "ror",
+     "claims": {
+      "name": "Danube Institute for Diabetes Research",
+      "org_type": "research",
+      "registry_id": "ror:0demo-danube",
+      "country": "AT"
+     },
+     "signature": "9f266d652d7f91185582e9dde0e316470572c07642b9a2db11ca51fdb24fedf6c235bcbd109e5c587f9f5d34449418ca3ffe3cd9c0dd19f5a7b9340255ccfb0e"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Sophie Lechner",
+      "organisation": "Danube Institute for Diabetes Research",
+      "scope": "submit health data applications"
+     },
+     "signature": "8fc33a66d96cd80d2feea69bb5e9ed9bde5d40650a85fb7c19bd85d0077a46e9472de1b2d64f4f17bd3836b2fb7c6a40dc4b6eeea39aac62ae6a371c3337b107"
+    }
+   ]
+  },
+  {
+   "holder": "Markus Gruber",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "id-austria",
+     "claims": {
+      "name": "Markus Gruber",
+      "birth_date": "1979-02-03",
+      "country": "AT",
+      "assurance": "high"
+     },
+     "signature": "9b951fc5a378a9cb2abc54f6892b24e851fc7dad295dbe571812f6cd19d0ea800c415e365c1efdae5a71ecf2752fdd3c11ebea5efc6ea6706c31d36db18d5b07"
+    },
+    {
+     "type": "organisation",
+     "issuer": "firmenbuch",
+     "claims": {
+      "name": "Alpenland Versicherung AG",
+      "org_type": "insurance",
+      "registry_id": "FN 100001a",
+      "country": "AT"
+     },
+     "signature": "426b8c7cd743b0b3086c90038d1e676646cc7ff6e11232d536afb06647bbbd67e71ce1fb5eff31c25a480a41a04943c6da80b8d4985cd80c4423169775250506"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Markus Gruber",
+      "organisation": "Alpenland Versicherung AG",
+      "scope": "submit health data applications"
+     },
+     "signature": "4614e00e0da336311ebc536471df0b6c5cd8aa3a3d3fb439a8a8cd67bded9d9988ed27815851db360b43d9f6c6f627521317a09ebcf80391b9b322711873e10e"
+    }
+   ]
+  },
+  {
+   "holder": "Mag. Petra Wimmer",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "id-austria",
+     "claims": {
+      "name": "Petra Wimmer",
+      "birth_date": "1976-09-20",
+      "country": "AT",
+      "assurance": "high"
+     },
+     "signature": "243b396cdaaa933d1e1721cf072fa4b901b0e029c8a5ee0507939966723e34a9ce55b01a1d1fd0b55d2eed2d99f72dc7028c2684789471bc4e30162f02c5470a"
+    },
+    {
+     "type": "organisation",
+     "issuer": "gov-at",
+     "claims": {
+      "name": "Federal Ministry of Health",
+      "org_type": "public_authority",
+      "registry_id": "gov:bmg",
+      "country": "AT"
+     },
+     "signature": "d80985eb5eacdc9af788dfb99696885b2a3fb8064d8e3876d9135a5b51fe43426c9440988af9fb03308758a9410e9c42ee6d8a1e3d713330610a3b87827e8805"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Petra Wimmer",
+      "organisation": "Federal Ministry of Health",
+      "scope": "submit health data applications"
+     },
+     "signature": "7b6bf41f16327dedb6b34509aea69bd83b033d0778cd3f801fd89ce20af8c3fdfce32acb8034274a9f7ad12b27bc32fbf4943905dcbc7f4e6f22d03cca862b07"
+    }
+   ]
+  },
+  {
+   "holder": "Julia Steiner",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "eudi-de",
+     "claims": {
+      "name": "Julia Steiner",
+      "birth_date": "1990-12-01",
+      "country": "DE",
+      "assurance": "high"
+     },
+     "signature": "e0b15c968394a74f69f01f2887bb59b923152585df7454c51a77b21e0bfe5d629b5374f239c4737a8267d9ef78ea4866c9f9d8304e395401bf931a7baef0e909"
+    },
+    {
+     "type": "organisation",
+     "issuer": "firmenbuch",
+     "claims": {
+      "name": "Brightline Health Marketing GmbH",
+      "org_type": "marketing",
+      "registry_id": "HRB 200002",
+      "country": "DE"
+     },
+     "signature": "69fc24f318e6f09ad6ad13e432fc730926e57bc242df6298a083269110fb07e1e3a5bca5a0f254483096ff35518269b450e841ebbddb995432e4779646310d0a"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Julia Steiner",
+      "organisation": "Brightline Health Marketing GmbH",
+      "scope": "submit health data applications"
+     },
+     "signature": "3528ef0df31777e1f8228cd232a4e292768ac2341cd6d36bdfa1454e8821c41563af87fa55e0f5c0e7e8da89066fc1f2847f9afbb4e1654e3e9605c5b26d3f0a"
+    }
+   ]
+  },
+  {
+   "holder": "Dr. Amir Hadžić",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "id-austria",
+     "claims": {
+      "name": "Amir Hadžić",
+      "birth_date": "1988-07-14",
+      "country": "AT",
+      "assurance": "high"
+     },
+     "signature": "0ecca09f8418a0e508c52967f8566d02b7bad83828852a8b12ad13c018bdc7a08cb620c6887e8fa6deb579028d80e9dad3a34cc377d1e8414a4b2c9794962d02"
+    },
+    {
+     "type": "organisation",
+     "issuer": "firmenbuch",
+     "claims": {
+      "name": "GlucoSense",
+      "org_type": "company",
+      "registry_id": "FN 100003b",
+      "country": "AT"
+     },
+     "signature": "758223cce13e86c1fead1fc294f009b874f5af5d4fc09b3cadcdffb19ac54e69e8d3f2117567b4b6f1dcf2b937545dfe1de043e60d31d173a9987d3aed087209"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Amir Hadžić",
+      "organisation": "GlucoSense",
+      "scope": "submit health data applications"
+     },
+     "signature": "27cbbd630576d0d88ad9ca638d97b4e6f7882c42c4bdbf37eee1dafbaa41e8d2cdbbaf1a650ee7f3a91fcf9aacfa5c0e17900ba46bbab89f9ec57e1bb38dc004"
+    }
+   ]
+  },
+  {
+   "holder": "Thomas Berger",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "id-austria",
+     "claims": {
+      "name": "Thomas Berger",
+      "birth_date": "1971-03-30",
+      "country": "AT",
+      "assurance": "high"
+     },
+     "signature": "a126e7ea68c46b96cea851aec86035365f0de46131ea4e61d00678d7ccc79983cfe54923b8e8fe7cd9e56a203f7b096687d31bc5fae629929035d6399aaf590f"
+    },
+    {
+     "type": "organisation",
+     "issuer": "firmenbuch",
+     "claims": {
+      "name": "Berger Logistik GmbH",
+      "org_type": "employer_hr",
+      "registry_id": "FN 100004c",
+      "country": "AT"
+     },
+     "signature": "bff80d0b97ec9f7c557d3652282ed72bac218dacd6512e1d633278933e54f79adb9fe9f70bb5df3eacefe77e8cfd15a8628396300d443daca122875a07acce05"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Thomas Berger",
+      "organisation": "Berger Logistik GmbH",
+      "scope": "submit health data applications"
+     },
+     "signature": "b4fcb40f90d47032a575529f995650967058e68a5e086b3c4b64061e62b50f833f0a94ec40745895aee55401b56627b1d0c860f75c6273451ed6d800f4bda000"
+    }
+   ]
+  },
+  {
+   "holder": "Dr. Lukas Fischer",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "id-austria",
+     "claims": {
+      "name": "Lukas Fischer",
+      "birth_date": "1982-11-08",
+      "country": "AT",
+      "assurance": "high"
+     },
+     "signature": "e18c8306d9f22797b66a285ef3b06a797080e545e830a0c621b04fefe1571b41b1ceb1f0563ce512ecc3bb419f04fbb0726f5723d1b3ae72872506e024c5b001"
+    },
+    {
+     "type": "organisation",
+     "issuer": "gov-at",
+     "claims": {
+      "name": "National statistics office",
+      "org_type": "public_authority",
+      "registry_id": "gov:stat",
+      "country": "AT"
+     },
+     "signature": "ca2c1cd4ec8eb2f99445f2e52c26938311fb5acb9f7a84a3028450a32b9309b60bcde8e005d556d9934c21695f54ea314f5c65f56c0dd2c30ffa6bfb7fc5160a"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Lukas Fischer",
+      "organisation": "National statistics office",
+      "scope": "submit health data applications"
+     },
+     "signature": "7f197481e8e9fb745d6c0d9e85fc8a4c441cf4f344354bb0025dd1f3028dffe4c5f9d910ac54346fc41cc13503152c8974972b45de954a9023b236413b81820d"
+    }
+   ]
+  },
+  {
+   "holder": "Prof. Elena Rossi",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "eudi-it",
+     "claims": {
+      "name": "Elena Rossi",
+      "birth_date": "1969-04-25",
+      "country": "IT",
+      "assurance": "high"
+     },
+     "signature": "394d66736abe7d1060a6a266437aa5f705e6e9841368fc2454248c894ee35ba95d58d2296485080f665bdf2952d981756836bd968a15afbbcceb8301b5e26c01"
+    },
+    {
+     "type": "organisation",
+     "issuer": "ror",
+     "claims": {
+      "name": "Comprehensive Cancer Centre",
+      "org_type": "research",
+      "registry_id": "ror:0demo-ccc",
+      "country": "IT"
+     },
+     "signature": "15ca2a2135e7daa5811fb9bae5771163055240b96a213c899256db97f72a6e6203f094dac02a25752560b3bbb895d7db5276be4618c7dd9dee0b986783d65502"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Elena Rossi",
+      "organisation": "Comprehensive Cancer Centre",
+      "scope": "submit health data applications"
+     },
+     "signature": "7396d22854bad6fca7195176896d2dfe17102ba87b5378338d839595a62aa7404fdf8899599230bb78c1fc017827735cd6d7b8083a9a2ae3ee11f76a056cf207"
+    }
+   ]
+  },
+  {
+   "holder": "Dr. Nina Hofbauer",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "id-austria",
+     "claims": {
+      "name": "Nina Hofbauer",
+      "birth_date": "1985-01-17",
+      "country": "AT",
+      "assurance": "high"
+     },
+     "signature": "29b4e794960a6c769f51f6f760d76c63357f78e4bd82c8e56ce88105cfc46d590e596dc2d271a87bd04ff28429e139b990e45d4d32daa96eae18be021ff61409"
+    },
+    {
+     "type": "organisation",
+     "issuer": "ror",
+     "claims": {
+      "name": "Institute for General Practice",
+      "org_type": "research",
+      "registry_id": "ror:0demo-igp",
+      "country": "AT"
+     },
+     "signature": "e1fc9159675a6471735ecd60aa42e9f7487bf7a9727c8a2cf47a76f3a240eb2d697d408a28c27e6320acc3478ddc1fa3f91a6ec51af9a224d1484cf41abf1803"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Nina Hofbauer",
+      "organisation": "Institute for General Practice",
+      "scope": "submit health data applications"
+     },
+     "signature": "0c13ec5677f132dd0ad037f55d209514ae74455319eaf8fd337349ede16d18a42127146947fd0e0df5f5df280f48a9f6ee23109055296b379bba26efcf0e7506"
+    },
+    {
+     "type": "profession",
+     "issuer": "aerztekammer",
+     "claims": {
+      "name": "Nina Hofbauer",
+      "profession": "physician",
+      "licence_no": "ÄK-W-48213",
+      "status": "active"
+     },
+     "signature": "560b088fa7720b6a90fdbd4a3b706bb72d4432fa1166b8b0a33eb9eac1e463f937162222f210dee633412f1b038e55a64ac7d960a875748a83c29335e878ee05"
+    }
+   ]
+  },
+  {
+   "holder": "Sarah Novak",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "eudi-se",
+     "claims": {
+      "name": "Sarah Novak",
+      "birth_date": "1993-06-02",
+      "country": "SE",
+      "assurance": "high"
+     },
+     "signature": "34d846ba705980717f8f203d2424d5bc78e1463ca3601fefa3b548c18d5fedb17f4efb3f9964148cc1aa0fc2877de8e7adfe45b9c3bec387c8745ef46d8a430d"
+    },
+    {
+     "type": "organisation",
+     "issuer": "firmenbuch",
+     "claims": {
+      "name": "Nordic Pouch Company",
+      "org_type": "harmful_industry",
+      "registry_id": "SE556000-0005",
+      "country": "SE"
+     },
+     "signature": "cc07fa7f9d08640bd11196c634d80fce780609d06b52fdf1062261efecdfb98d9b74060cdc5c7e9a39bf9696a6df7eaa88ad1c8d80bd0ed5b91ca137b44bb30b"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Sarah Novak",
+      "organisation": "Nordic Pouch Company",
+      "scope": "submit health data applications"
+     },
+     "signature": "2a22d47d04e98c9fae3fc2612782f031c1475288300bdc1272f7c8c17a647c8b811cc09513574d22e84b4b9651ce24abb28e40ccbcd64f5f39bba55fac8edf0c"
+    }
+   ]
+  },
+  {
+   "holder": "Dr. med. Clara Moser",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "id-austria",
+     "claims": {
+      "name": "Clara Moser",
+      "birth_date": "1980-08-09",
+      "country": "AT",
+      "assurance": "high"
+     },
+     "signature": "4e56dd5ce197d9b3e8557951cbdbb6df0dd8c12098069232f15eb7b575c9a7341cb4d10880526c43c9e78945599f7b12dda9a7d81460ee6ec6fd1a4f0166d205"
+    },
+    {
+     "type": "organisation",
+     "issuer": "ror",
+     "claims": {
+      "name": "Medical University of Graz",
+      "org_type": "research",
+      "registry_id": "ror:0demo-mug",
+      "country": "AT"
+     },
+     "signature": "e0b774d36d6bb9fa3230492ddcdb68733bd256c80fcd98b12e8592cd04373816e3be9d891b2a3961cef0f5ec53a961508e83372cb9b91eb351f9d36b217fe100"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Clara Moser",
+      "organisation": "Medical University of Graz",
+      "scope": "submit health data applications"
+     },
+     "signature": "1529fc9c7459c2cc7f170fb27c262d7cc5f6d7e3347b89f19795374d99ee299ff64a83c9af90fce0d6c94ca10aa5dd6bafaf88ea806e124f3c0dfb88a866b505"
+    },
+    {
+     "type": "profession",
+     "issuer": "aerztekammer",
+     "claims": {
+      "name": "Clara Moser",
+      "profession": "physician",
+      "licence_no": "ÄK-ST-30117",
+      "status": "active"
+     },
+     "signature": "fc34b9ee7e0abb27282323ea6262d95ae732ad37eaaf1f31dc31c6b7a1ce8fdcb3efedf51a873d0ab1165490f9132743604f33cdf6c02a479fd3742558ef0704"
+    }
+   ]
+  },
+  {
+   "holder": "Dr. Jakob Huber",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "id-austria",
+     "claims": {
+      "name": "Jakob Huber",
+      "birth_date": "1983-10-12",
+      "country": "AT",
+      "assurance": "high"
+     },
+     "signature": "916f4f71131e17df569c1ae17771dadfbb37922460e77d20974277d4bbf22fcdc0f5d7bb86e155f4eb80f79f273e9c90e16559cc046a1b4f2e5064215be38100"
+    },
+    {
+     "type": "organisation",
+     "issuer": "ror",
+     "claims": {
+      "name": "Austrian Institute for Health Services Research",
+      "org_type": "research",
+      "registry_id": "ror:0demo-aihsr",
+      "country": "AT"
+     },
+     "signature": "6634c6d3d6f5163022d800caa832081ba585da5267c374f3bb08fc53241ac274e8397f107323f9b062631705a281fd5c5b85b82c73db38d641973d674eef5700"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Jakob Huber",
+      "organisation": "Austrian Institute for Health Services Research",
+      "scope": "submit health data applications"
+     },
+     "signature": "f88b4be353648972bbc26b8c247ec844480ab051bf34d7544b3b28f4b4ade3af4e6de30aba0411bd67dbc216465fb39ecda56bcfbf27810899bc9b4af0a1390a"
+    }
+   ]
+  },
+  {
+   "holder": "Dr. med. Max Mustermann",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "id-austria",
+     "claims": {
+      "name": "Max Mustermann",
+      "birth_date": "1975-01-01",
+      "country": "AT",
+      "assurance": "high"
+     },
+     "signature": "06c46a060d843a2dbb4bd5197c1cc046cd830ffa1bcd03a73f700ae4219f8ce1cb855646f8bf366cf321b4e3c0c70dd8621a70bb1b36ff2eb439f1954f5fde01"
+    },
+    {
+     "type": "profession",
+     "issuer": "aerztekammer",
+     "claims": {
+      "name": "Max Mustermann",
+      "profession": "physician",
+      "licence_no": "ÄK-W-99999",
+      "status": "active"
+     },
+     "signature": "127de485bb7b66019ddf2e82bf34f8b77bcee2eb927813375fbb1205c87eac31a7a9103f9fc163f606b83700a1558f3906b068ede3d11249e1da330f4120560e"
+    }
+   ]
+  },
+  {
+   "holder": "Dr. Eva Lang",
+   "credentials": [
+    {
+     "type": "person_identity",
+     "issuer": "id-austria",
+     "claims": {
+      "name": "Eva Lang",
+      "birth_date": "1981-05-05",
+      "country": "AT",
+      "assurance": "high"
+     },
+     "signature": "8f1f36ea9168858188d50a886ed5a2515b3deeed868f2f4793875a2c8a47f3543ed2827c6f87403c36dc4aa24971913c3e404b190398d35e5e730b69728d2000"
+    },
+    {
+     "type": "organisation",
+     "issuer": "firmenbuch",
+     "claims": {
+      "name": "VitaPlus Krankenversicherung AG",
+      "org_type": "insurance",
+      "registry_id": "FN 100005d",
+      "country": "AT"
+     },
+     "signature": "d6c3738902aa3a320cd261e4054d96a3606d315a0db7f78357ba1de236dd17fc3d14f4772ba8808db71f62cb488bbcf2fbb3f83778e7bd56cc4d8e63bb698208"
+    },
+    {
+     "type": "mandate",
+     "issuer": "usp-mandate",
+     "claims": {
+      "person": "Eva Lang",
+      "organisation": "VitaPlus Krankenversicherung AG",
+      "scope": "submit health data applications"
+     },
+     "signature": "01b8508cde05ac3fb3ee9278c76672245e2eeb3f8087be34b0a133e7010c95079f12660b3cdc2dae97f24fd358e9cf23cc5bafc632c3e9ad0e3821d5a304e903"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "D01",
+  "submitted": "2026-10-30T09:10:00+01:00",
+  "applicant": {
+    "name": "Dr. med. Clara Moser",
+    "organisation": "Medical University of Graz, Division of Nephrology",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Research on kidney function in chronic kidney disease to improve care pathways between hospitals.",
+  "question": "What is the mean eGFR of adults with chronic kidney disease, by hospital?",
+  "definitions": [
+    "Adult = aged 18 or older on 31 December 2025.",
+    "Chronic kidney disease = any condition with an ICD-10 code starting with N18.",
+    "Use the latest eGFR (LOINC 62238-1) per patient; patients without an eGFR are left out.",
+    "Report per hospital: adults with chronic kidney disease who have an eGFR value and their mean eGFR, one decimal."
+  ]
+}

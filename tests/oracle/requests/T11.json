@@ -1,0 +1,19 @@
+{
+  "id": "T11",
+  "submitted": "2026-10-30T12:40:00+01:00",
+  "applicant": {
+    "name": "Dr. Eva Steininger",
+    "organisation": "Institute for Women's Health Research (university)",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Epidemiological research on early-onset heart failure in young women.",
+  "question": "How many women aged 18 to 39 have heart failure, by region?",
+  "definitions": [
+    "Women = sex 'female'.",
+    "Young adult = aged 18-39 on 31 December 2025.",
+    "Heart failure = any condition with an ICD-10 code starting with I50.",
+    "Report per region: young adult women with heart failure."
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "D03",
+  "submitted": "2026-10-30T10:05:00+01:00",
+  "applicant": {
+    "name": "Dr. med. Max Mustermann",
+    "organisation": "Ordination Dr. Mustermann (general practice)",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "As a GP I prepare a public health talk on asthma and want to know how common it is among women and men.",
+  "question": "How many adults have asthma, by sex?",
+  "definitions": [
+    "Adult = aged 18 or older on 31 December 2025.",
+    "Asthma = a documented asthma diagnosis.",
+    "Report per sex: adults with asthma."
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "T10",
+  "submitted": "2026-10-30T12:30:00+01:00",
+  "applicant": {
+    "name": "Prof. Johanna Brandl",
+    "organisation": "Institute for Cardiovascular Epidemiology (university)",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Research on sex differences in atrial fibrillation across hospitals.",
+  "question": "How many patients with atrial fibrillation are there, by hospital and sex?",
+  "definitions": [
+    "Atrial fibrillation = any condition with an ICD-10 code starting with I48.",
+    "Report per hospital and sex: patients with atrial fibrillation."
+  ]
+}

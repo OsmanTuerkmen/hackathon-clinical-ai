@@ -1,0 +1,19 @@
+{
+  "id": "T06",
+  "submitted": "2026-10-30T11:50:00+01:00",
+  "applicant": {
+    "name": "Stefan Mayr",
+    "organisation": "Alpine Credit Bank AG, retail risk analytics",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "We want to understand how chronic illness affects our customers' ability to repay, so that we can adjust credit limits and repayment terms for customers with diabetes.",
+  "question": "How many adults have type 2 diabetes, by age band?",
+  "definitions": [
+    "Adult = aged 18 or older on 31 December 2025.",
+    "Type 2 diabetes = any condition with an ICD-10 code starting with E11.",
+    "Age bands on 31 December 2025: 18-39, 40-59, 60+.",
+    "Report per age band: adults with type 2 diabetes."
+  ]
+}

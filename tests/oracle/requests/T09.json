@@ -1,0 +1,19 @@
+{
+  "id": "T09",
+  "submitted": "2026-10-30T12:20:00+01:00",
+  "applicant": {
+    "name": "Dr. Sabine Wolf",
+    "organisation": "Vienna Institute for Cardiovascular Research (university)",
+    "country": "AT"
+  },
+  "requested_as": "health data access application",
+  "requested_format": "pseudonymised records",
+  "purpose": "We develop and validate a risk model that predicts hospital admission in heart failure from kidney function trajectories. The model needs individual-level histories; aggregated statistics are not sufficient.",
+  "question": "Provide pseudonymised conditions and eGFR values for adults with heart failure who have at least one eGFR value.",
+  "definitions": [
+    "Adult = aged 18 or older on 31 December 2025.",
+    "Heart failure = any condition with an ICD-10 code starting with I50.",
+    "Cohort = adults with heart failure who have at least one eGFR value (LOINC 62238-1).",
+    "Report the size of the cohort you would make available."
+  ]
+}

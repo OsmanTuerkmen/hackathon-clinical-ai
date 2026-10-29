@@ -1,0 +1,19 @@
+{
+  "id": "D04",
+  "submitted": "2026-10-30T10:30:00+01:00",
+  "applicant": {
+    "name": "Dr. Eva Lang",
+    "organisation": "VitaPlus Krankenversicherung AG, Health Analytics",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "We study how common obesity is in each region to better understand the health of the population we serve.",
+  "question": "How many adults have obesity in each region and what is the share?",
+  "definitions": [
+    "Adult = aged 18 or older on 31 December 2025.",
+    "Obesity = any condition with an ICD-10 code starting with E66.",
+    "Share = adults with obesity / all adults in the region × 100, one decimal.",
+    "Report per region: adults, adults with obesity and the share."
+  ]
+}

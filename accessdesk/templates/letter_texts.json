@@ -1,0 +1,205 @@
+{
+  "_note": "Reviewed text blocks for the formal decision (Bescheid). Wording checked against Regulation (EU) 2025/327 (OJ L, 5.3.2025, EN and DE). Article references are exact; the sentences are paraphrases, not quotes. Placeholders in {braces} are filled by accessdesk/letter.py. Lead-authored: change only after a legal re-check.",
+  "authority": {
+    "de": "Zugangsstelle für Gesundheitsdaten Österreich (Demo)",
+    "en": "Health Data Access Body Austria (demo)"
+  },
+  "authority_address": {
+    "de": "Musterplatz 1, 1010 Wien (fiktive Anschrift)",
+    "en": "Musterplatz 1, 1010 Vienna, Austria (fictitious address)"
+  },
+  "demo_notice": {
+    "de": "Demo mit synthetischen Daten. Kein amtliches Dokument.",
+    "en": "Demo with synthetic data. Not an official document."
+  },
+  "draft_notice": {
+    "de": "ENTWURF – noch nicht zugestellt. Grund: {hold_reason}",
+    "en": "DRAFT – not yet issued. Reason: {hold_reason}"
+  },
+  "document_title": {"de": "Bescheid", "en": "Decision"},
+  "labels": {
+    "reference": {"de": "Geschäftszahl", "en": "Reference"},
+    "date": {"de": "Datum", "en": "Date"},
+    "applicant": {"de": "Antragsteller:in", "en": "Applicant"},
+    "subject": {"de": "Betreff", "en": "Subject"},
+    "operative": {"de": "Spruch", "en": "Decision"},
+    "reasoning": {"de": "Begründung", "en": "Reasons"},
+    "conditions": {"de": "Auflagen", "en": "Conditions"},
+    "result": {"de": "Anlage: Ergebnis als anonymisierte Statistik", "en": "Annex: result in anonymised statistical format"},
+    "permit": {"de": "Anlage: Datengenehmigung", "en": "Annex: data permit"},
+    "remedy": {"de": "Rechtsmittelbelehrung", "en": "Information on legal remedies"},
+    "signature": {"de": "Zeichnung", "en": "Signature"}
+  },
+  "reference_format": "HDAB-AT/2026/{id}",
+  "kinds": {
+    "request": {"de": "eine Gesundheitsdatenanfrage", "en": "a health data request"},
+    "application": {"de": "ein Antrag auf Zugang zu Gesundheitsdaten", "en": "a health data access application"}
+  },
+  "subject": {
+    "request": {
+      "de": "Ihre Gesundheitsdatenanfrage vom {submitted} (Art. 69 der Verordnung (EU) 2025/327)",
+      "en": "Your health data request of {submitted} (Art. 69 of Regulation (EU) 2025/327)"
+    },
+    "application": {
+      "de": "Ihr Antrag auf Zugang zu Gesundheitsdaten vom {submitted} (Art. 67 der Verordnung (EU) 2025/327)",
+      "en": "Your health data access application of {submitted} (Art. 67 of Regulation (EU) 2025/327)"
+    }
+  },
+  "operative": {
+    "REJECT_request": {
+      "de": "Ihre Gesundheitsdatenanfrage wird abgelehnt (Art. 54 der Verordnung (EU) 2025/327). Es werden keine Daten bereitgestellt.",
+      "en": "Your health data request is refused (Art. 54 of Regulation (EU) 2025/327). No data will be made available."
+    },
+    "REJECT_application": {
+      "de": "Ihr Antrag auf Zugang zu Gesundheitsdaten wird abgelehnt (Art. 54 der Verordnung (EU) 2025/327). Es werden keine Daten bereitgestellt.",
+      "en": "Your health data access application is refused (Art. 54 of Regulation (EU) 2025/327). No data will be made available."
+    },
+    "APPROVE_STATISTICAL_request": {
+      "de": "Ihrer Gesundheitsdatenanfrage wird stattgegeben. Sie erhalten die Antwort ausschließlich in einem anonymisierten statistischen Format (Art. 53, Art. 69 der Verordnung (EU) 2025/327).",
+      "en": "Your health data request is approved. You receive the answer only in an anonymised statistical format (Art. 53 and Art. 69 of Regulation (EU) 2025/327)."
+    },
+    "APPROVE_STATISTICAL_application": {
+      "de": "Der Zugang zu pseudonymisierten Daten wird in der beantragten Form nicht gewährt. Sie erhalten stattdessen eine Antwort in einem anonymisierten statistischen Format (Art. 53, Art. 66 Abs. 2, Art. 69 der Verordnung (EU) 2025/327).",
+      "en": "Access to pseudonymised data is not granted in the requested form. Instead, you receive an answer in an anonymised statistical format (Art. 53, Art. 66(2) and Art. 69 of Regulation (EU) 2025/327)."
+    },
+    "APPROVE_SPE": {
+      "de": "Ihnen wird eine Datengenehmigung erteilt (Art. 68 der Verordnung (EU) 2025/327). Der Zugang zu den Daten in pseudonymisiertem Format erfolgt ausschließlich in der sicheren Verarbeitungsumgebung der Zugangsstelle; ein Download der Daten ist nicht möglich (Art. 53, Art. 66 Abs. 3, Art. 73).",
+      "en": "You are granted a data permit (Art. 68 of Regulation (EU) 2025/327). Access to the data in pseudonymised format is provided only in the access body's secure processing environment; the data cannot be downloaded (Art. 53, Art. 66(3) and Art. 73)."
+    }
+  },
+  "reasoning": {
+    "facts": {
+      "de": "Am {submitted} ist {kind} von {applicant_name} ({organisation}) eingegangen. Angegebener Zweck: „{purpose}“ Fragestellung: „{question}“",
+      "en": "On {submitted}, {kind} was received from {applicant_name} ({organisation}). Stated purpose: “{purpose}” Question: “{question}”"
+    },
+    "purpose_allowed": {
+      "de": "Der Zweck entspricht Art. 53 Abs. 1 der Verordnung: {categories}. Ein nach Art. 54 unerlaubter Zweck ist nicht erkennbar.",
+      "en": "The purpose corresponds to Art. 53(1) of the Regulation: {categories}. No purpose prohibited under Art. 54 is apparent."
+    },
+    "purpose_allowed_unspecified": {
+      "de": "Ein nach Art. 54 unerlaubter Zweck ist nicht erkennbar. Die Zuordnung zu einem Zweck nach Art. 53 Abs. 1 wurde nicht automatisch erkannt und ist bei der Prüfung zu bestätigen.",
+      "en": "No purpose prohibited under Art. 54 is apparent. The purpose could not be matched automatically to Art. 53(1) and has to be confirmed by staff."
+    },
+    "purpose_prohibited": {
+      "de": "{reason} Ausschlaggebend sind folgende Angaben: {evidence}.",
+      "en": "{reason} The decisive statements are: {evidence}."
+    },
+    "form_request": {
+      "de": "Eine Gesundheitsdatenanfrage wird ausschließlich in einem anonymisierten statistischen Format beantwortet. Ein Zugang zu den zugrunde liegenden Gesundheitsdaten besteht nicht (Art. 69 Abs. 1).",
+      "en": "A health data request is answered only in an anonymised statistical format. There is no access to the underlying health data (Art. 69(1))."
+    },
+    "form_application_statistics": {
+      "de": "Nach Art. 66 Abs. 2 werden Daten anonymisiert bereitgestellt, wenn der Zweck damit erreicht werden kann. Der Antrag legt nicht dar, warum anonymisierte Daten nicht genügen, und die Fragestellung lässt sich mit einer Statistik beantworten. Daher wird nach Art. 68 Abs. 3 Unterabsatz 2 eine Antwort in einem anonymisierten statistischen Format nach Art. 69 erteilt; dies setzt Ihre Zustimmung zu diesem Format voraus.",
+      "en": "Under Art. 66(2), data are provided in an anonymised format where the purpose can be achieved with such data. The application does not explain why anonymised data are not enough, and the question can be answered with statistics. Under the second subparagraph of Art. 68(3), an answer in an anonymised statistical format under Art. 69 is therefore provided; this requires your agreement to that format."
+    },
+    "form_application_spe": {
+      "de": "Der Antrag legt dar, warum der Zweck mit anonymisierten Daten nicht erreicht werden kann (Art. 66 Abs. 3, Art. 68 Abs. 1 lit. c): {evidence}. Der Zugang wird daher in pseudonymisiertem Format gewährt, ausschließlich in der sicheren Verarbeitungsumgebung (Art. 73 Abs. 1).",
+      "en": "The application explains why the purpose cannot be achieved with anonymised data (Art. 66(3), Art. 68(1)(c)): {evidence}. Access is therefore granted in pseudonymised format, only in the secure processing environment (Art. 73(1))."
+    },
+    "data_protection_statistics": {
+      "de": "Personen, die der Sekundärnutzung widersprochen haben, sind in keiner Zahl enthalten (Art. 71; {opted_out} Personen). Anzahlen unter 10 werden als „<10“ ausgewiesen, Anteile und Mittelwerte aus weniger als 10 Personen als „unterdrückt“. Summenzeilen werden nicht ausgegeben, damit verborgene Werte nicht errechnet werden können.",
+      "en": "People who opted out of secondary use are not included in any number (Art. 71; {opted_out} people). Counts below 10 are shown as “<10”, shares and means based on fewer than 10 people as “suppressed”. No total rows are given, so hidden values cannot be worked out."
+    },
+    "data_protection_spe": {
+      "de": "Bereitgestellt werden nur die Daten der {cohort_size} Personen der Kohorte und nur die beantragten Datenarten: {tables}. Nicht bereitgestellt werden: {not_tables} (Art. 66 Abs. 1). Personen mit Widerspruch (Art. 71) sind nicht enthalten. Die Pseudonyme bleiben erhalten; die Zuordnung zu Personen ist nur der Zugangsstelle möglich (Art. 66 Abs. 3).",
+      "en": "Only the data of the {cohort_size} people in the cohort and only the requested record types are provided: {tables}. Not provided: {not_tables} (Art. 66(1)). People who opted out (Art. 71) are not included. Pseudonyms are kept; only the access body can link them to people (Art. 66(3))."
+    },
+    "no_processing": {
+      "de": "Es wurde keine Abfrage ausgeführt und kein Datensatz verarbeitet.",
+      "en": "No query was run and no record was processed."
+    },
+    "identity": {
+      "de": "Identität, Organisation und Vertretungsbefugnis wurden anhand signierter Nachweise geprüft (in der Demo simuliert): {identity_status}.",
+      "en": "Identity, organisation and mandate were checked with signed credentials (simulated in the demo): {identity_status}."
+    },
+    "review_rejection": {
+      "de": "Nach Prüfung durch die Zugangsstelle wird der Antrag abgelehnt. Begründung der Prüfung: „{review_reason}“",
+      "en": "After review by the access body, the application is refused. Reason given in the review: “{review_reason}”"
+    },
+    "publication": {
+      "de": "Diese Entscheidung wird samt Begründung im öffentlichen Transparenzregister der Zugangsstelle veröffentlicht (Art. 57 Abs. 1 lit. j Ziffer iii).",
+      "en": "This decision and its reasons are published in the access body's public transparency register (Art. 57(1)(j)(iii))."
+    }
+  },
+  "identity_status": {
+    "verified": {"de": "bestätigt", "en": "confirmed"},
+    "unverified": {"de": "nicht bestätigt", "en": "not confirmed"},
+    "failed": {"de": "ein Nachweis ist ungültig", "en": "a credential is invalid"}
+  },
+  "categories": {
+    "research": {"de": "lit. e (wissenschaftliche Forschung)", "en": "point (e) (scientific research)"},
+    "public_health": {"de": "lit. a (öffentliches Interesse im Bereich der öffentlichen Gesundheit)", "en": "point (a) (public interest in the area of public health)"},
+    "policy": {"de": "lit. b und f (Politikgestaltung; Verbesserung der Gesundheitsversorgung)", "en": "points (b) and (f) (policymaking; improving the delivery of care)"},
+    "statistics": {"de": "lit. c (amtliche Statistik)", "en": "point (c) (official statistics)"},
+    "education": {"de": "lit. d (Bildung und Lehre)", "en": "point (d) (education and teaching)"},
+    "innovation": {"de": "lit. e Ziffer ii (Training, Test und Bewertung von Algorithmen)", "en": "point (e)(ii) (training, testing and evaluating algorithms)"}
+  },
+  "conditions": {
+    "statistics": [
+      {
+        "de": "Die Ergebnisse dürfen nur für den angegebenen Zweck verwendet werden (Art. 54, Art. 61 Abs. 1).",
+        "en": "The results may only be used for the stated purpose (Art. 54, Art. 61(1))."
+      },
+      {
+        "de": "Es ist untersagt, Personen zu re-identifizieren oder dies zu versuchen, auch nicht durch Verknüpfung mit anderen Daten (Art. 61 Abs. 3).",
+        "en": "Re-identifying people, or attempting to, is prohibited, including by linking the results with other data (Art. 61(3))."
+      },
+      {
+        "de": "Die Resultate der Sekundärnutzung sind innerhalb von 18 Monaten nach Erhalt der Antwort zu veröffentlichen, nur mit anonymen Daten und mit Hinweis auf den Europäischen Gesundheitsdatenraum als Quelle (Art. 61 Abs. 4).",
+        "en": "The results of the secondary use must be made public within 18 months of receiving the answer, with anonymous data only and acknowledging the European Health Data Space as the source (Art. 61(4))."
+      }
+    ],
+    "spe": [
+      {
+        "de": "Datenarten und Format: {tables}, pseudonymisiert, ausschließlich in der sicheren Verarbeitungsumgebung (Art. 68 Abs. 10 lit. a).",
+        "en": "Record types and format: {tables}, pseudonymised, only in the secure processing environment (Art. 68(10)(a))."
+      },
+      {
+        "de": "Zweck: wie im Antrag beschrieben (Art. 68 Abs. 10 lit. b). Jede andere Verwendung, insbesondere eine nach Art. 54 unerlaubte, ist untersagt.",
+        "en": "Purpose: as described in the application (Art. 68(10)(b)). Any other use, in particular one prohibited under Art. 54, is not allowed."
+      },
+      {
+        "de": "Zugangsberechtigt sind nur: {persons} (Art. 68 Abs. 10 lit. d, Art. 73 Abs. 1 lit. a). Eine Weitergabe an Dritte ist untersagt (Art. 61 Abs. 2).",
+        "en": "Only these people may access the data: {persons} (Art. 68(10)(d), Art. 73(1)(a)). The data must not be made available to third parties (Art. 61(2))."
+      },
+      {
+        "de": "Geltungsdauer bis {expires} (Art. 68 Abs. 10 lit. e). Die Daten in der sicheren Verarbeitungsumgebung werden spätestens sechs Monate nach Ablauf gelöscht (Art. 68 Abs. 12).",
+        "en": "Valid until {expires} (Art. 68(10)(e)). The data in the secure processing environment are deleted no later than six months after expiry (Art. 68(12))."
+      },
+      {
+        "de": "Werkzeuge: SQL-Konsole mit reinem Lesezugriff auf die Datenbank dieser Genehmigung (Art. 68 Abs. 10 lit. f). Jeder Zugriff und jede Abfrage wird protokolliert (Art. 73 Abs. 1 lit. e).",
+        "en": "Tools: an SQL console with read-only access to this permit's database (Art. 68(10)(f)). Every access and every query is logged (Art. 73(1)(e))."
+      },
+      {
+        "de": "Herunterladen lassen sich nur nicht personenbezogene Ergebnisse, etwa Statistiken oder Modellgewichte, und erst nach Prüfung durch die Zugangsstelle (Art. 73 Abs. 2). Ein Download der Daten selbst ist gesperrt.",
+        "en": "Only non-personal results, such as statistics or model weights, can be downloaded, and only after review by the access body (Art. 73(2)). Downloading the data themselves is blocked."
+      },
+      {
+        "de": "Es ist untersagt, Personen zu re-identifizieren oder dies zu versuchen (Art. 61 Abs. 3). Die Resultate sind innerhalb von 18 Monaten nach Abschluss der Verarbeitung zu veröffentlichen, nur mit anonymen Daten (Art. 61 Abs. 4).",
+        "en": "Re-identifying people, or attempting to, is prohibited (Art. 61(3)). The results must be made public within 18 months of the end of processing, with anonymous data only (Art. 61(4))."
+      },
+      {
+        "de": "Gebühren nach der Gebührenordnung der Zugangsstelle (Art. 62, Art. 68 Abs. 10 lit. g). In der Demo fallen keine Gebühren an.",
+        "en": "Fees according to the access body's schedule of fees (Art. 62, Art. 68(10)(g)). No fees apply in the demo."
+      }
+    ]
+  },
+  "remedy": {
+    "de": "PLATZHALTER FÜR DIE DEMO. Im Echtbetrieb steht hier die Rechtsmittelbelehrung nach nationalem Verfahrensrecht, etwa zur Beschwerde an das zuständige Verwaltungsgericht, mit Frist und Einbringungsstelle.",
+    "en": "PLACEHOLDER FOR THE DEMO. In production, this section gives the information on legal remedies under national procedural law, such as an appeal to the competent administrative court, with the deadline and where to file it."
+  },
+  "signature": {
+    "automated": {
+      "de": "Automatisiert erstellt von AccessDesk am {date}. Eine manuelle Prüfung war nicht erforderlich.",
+      "en": "Issued automatically by AccessDesk on {date}. No manual review was needed."
+    },
+    "reviewed": {
+      "de": "Geprüft von {reviewer} am {review_date}. Begründung der Prüfung: „{review_reason}“",
+      "en": "Reviewed by {reviewer} on {review_date}. Reason given in the review: “{review_reason}”"
+    },
+    "checksum": {
+      "de": "Prüfsumme des Protokolleintrags: {audit_hash}",
+      "en": "Checksum of the audit entry: {audit_hash}"
+    }
+  }
+}

@@ -1,0 +1,1239 @@
+{
+ "R01": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Burgenland"
+    ],
+    "values": [
+     532,
+     33,
+     6.2
+    ]
+   },
+   {
+    "group": [
+     "Kärnten"
+    ],
+    "values": [
+     885,
+     71,
+     8.0
+    ]
+   },
+   {
+    "group": [
+     "Niederösterreich"
+    ],
+    "values": [
+     2740,
+     227,
+     8.3
+    ]
+   },
+   {
+    "group": [
+     "Oberösterreich"
+    ],
+    "values": [
+     2473,
+     173,
+     7.0
+    ]
+   },
+   {
+    "group": [
+     "Salzburg"
+    ],
+    "values": [
+     908,
+     75,
+     8.3
+    ]
+   },
+   {
+    "group": [
+     "Steiermark"
+    ],
+    "values": [
+     2052,
+     164,
+     8.0
+    ]
+   },
+   {
+    "group": [
+     "Tirol"
+    ],
+    "values": [
+     1240,
+     110,
+     8.9
+    ]
+   },
+   {
+    "group": [
+     "Vorarlberg"
+    ],
+    "values": [
+     639,
+     36,
+     5.6
+    ]
+   },
+   {
+    "group": [
+     "Wien"
+    ],
+    "values": [
+     3247,
+     263,
+     8.1
+    ]
+   }
+  ],
+  "funnel": [
+   20000,
+   19161,
+   14716
+  ]
+ },
+ "R02": {
+  "decision": "REJECT",
+  "articles": [
+   "54"
+  ],
+  "rows": null
+ },
+ "R03": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "65-74"
+    ],
+    "values": [
+     81,
+     30,
+     37.0
+    ]
+   },
+   {
+    "group": [
+     "75-84"
+    ],
+    "values": [
+     154,
+     37,
+     24.0
+    ]
+   },
+   {
+    "group": [
+     "85+"
+    ],
+    "values": [
+     78,
+     22,
+     28.2
+    ]
+   }
+  ],
+  "funnel": [
+   20000,
+   19161,
+   351,
+   313
+  ]
+ },
+ "R04": {
+  "decision": "REJECT",
+  "articles": [
+   "54"
+  ],
+  "rows": null
+ },
+ "R05": {
+  "decision": "APPROVE_SPE",
+  "articles": [
+   "53",
+   "66",
+   "68",
+   "73"
+  ],
+  "rows": null,
+  "cohort_size": 1152,
+  "spe_tables": [
+   "conditions",
+   "medications",
+   "observations"
+  ],
+  "spe_observation_loinc": [
+   "4548-4"
+  ],
+  "funnel": [
+   20000,
+   19161,
+   14716,
+   1152,
+   1152
+  ]
+ },
+ "R06": {
+  "decision": "REJECT",
+  "articles": [
+   "54"
+  ],
+  "rows": null
+ },
+ "R07": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Burgenland"
+    ],
+    "values": [
+     28
+    ]
+   },
+   {
+    "group": [
+     "Kärnten"
+    ],
+    "values": [
+     69
+    ]
+   },
+   {
+    "group": [
+     "Niederösterreich"
+    ],
+    "values": [
+     187
+    ]
+   },
+   {
+    "group": [
+     "Oberösterreich"
+    ],
+    "values": [
+     194
+    ]
+   },
+   {
+    "group": [
+     "Salzburg"
+    ],
+    "values": [
+     69
+    ]
+   },
+   {
+    "group": [
+     "Steiermark"
+    ],
+    "values": [
+     140
+    ]
+   },
+   {
+    "group": [
+     "Tirol"
+    ],
+    "values": [
+     86
+    ]
+   },
+   {
+    "group": [
+     "Vorarlberg"
+    ],
+    "values": [
+     61
+    ]
+   },
+   {
+    "group": [
+     "Wien"
+    ],
+    "values": [
+     245
+    ]
+   }
+  ],
+  "funnel": [
+   45600,
+   3210,
+   1079
+  ]
+ },
+ "R08": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Burgenland"
+    ],
+    "values": [
+     "<10",
+     "suppressed"
+    ]
+   },
+   {
+    "group": [
+     "Kärnten"
+    ],
+    "values": [
+     "<10",
+     "suppressed"
+    ]
+   },
+   {
+    "group": [
+     "Niederösterreich"
+    ],
+    "values": [
+     15,
+     27.2
+    ]
+   },
+   {
+    "group": [
+     "Oberösterreich"
+    ],
+    "values": [
+     11,
+     27.5
+    ]
+   },
+   {
+    "group": [
+     "Salzburg"
+    ],
+    "values": [
+     "<10",
+     "suppressed"
+    ]
+   },
+   {
+    "group": [
+     "Steiermark"
+    ],
+    "values": [
+     13,
+     26.3
+    ]
+   },
+   {
+    "group": [
+     "Tirol"
+    ],
+    "values": [
+     "<10",
+     "suppressed"
+    ]
+   },
+   {
+    "group": [
+     "Vorarlberg"
+    ],
+    "values": [
+     "<10",
+     "suppressed"
+    ]
+   },
+   {
+    "group": [
+     "Wien"
+    ],
+    "values": [
+     14,
+     26.6
+    ]
+   }
+  ]
+ },
+ "R09": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "66",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "18-49"
+    ],
+    "values": [
+     359,
+     39.6,
+     33.4
+    ]
+   },
+   {
+    "group": [
+     "50-64"
+    ],
+    "values": [
+     1057,
+     41.7,
+     32.4
+    ]
+   },
+   {
+    "group": [
+     "65+"
+    ],
+    "values": [
+     2046,
+     40.2,
+     33.2
+    ]
+   }
+  ]
+ },
+ "R10": {
+  "decision": "REJECT",
+  "articles": [
+   "54"
+  ],
+  "rows": null
+ },
+ "D01": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Klinikum Nord"
+    ],
+    "values": [
+     162,
+     45.1
+    ]
+   },
+   {
+    "group": [
+     "Klinikum Süd"
+    ],
+    "values": [
+     151,
+     45.1
+    ]
+   },
+   {
+    "group": [
+     "Klinikum West"
+    ],
+    "values": [
+     101,
+     43.5
+    ]
+   }
+  ]
+ },
+ "D02": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Klinikum Nord"
+    ],
+    "values": [
+     84,
+     7.7
+    ]
+   },
+   {
+    "group": [
+     "Klinikum Süd"
+    ],
+    "values": [
+     69,
+     6.9
+    ]
+   },
+   {
+    "group": [
+     "Klinikum West"
+    ],
+    "values": [
+     67,
+     6.8
+    ]
+   }
+  ]
+ },
+ "D03": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "female"
+    ],
+    "values": [
+     466
+    ]
+   },
+   {
+    "group": [
+     "male"
+    ],
+    "values": [
+     419
+    ]
+   }
+  ]
+ },
+ "D04": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Burgenland"
+    ],
+    "values": [
+     532,
+     92,
+     17.3
+    ]
+   },
+   {
+    "group": [
+     "Kärnten"
+    ],
+    "values": [
+     885,
+     126,
+     14.2
+    ]
+   },
+   {
+    "group": [
+     "Niederösterreich"
+    ],
+    "values": [
+     2740,
+     447,
+     16.3
+    ]
+   },
+   {
+    "group": [
+     "Oberösterreich"
+    ],
+    "values": [
+     2473,
+     400,
+     16.2
+    ]
+   },
+   {
+    "group": [
+     "Salzburg"
+    ],
+    "values": [
+     908,
+     151,
+     16.6
+    ]
+   },
+   {
+    "group": [
+     "Steiermark"
+    ],
+    "values": [
+     2052,
+     329,
+     16.0
+    ]
+   },
+   {
+    "group": [
+     "Tirol"
+    ],
+    "values": [
+     1240,
+     200,
+     16.1
+    ]
+   },
+   {
+    "group": [
+     "Vorarlberg"
+    ],
+    "values": [
+     639,
+     115,
+     18.0
+    ]
+   },
+   {
+    "group": [
+     "Wien"
+    ],
+    "values": [
+     3247,
+     576,
+     17.7
+    ]
+   }
+  ]
+ },
+ "T01": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Klinikum Nord"
+    ],
+    "values": [
+     39
+    ]
+   },
+   {
+    "group": [
+     "Klinikum Süd"
+    ],
+    "values": [
+     28
+    ]
+   },
+   {
+    "group": [
+     "Klinikum West"
+    ],
+    "values": [
+     24
+    ]
+   }
+  ]
+ },
+ "T02": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Klinikum Nord"
+    ],
+    "values": [
+     51,
+     134.5
+    ]
+   },
+   {
+    "group": [
+     "Klinikum Süd"
+    ],
+    "values": [
+     50,
+     137.0
+    ]
+   },
+   {
+    "group": [
+     "Klinikum West"
+    ],
+    "values": [
+     33,
+     135.7
+    ]
+   }
+  ]
+ },
+ "T03": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Burgenland"
+    ],
+    "values": [
+     33,
+     "<10",
+     "suppressed"
+    ]
+   },
+   {
+    "group": [
+     "Kärnten"
+    ],
+    "values": [
+     71,
+     20,
+     28.2
+    ]
+   },
+   {
+    "group": [
+     "Niederösterreich"
+    ],
+    "values": [
+     227,
+     57,
+     25.1
+    ]
+   },
+   {
+    "group": [
+     "Oberösterreich"
+    ],
+    "values": [
+     173,
+     31,
+     17.9
+    ]
+   },
+   {
+    "group": [
+     "Salzburg"
+    ],
+    "values": [
+     75,
+     19,
+     25.3
+    ]
+   },
+   {
+    "group": [
+     "Steiermark"
+    ],
+    "values": [
+     164,
+     35,
+     21.3
+    ]
+   },
+   {
+    "group": [
+     "Tirol"
+    ],
+    "values": [
+     110,
+     22,
+     20.0
+    ]
+   },
+   {
+    "group": [
+     "Vorarlberg"
+    ],
+    "values": [
+     36,
+     "<10",
+     "suppressed"
+    ]
+   },
+   {
+    "group": [
+     "Wien"
+    ],
+    "values": [
+     263,
+     59,
+     22.4
+    ]
+   }
+  ]
+ },
+ "T04": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "0-49"
+    ],
+    "values": [
+     "<10"
+    ]
+   },
+   {
+    "group": [
+     "50-64"
+    ],
+    "values": [
+     12
+    ]
+   },
+   {
+    "group": [
+     "65-79"
+    ],
+    "values": [
+     62
+    ]
+   },
+   {
+    "group": [
+     "80+"
+    ],
+    "values": [
+     53
+    ]
+   }
+  ]
+ },
+ "T05": {
+  "decision": "REJECT",
+  "articles": [
+   "54"
+  ],
+  "rows": null
+ },
+ "T06": {
+  "decision": "REJECT",
+  "articles": [
+   "54"
+  ],
+  "rows": null
+ },
+ "T07": {
+  "decision": "REJECT",
+  "articles": [
+   "54"
+  ],
+  "rows": null
+ },
+ "T08": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "66",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "0-64"
+    ],
+    "values": [
+     120,
+     51.7
+    ]
+   },
+   {
+    "group": [
+     "65-79"
+    ],
+    "values": [
+     139,
+     54.7
+    ]
+   },
+   {
+    "group": [
+     "80+"
+    ],
+    "values": [
+     82,
+     59.8
+    ]
+   }
+  ]
+ },
+ "T09": {
+  "decision": "APPROVE_SPE",
+  "articles": [
+   "53",
+   "66",
+   "68",
+   "73"
+  ],
+  "rows": null,
+  "cohort_size": 35,
+  "spe_tables": [
+   "conditions",
+   "observations"
+  ],
+  "spe_observation_loinc": [
+   "62238-1"
+  ],
+  "funnel": [
+   20000,
+   19161,
+   14716,
+   294,
+   35
+  ]
+ },
+ "T10": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Klinikum Nord",
+     "female"
+    ],
+    "values": [
+     60
+    ]
+   },
+   {
+    "group": [
+     "Klinikum Nord",
+     "male"
+    ],
+    "values": [
+     74
+    ]
+   },
+   {
+    "group": [
+     "Klinikum Süd",
+     "female"
+    ],
+    "values": [
+     53
+    ]
+   },
+   {
+    "group": [
+     "Klinikum Süd",
+     "male"
+    ],
+    "values": [
+     77
+    ]
+   },
+   {
+    "group": [
+     "Klinikum West",
+     "female"
+    ],
+    "values": [
+     40
+    ]
+   },
+   {
+    "group": [
+     "Klinikum West",
+     "male"
+    ],
+    "values": [
+     47
+    ]
+   }
+  ]
+ },
+ "T11": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Burgenland"
+    ],
+    "values": [
+     "<10"
+    ]
+   },
+   {
+    "group": [
+     "Kärnten"
+    ],
+    "values": [
+     "<10"
+    ]
+   },
+   {
+    "group": [
+     "Niederösterreich"
+    ],
+    "values": [
+     "<10"
+    ]
+   },
+   {
+    "group": [
+     "Oberösterreich"
+    ],
+    "values": [
+     "<10"
+    ]
+   },
+   {
+    "group": [
+     "Salzburg"
+    ],
+    "values": [
+     "<10"
+    ]
+   },
+   {
+    "group": [
+     "Steiermark"
+    ],
+    "values": [
+     "<10"
+    ]
+   },
+   {
+    "group": [
+     "Tirol"
+    ],
+    "values": [
+     "<10"
+    ]
+   },
+   {
+    "group": [
+     "Vorarlberg"
+    ],
+    "values": [
+     "<10"
+    ]
+   },
+   {
+    "group": [
+     "Wien"
+    ],
+    "values": [
+     "<10"
+    ]
+   }
+  ]
+ },
+ "T12": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "18-64"
+    ],
+    "values": [
+     24,
+     13,
+     54.2
+    ]
+   },
+   {
+    "group": [
+     "65-79"
+    ],
+    "values": [
+     124,
+     42,
+     33.9
+    ]
+   },
+   {
+    "group": [
+     "80+"
+    ],
+    "values": [
+     146,
+     47,
+     32.2
+    ]
+   }
+  ]
+ },
+ "T13": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "2023"
+    ],
+    "values": [
+     74
+    ]
+   },
+   {
+    "group": [
+     "2024"
+    ],
+    "values": [
+     72
+    ]
+   },
+   {
+    "group": [
+     "2025"
+    ],
+    "values": [
+     74
+    ]
+   }
+  ]
+ },
+ "T14": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Klinikum Nord"
+    ],
+    "values": [
+     464
+    ]
+   },
+   {
+    "group": [
+     "Klinikum Süd"
+    ],
+    "values": [
+     410
+    ]
+   },
+   {
+    "group": [
+     "Klinikum West"
+    ],
+    "values": [
+     266
+    ]
+   }
+  ]
+ },
+ "T15": {
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+   "53",
+   "69"
+  ],
+  "rows": [
+   {
+    "group": [
+     "Burgenland"
+    ],
+    "values": [
+     "<10"
+    ]
+   },
+   {
+    "group": [
+     "Kärnten"
+    ],
+    "values": [
+     10
+    ]
+   },
+   {
+    "group": [
+     "Niederösterreich"
+    ],
+    "values": [
+     55
+    ]
+   },
+   {
+    "group": [
+     "Oberösterreich"
+    ],
+    "values": [
+     25
+    ]
+   },
+   {
+    "group": [
+     "Salzburg"
+    ],
+    "values": [
+     17
+    ]
+   },
+   {
+    "group": [
+     "Steiermark"
+    ],
+    "values": [
+     27
+    ]
+   },
+   {
+    "group": [
+     "Tirol"
+    ],
+    "values": [
+     15
+    ]
+   },
+   {
+    "group": [
+     "Vorarlberg"
+    ],
+    "values": [
+     "<10"
+    ]
+   },
+   {
+    "group": [
+     "Wien"
+    ],
+    "values": [
+     49
+    ]
+   }
+  ]
+ }
+}

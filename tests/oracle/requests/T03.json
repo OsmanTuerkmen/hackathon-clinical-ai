@@ -1,0 +1,19 @@
+{
+  "id": "T03",
+  "submitted": "2026-10-30T11:20:00+01:00",
+  "applicant": {
+    "name": "Dr. Miriam Kogler",
+    "organisation": "Austrian Diabetes Quality Network (association of GP practices)",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Quality improvement in diabetes care: we want to know how many patients with type 2 diabetes are poorly controlled in each region, to target GP training.",
+  "question": "Among adults with type 2 diabetes who have an HbA1c value, how many have a latest HbA1c above 8%, by region?",
+  "definitions": [
+    "Adult = aged 18 or older on 31 December 2025.",
+    "Type 2 diabetes = any condition with an ICD-10 code starting with E11.",
+    "Use the latest HbA1c (LOINC 4548-4) per patient.",
+    "Report per region: adults with type 2 diabetes who have an HbA1c value, how many of them have an HbA1c above 8, and that share in %, one decimal."
+  ]
+}

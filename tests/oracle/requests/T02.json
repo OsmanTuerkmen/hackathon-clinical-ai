@@ -1,0 +1,19 @@
+{
+  "id": "T02",
+  "submitted": "2026-10-30T11:10:00+01:00",
+  "applicant": {
+    "name": "Dr. Helena Fuchs",
+    "organisation": "University Clinic for Cardiology, research group heart failure",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Research on blood pressure control in heart failure, to compare care between hospitals and improve care pathways.",
+  "question": "How many adults with heart failure have a systolic blood pressure value, and what is their mean systolic blood pressure, by hospital?",
+  "definitions": [
+    "Adult = aged 18 or older on 31 December 2025.",
+    "Heart failure = any condition with an ICD-10 code starting with I50.",
+    "Use the latest systolic blood pressure (LOINC 8480-6) per patient; patients without a value are left out.",
+    "Report per data_holder: adults with heart failure who have a systolic blood pressure value and their mean systolic blood pressure, one decimal."
+  ]
+}

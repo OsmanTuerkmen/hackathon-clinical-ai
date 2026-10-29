@@ -1,0 +1,18 @@
+{
+  "id": "T14",
+  "submitted": "2026-10-30T13:10:00+01:00",
+  "applicant": {
+    "name": "Dr. Peter Gruber",
+    "organisation": "Austrian Institute for Emergency Care Research",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Health services research on emergency department use, to plan emergency department capacity.",
+  "question": "How many emergency visits started in 2024, by hospital?",
+  "definitions": [
+    "Emergency visit = encounter with type 'emergency'.",
+    "Count visits (not patients) whose start_date is in 2024.",
+    "Report per hospital: emergency visits."
+  ]
+}

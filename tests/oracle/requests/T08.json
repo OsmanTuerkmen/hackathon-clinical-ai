@@ -1,0 +1,20 @@
+{
+  "id": "T08",
+  "submitted": "2026-10-30T12:10:00+01:00",
+  "applicant": {
+    "name": "Dr. Martin Eder",
+    "organisation": "Medical University of Innsbruck, Department of Respiratory Medicine",
+    "country": "AT"
+  },
+  "requested_as": "health data access application",
+  "requested_format": "pseudonymised records",
+  "purpose": "We study how often patients with COPD in different age groups receive inhaler treatment, for a regional care report.",
+  "question": "Provide pseudonymised records of all patients with COPD and their inhaler prescriptions.",
+  "definitions": [
+    "COPD = any condition with an ICD-10 code starting with J44.",
+    "Inhaler = ATC code starting with R03.",
+    "A medication is active on 31 December 2025 if start_date is on or before that day and end_date is empty or on or after that day.",
+    "Age bands on 31 December 2025: 0-64, 65-79, 80+.",
+    "Report per age band: patients with COPD and % with an active inhaler, one decimal."
+  ]
+}
