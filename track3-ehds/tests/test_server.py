@@ -76,6 +76,36 @@ class ServerTest(unittest.TestCase):
             status, _ = self.call(path)
             self.assertEqual(status, 404, path)
 
+    def test_malformed_http_input_gets_clean_errors(self):
+        status, body = self.call("/api/submit", b"\xff\xfe\x00garbage")
+        self.assertEqual(status, 400)
+        self.assertIn("UTF-8", body.decode())
+        status, body = self.call("/api/submit", b"x" * (70 * 1024))
+        self.assertEqual(status, 413)
+        req = urllib.request.Request(self.base + "/api/submit", data=b"{}", method="POST",
+                                     headers={"Content-Length": "-5"})
+        try:
+            urllib.request.urlopen(req, timeout=10)
+            self.fail("negative Content-Length accepted")
+        except urllib.error.HTTPError as e:
+            with e:
+                self.assertEqual(e.code, 400)
+        status, _ = self.call("/api/does-not-exist")
+        self.assertEqual(status, 404)
+
+    def test_concurrent_submissions_are_consistent(self):
+        from concurrent.futures import ThreadPoolExecutor
+        stats = dict(SPE_REQUEST, requested_as="health data request", requested_format="anonymised statistics",
+                     purpose="Research on atrial fibrillation care.",
+                     definitions=["Atrial fibrillation = any condition with an ICD-10 code starting with I48.",
+                                  "Report per hospital: patients with atrial fibrillation."])
+        payloads = [json.dumps(SPE_REQUEST if i % 2 else stats).encode() for i in range(24)]
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(lambda p: self.call("/api/submit", p), payloads))
+        self.assertTrue(all(s == 200 for s, _ in results))
+        answers = {json.dumps(json.loads(b)["result"], sort_keys=True) for s, b in results}
+        self.assertEqual(len(answers), 2, "identical requests must give identical answers under load")
+
     def test_statistical_answer_over_http(self):
         req = dict(SPE_REQUEST, requested_as="health data request", requested_format="anonymised statistics",
                    purpose="Research on atrial fibrillation care.",

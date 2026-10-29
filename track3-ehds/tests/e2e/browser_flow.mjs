@@ -120,14 +120,28 @@ try {
     if (!/hackathon simulation/i.test(t) || !/not a real government approval system/i.test(t)) throw new Error(t);
     return t.trim().slice(0, 60) + "…";
   });
+  await step("Data status pill shows the synthetic dataset", async () => {
+    await waitFor(`${text("#data-pill")}.includes("opt-outs excluded")`, 10000, "data pill");
+    return await evaluate(text("#data-pill"));
+  });
+  await step("Request filter narrows the list", async () => {
+    const setFilter = v => evaluate(`(() => { const f = document.querySelector('#request-filter'); f.value = ${JSON.stringify(v)}; f.dispatchEvent(new Event('input')); })()`);
+    await setFilter("COPD");
+    const ids = await evaluate(`[...document.querySelectorAll('#request-list .req')].map(b => b.dataset.id)`);
+    await setFilter("");
+    if (ids.join() !== "R10") throw new Error(JSON.stringify(ids));
+    return "filter 'COPD' -> R10";
+  });
   await step("R10 nicotine pouches -> REJECT, Art. 54, no data queried", async () => {
     const ms = await submit("R10");
     const code = await evaluate(text("#decision-code"));
     const arts = await evaluate(text("#articles"));
     const meta = await evaluate(text("#meta"));
+    const steps = await evaluate(`[...document.querySelectorAll('#stepper li')].map(li => li.className)`);
     if (code !== "REJECT" || !arts.includes("Art. 54") || !/Patient data queried: no/.test(meta)) throw new Error(`${code} ${arts} ${meta}`);
+    if (steps.length !== 6 || steps[1] !== "stop" || steps[4] !== "skip") throw new Error(`stepper ${steps}`);
     await shot("01-r10-reject");
-    return `answered in ${ms} ms`;
+    return `answered in ${ms} ms; stepper stops at the purpose check`;
   });
   await step("R08 statistics -> APPROVE_STATISTICAL with <10 and suppressed cells", async () => {
     await submit("R08");
@@ -138,8 +152,11 @@ try {
     if (rows.length !== 9) throw new Error(`${rows.length} rows`);
     if (by["Burgenland"].join("|") !== "<10|suppressed") throw new Error(JSON.stringify(by["Burgenland"]));
     if (by["Niederösterreich"].join("|") !== "15|27.2" || by["Wien"].join("|") !== "14|26.6") throw new Error(JSON.stringify(by));
+    const steps = await evaluate(`[...document.querySelectorAll('#stepper li')].map(li => li.className)`);
+    if (steps.join() !== "ok,ok,ok,ok,ok,ok") throw new Error(`stepper ${steps}`);
+    if (!(await evaluate(`!!document.querySelector('#csv-btn')`))) throw new Error("CSV export missing");
     await shot("02-r08-statistics");
-    return "9 regions, small cells masked, NÖ 15 / 27.2";
+    return "9 regions, small cells masked, NÖ 15 / 27.2, 6/6 steps ok, CSV export offered";
   });
   await step("R01 statistics -> prevalence table", async () => {
     await submit("R01");
@@ -157,13 +174,14 @@ try {
     if (types.length !== 3 || !types.some(t => t.includes("LOINC 4548-4"))) throw new Error(JSON.stringify(types));
     return `cohort ${n}; ${types.join(" | ")}`;
   });
-  await step("R05 download attempt is blocked (HTTP 403)", async () => {
+  await step("R05 download attempt is blocked (HTTP 403) and logged", async () => {
     await evaluate(`document.querySelector('#download-btn').click()`);
     await waitFor(`${text("#download-result")}.includes("403")`, 10000, "blocked banner");
+    await waitFor(`document.querySelectorAll('#download-result tbody tr').length > 0`, 10000, "access log");
     const t = await evaluate(text("#download-result"));
-    if (!/Download blocked/.test(t)) throw new Error(t);
+    if (!/Download blocked/.test(t) || !/BLOCKED/.test(t)) throw new Error(t);
     await shot("03-r05-spe-download-blocked");
-    return t.split("\n")[0];
+    return t.split("\n")[0] + " + access log shown";
   });
   await step("N01 new request: primary_icd10 + hospital grouping", async () => {
     await submit("N01");
@@ -187,6 +205,47 @@ try {
     const rows = await evaluate(`[...document.querySelectorAll('#stat-table tbody tr')].map(tr => [...tr.cells].map(c => c.innerText.trim()).join(':'))`);
     if (rows.length !== 2) throw new Error(JSON.stringify(rows));
     return rows.join(", ");
+  });
+  await step("N07 unsupported definition: approved but clearly not produced", async () => {
+    await submit("N07");
+    const t = await evaluate(text("#result"));
+    if (!/could not be interpreted safely/.test(t) || !/end_date minus start_date/.test(t)) throw new Error(t);
+    return t.split("\n").slice(0, 2).join(" ");
+  });
+  await step("File upload fills the editor", async () => {
+    const path = join(tmpdir(), `desk-upload-${process.pid}.json`);
+    writeFileSync(path, JSON.stringify({ id: "UPLOAD-1", requested_as: "health data request",
+      requested_format: "anonymised statistics", purpose: "Research on asthma.", question: "How many patients have asthma?",
+      definitions: ["Asthma = any condition with an ICD-10 code starting with J45.", "Report per hospital: patients with asthma."] }));
+    const { root } = await send("DOM.getDocument", { depth: -1 });
+    const { nodeId } = await send("DOM.querySelector", { nodeId: root.nodeId, selector: "#file-input" });
+    await send("DOM.setFileInputFiles", { nodeId, files: [path] });
+    await waitFor(`document.querySelector('#request-json').value.includes('UPLOAD-1')`, 5000, "uploaded JSON");
+    rmSync(path, { force: true });
+    return "uploaded file loaded";
+  });
+  await step("Ctrl+Enter submits the edited request", async () => {
+    await evaluate(`window.__prevCase = ${text("#meta")}; document.querySelector('#request-json').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }))`);
+    await waitFor(`${text("#meta")} !== window.__prevCase && ${text("#meta")}.includes("UPLOAD-1")`, 20000, "shortcut answer");
+    const rows = await evaluate(`document.querySelectorAll('#stat-table tbody tr').length`);
+    if (rows !== 3) throw new Error(`${rows} rows`);
+    return "3 hospital rows";
+  });
+  await step("Request text is rendered as text, never as HTML (XSS)", async () => {
+    const evil = { id: "XSS-1", applicant: { name: "<img src=x onerror=window.__xss=1>", organisation: "<script>window.__xss=2</script>", country: "AT" },
+      requested_as: "health data request", requested_format: "anonymised statistics",
+      purpose: "Research <img src=x onerror=window.__xss=3> on asthma.", question: "How many <b>patients</b> have asthma?",
+      definitions: ["Asthma = any condition with an ICD-10 code starting with J45.", "Report per sex: patients with asthma."] };
+    await evaluate(`document.querySelector('#request-json').value = ${JSON.stringify(JSON.stringify(evil))}; window.__prevCase = ${text("#meta")}; document.querySelector('#submit-btn').click()`);
+    await waitFor(`${text("#meta")} !== window.__prevCase && ${text("#meta")}.includes("XSS-1")`, 20000, "xss answer");
+    await evaluate(`[...document.querySelectorAll('#meta a')].find(a => a.innerText.includes('staff')).click()`);
+    await waitFor(`${text("#case-detail")}.includes("XSS-1")`, 10000, "xss case");
+    const injected = await evaluate(`document.querySelectorAll('#case-detail img, #case-detail script, #result img').length`);
+    const flag = await evaluate(`window.__xss === undefined`);
+    const literal = await evaluate(`${text("#case-detail")}.includes("<img src=x onerror=window.__xss=3>")`);
+    await evaluate(`document.querySelector('#tab-applicant').click()`);
+    if (injected || !flag || !literal) throw new Error(`injected=${injected} flag=${flag} literal=${literal}`);
+    return "payload shown literally, no element injected";
   });
   await step("Invalid JSON gives a clear error", async () => {
     await evaluate(`document.querySelector('#request-json').value = '{"requested_as": "health data request"'; document.querySelector('#submit-btn').click()`);
@@ -212,6 +271,17 @@ try {
     if (!cards[0].startsWith("10/10") || !cards[1].startsWith("6/6") || !cards[2].startsWith("0") || !cards[3].startsWith("10/10")) throw new Error(JSON.stringify(cards));
     await shot("06-evaluation");
     return cards.join(" | ");
+  });
+  await step("Mobile layout (390 px) has no horizontal overflow", async () => {
+    await evaluate(`document.querySelector('#tab-applicant').click()`);
+    await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+    await submit("R08");
+    await sleep(300);
+    const overflow = await evaluate(`document.documentElement.scrollWidth - window.innerWidth`);
+    await shot("07-mobile");
+    await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false });
+    if (overflow > 1) throw new Error(`page is ${overflow}px wider than the viewport`);
+    return "fits the viewport";
   });
   await step("No browser console errors (incl. CSP violations)", async () => {
     if (consoleErrors.length) throw new Error(consoleErrors.join(" || "));

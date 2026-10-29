@@ -101,6 +101,43 @@ class ConservativeFailureTest(unittest.TestCase):
         self.assertFails(["Report per age band: patients."], "no age bands")
 
 
+class NegationScopeTest(unittest.TestCase):
+    def measure_set(self, line, question="How many patients?", extra=()):
+        plan = build_plan(req(list(extra) + [line], question), "statistics")
+        return plan["measures"][0]["set"]
+
+    def test_without_a_or_b_means_neither(self):
+        s = self.measure_set("Report per sex: patients without asthma or COPD.")
+        self.assertEqual(s["op"], "not")
+        self.assertEqual(s["arg"]["op"], "or")
+
+    def test_neither_nor_and_explicit_forms(self):
+        for line in ("Report per sex: patients with neither asthma nor COPD.",
+                     "Report per sex: patients without asthma and without COPD."):
+            s = self.measure_set(line)
+            self.assertEqual([a["op"] for a in s["args"]], ["not", "not"], line)
+        s = self.measure_set("Report per sex: patients without asthma and with COPD.")
+        self.assertEqual([a["op"] for a in s["args"]], ["not", "has_condition"])
+
+    def test_ambiguous_negation_is_refused(self):
+        with self.assertRaises(InterpretationError) as ctx:
+            self.measure_set("Report per sex: patients without asthma and COPD.")
+        self.assertIn("ambiguous", ctx.exception.message)
+
+    def test_negated_mention_in_question_is_not_used_as_filter(self):
+        with self.assertRaises(InterpretationError) as ctx:
+            self.measure_set("Report per region: patients with hypertension.",
+                             question="How many patients with hypertension but without diabetes are there?",
+                             extra=["Diabetes = any condition with an ICD-10 code starting with E11."])
+        self.assertIn("negated", ctx.exception.message)
+
+    def test_words_that_would_be_silently_dropped_are_refused(self):
+        for line in ("Report per sex: patients whose first diagnosis is asthma.",
+                     "Report per sex: patients with the most visits."):
+            with self.assertRaises(InterpretationError, msg=line):
+                self.measure_set(line)
+
+
 class ValidatorTest(unittest.TestCase):
     def test_validator_rejects_malformed_plans(self):
         plan = build_plan(load("R04"), "statistics")

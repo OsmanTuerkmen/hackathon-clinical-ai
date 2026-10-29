@@ -19,6 +19,7 @@ import re
 import sys
 import threading
 import time
+import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlparse
 
@@ -98,11 +99,29 @@ def make_handler(app: App):
                        "application/json; charset=utf-8")
 
         def _body(self) -> bytes | None:
-            length = int(self.headers.get("Content-Length") or 0)
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                length = -1
+            if length < 0:
+                self._json(400, {"error": "invalid Content-Length header"})
+                return None
             if length > MAX_BYTES:
                 self._json(413, {"error": f"request body larger than {MAX_BYTES // 1024} KB"})
                 return None
             return self.rfile.read(length) if length else b""
+
+        def _guarded(self, fn):
+            try:
+                fn()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            except Exception:  # never drop the connection without an answer
+                traceback.print_exc()
+                try:
+                    self._json(500, {"error": "internal error - nothing was released"})
+                except Exception:
+                    pass
 
         def _static(self, rel: str):
             rel = rel or "index.html"
@@ -117,9 +136,15 @@ def make_handler(app: App):
 
         # -------------------------------------------------------------- routes
         def do_HEAD(self):
-            self.do_GET()
+            self._guarded(self._get)
 
         def do_GET(self):
+            self._guarded(self._get)
+
+        def do_POST(self):
+            self._guarded(self._post)
+
+        def _get(self):
             path = unquote(urlparse(self.path).path)
             desk = app.desk
             if path in ("/", "/index.html"):
@@ -156,7 +181,7 @@ def make_handler(app: App):
                 return self._json(200, app.last_evaluation or {})
             return self._json(404, {"error": "not found"})
 
-        def do_POST(self):
+        def _post(self):
             path = unquote(urlparse(self.path).path)
             if path == "/api/submit":
                 body = self._body()

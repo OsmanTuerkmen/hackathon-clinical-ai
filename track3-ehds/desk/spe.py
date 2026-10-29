@@ -32,7 +32,7 @@ class SPEManager:
         self.store = store
         self.base = Path(base_dir)
         self.access_log: list[dict] = []
-        self._lock = threading.Lock()
+        self.lock = threading.RLock()
 
     @staticmethod
     def workspace_id(request: dict) -> str:
@@ -48,7 +48,7 @@ class SPEManager:
     def build(self, request: dict, record_types: list[dict], cohort_ids: list[str], permit: dict) -> dict:
         wid = self.workspace_id(request)
         wdir = self.path(wid)
-        with self._lock:
+        with self.lock:
             if wdir.exists():
                 shutil.rmtree(wdir)
             wdir.mkdir(parents=True)

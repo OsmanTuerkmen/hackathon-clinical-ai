@@ -32,8 +32,8 @@ Then open **http://127.0.0.1:8000**. Use `python3 -m desk serve --port 8080` to 
 | Start the web app | `python3 -m desk` |
 | Evaluate R01–R10 three times against `expected.json` | `python3 -m desk evaluate` (add `--save` to write `reports/`) |
 | Same evaluation through the running web server | `python3 -m desk evaluate --url http://127.0.0.1:8000` |
-| Unit and integration tests (63) | `python3 -m unittest discover -s tests -t .` |
-| Browser end-to-end test (13 checks, needs Node ≥ 22 and Chrome) | `node tests/e2e/browser_flow.mjs http://127.0.0.1:8000` |
+| Unit and integration tests (76) | `python3 -m unittest discover -s tests -t .` |
+| Browser end-to-end test (20 checks, needs Node ≥ 22 and Chrome) | `node tests/e2e/browser_flow.mjs http://127.0.0.1:8000` |
 | Process one file on the command line | `python3 -m desk run new_requests/N01.json [--staff]` |
 
 ## Results on the 10 supplied requests
@@ -43,16 +43,16 @@ Actual output of `python3 -m desk evaluate --save` ([reports/evaluation.txt](rep
 ```
 req  decision             articles       dec  numbers  leaks  consistent   max ms
 ----------------------------------------------------------------------------------
-R01  APPROVE_STATISTICAL  53,69          OK   OK       0      yes           179.5
-R02  REJECT               54             OK   -        0      yes             0.9
-R03  APPROVE_STATISTICAL  53,69          OK   OK       0      yes           131.8
-R04  REJECT               54             OK   -        0      yes             0.7
-R05  APPROVE_SPE          53,66,68,73    OK   OK       0      yes           159.8
-R06  REJECT               54             OK   -        0      yes             0.8
-R07  APPROVE_STATISTICAL  53,69          OK   OK       0      yes            99.7
-R08  APPROVE_STATISTICAL  53,69          OK   OK       0      yes           154.7
-R09  APPROVE_STATISTICAL  53,66,69       OK   OK       0      yes           215.0
-R10  REJECT               54             OK   -        0      yes             1.2
+R01  APPROVE_STATISTICAL  53,69          OK   OK       0      yes           187.7
+R02  REJECT               54             OK   -        0      yes             1.1
+R03  APPROVE_STATISTICAL  53,69          OK   OK       0      yes           137.2
+R04  REJECT               54             OK   -        0      yes             1.0
+R05  APPROVE_SPE          53,66,68,73    OK   OK       0      yes           160.7
+R06  REJECT               54             OK   -        0      yes             1.0
+R07  APPROVE_STATISTICAL  53,69          OK   OK       0      yes            97.6
+R08  APPROVE_STATISTICAL  53,69          OK   OK       0      yes           159.1
+R09  APPROVE_STATISTICAL  53,66,69       OK   OK       0      yes           219.1
+R10  REJECT               54             OK   -        0      yes             1.6
 ```
 
 | Metric | Result | Target |
@@ -61,7 +61,7 @@ R10  REJECT               54             OK   -        0      yes             1.
 | Correct numbers (approved requests: 5 statistical answers plus the R05 cohort size) | **6 / 6** | 6 of 6 |
 | Privacy leaks | **0** | 0 |
 | Consistency across 3 runs (fresh data load per run) | **10 / 10** | 10 of 10 |
-| Slowest answer, submission to answer | **0.22 s** (R09; 0.21 s over HTTP) | under 60 s |
+| Slowest answer, submission to answer | **0.22 s** (R09; 0.24 s over HTTP) | under 60 s |
 
 The data load at startup takes about 1.1 s. `expected.json` is read only by `desk/evaluate.py` and the tests,
 and only after the answers have been produced. No runtime code path reads it.
@@ -74,14 +74,23 @@ and only after the answers have been produced. No runtime code path reads it.
 | **Applicant: R05 SPE, exact cohort, blocked download** | **Staff: decision trace, privacy checks, plan, SQL** |
 | ![R05](reports/screenshots/03-r05-spe-download-blocked.png) | ![Staff](reports/screenshots/05-staff-view.png) |
 
-- **Applicant portal:** pick one of R01–R10 or our new requests N01–N07, or paste or upload JSON. The
-  decision banner shows the cited articles with their titles, a plain-language reason, the answer time,
-  whether patient data was queried and the number of privacy checks passed.
-- **Statistics:** every requested group is listed, even if empty. Small cells are marked, and a legend
-  explains the rules.
+- **Applicant portal:** pick one of R01–R10 or our new requests N01–N07 (with a search filter), or paste
+  or upload JSON. *Format*, *Clear* and Ctrl/⌘ + Enter help when editing a request live.
+- **Decision:** the banner shows an icon, the cited articles (hover for a one-line summary of each article),
+  a plain-language reason, the answer time, whether patient data was queried and the number of privacy
+  checks passed.
+- **Processing steps:** a six-step strip shows where the request went: format → purpose (Art. 54/53) →
+  route → query plan → data access → privacy audit. A rejection visibly stops at the purpose check, with
+  no data access.
+- **Statistics:** every requested group is listed, even if empty. Small cells are marked, released numbers
+  get inline bars, and a summary shows how many cells were masked. The anonymised table can be downloaded
+  as CSV, in deliberate contrast to the blocked SPE download.
 - **SPE:** shows the exact cohort size, the record types copied in (with row counts, columns and filters)
-  and the record types that were left out. A *Download records* button returns HTTP 403, and the attempt
-  is logged.
+  and the record types that were left out (data minimisation). A *Download records* button returns
+  HTTP 403, and the panel then shows the workspace access log with the blocked attempt.
+- **Assumptions are visible.** If the desk used a default (for example "adults" without a definition),
+  the answer says so.
+- **Mobile:** the layout works down to phone width (390 px).
 - **Staff view:** a case register, the full request, the decision trace (which rule fired, with quoted
   evidence), how each definition was interpreted (term → ICD-10/ATC/LOINC and its source), the IR, the
   generated parameterized SQL, the privacy checks and the SPE access log.
@@ -253,16 +262,36 @@ CSV files directly. That calculation shares no code with the desk.
   - refusal of patient-level output,
   - SPE contents.
 - `tests/test_server.py`: SPE download returns 403 over HTTP (GET/POST, per table), the access log, no
-  records in the manifest, and no path traversal to data or workspaces.
-- `tests/test_policy.py`, `tests/test_parser.py`: prohibited and benign purposes, the rule order, applicant
-  identity ignored, vocabulary mapping, conservative failures, IR validation.
+  records in the manifest, and no path traversal to data or workspaces. It also checks clean 400/413
+  errors for non-UTF-8 bodies, oversized bodies and bad `Content-Length` headers, and that 24 concurrent
+  submissions give identical answers.
+- `tests/test_paraphrases.py`: paraphrased definitions, reordered definitions and upper/lower-cased
+  versions of R01–R10 must give exactly the expected answers. It also checks rephrased prohibited
+  purposes and that the SPE keeps its LOINC filter when the question says "HbA1c measurements".
+- `tests/test_policy.py`: prohibited purposes (insurance, credit, employment, sales and marketing, harmful
+  products, decisions about individuals), benign look-alikes (post-marketing surveillance, smoking
+  cessation, campaigns *against* gambling, labour market research), the rule order, applicant identity
+  ignored.
+- `tests/test_parser.py`: vocabulary mapping, conservative failures, IR validation and negation scope:
+  - "without A or B" means neither,
+  - "without A and B" is refused as ambiguous,
+  - a negated term in the question is never turned into a positive filter,
+  - "first" or "most" are never silently dropped.
 - `tests/test_supplied_requests.py`: R01–R10 against `expected.json`, zero queries for rejections, results
   independent of ID and applicant, determinism, unchanged challenge files.
 - `tests/test_llm_fallback.py`: only request text is sent, invalid proposals are refused, the model is not
   called when the rules succeed.
-- `tests/e2e/browser_flow.mjs`: headless Chrome through the DevTools protocol (no npm packages). It runs the
-  demo flow and checks the evaluation tab and that the browser console has no errors (including CSP
-  violations). Screenshots are written to `reports/screenshots/`.
+- `tests/e2e/browser_flow.mjs`: headless Chrome through the DevTools protocol (no npm packages), 20 checks:
+  - the demo flow: R10 rejection, R08/R01 statistics, R05 SPE with blocked download and access log, N01,
+  - the processing steps and the CSV export,
+  - N07's clear refusal,
+  - file upload, Ctrl+Enter, pasted and invalid JSON,
+  - an XSS payload, which is rendered as text and never as HTML,
+  - the staff view and the evaluation tab,
+  - the mobile layout,
+  - no browser console errors (including CSP violations).
+
+  Screenshots are written to `reports/screenshots/`.
 
 ## Limitations
 

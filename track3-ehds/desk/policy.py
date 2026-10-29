@@ -79,19 +79,29 @@ BENIGN = [
     r"smoking cessation", r"tobacco control", r"alcohol control", r"quit(ting)? smoking", r"stop(ping)? smoking",
     r"(alcohol|nicotine|tobacco) (dependence|addiction|use disorder) treatment",
     r"treat\w* (alcohol|nicotine|tobacco) (dependence|addiction|use disorder)",
+    r"(gambling|betting|alcohol|nicotine|tobacco|smoking|drug)[- ](addiction|dependence|use disorder|related harm|harms?|"
+    r"prevention|control|cessation|abuse)",
+    r"(against|prevent\w*|reduc\w*|treat\w*|fight\w*|tackl\w*) (?:\w+ ){0,2}(gambling|betting|smoking|tobacco|nicotine|"
+    r"alcohol|drug use)",
+    r"labou?r market", r"market access",
 ]
 
 HARMFUL_PRODUCT = (r"\b(nicotine|tobacco|cigarettes?|cigars?|e-?cigarettes?|vap(?:e|es|ing)|snus|nicotine pouch(?:es)?|"
                    r"heated tobacco|alcoholic (?:beverages?|drinks?)|alcohol products?|spirits|liquor|beer|wine|"
                    r"illicit drugs?|recreational drugs?|weapons?|weaponry|firearms?|ammunition|gambling|betting|casinos?)\b")
 COMMERCIAL_CONTEXT = (r"\b(develop\w*|design\w*|launch\w*|sell\w*|sales|market(?:s|ing|ed)?|position\w*|flavou?rs?|"
-                      r"products?|brands?|consumers?|customers?|commerciali[sz]\w*|retail\w*|portfolio)\b")
+                      r"products?|brands?|consumers?|customers?|commerciali[sz]\w*|retail\w*|portfolio|"
+                      r"compan(?:y|ies)|campaigns?|business|revenue|profits?)\b")
 PROHIBITED_RULES = [
     ("54(1)(b)", "setting insurance premiums or excluding people from insurance",
      [r"\b(insurance|insurer|insurers|policyholders?)\b[^.]{0,100}?\b(premiums?|pric\w*|tariffs?|underwrit\w*|"
       r"risk[- ]?(?:based|adjusted|rating)|exclu\w*|refus\w*|den(?:y|ial)|coverage decisions?)",
       r"\b(premiums?|underwrit\w*|insurability)\b[^.]{0,100}?\b(insurance|insurer|customers?|policyholders?|"
-      r"actual risk|risk)\b"]),
+      r"actual risk|risk)\b",
+      r"\b(adjust|raise|increase|change|set)\w* (?:their |the |our )?(?:contracts?|premiums?|tariffs?|prices?|"
+      r"rates|conditions)\b[^.]{0,60}?\b(customers?|clients?|policyholders?|members?|patients?|diabetics?|them)\b",
+      r"\b(customers?|clients?|policyholders?|members?)\b[^.]{0,80}?\b(adjust|raise|increase|change)\w* (?:their |the )?"
+      r"(?:contracts?|premiums?|tariffs?|prices?|rates|conditions)\b"]),
     ("54(1)(b)", "decisions on credit or loans",
      [r"\b(credit ?(?:scor\w*|worthiness|decisions?|limits?|risk)|creditworthiness|loan (?:decisions?|applications?|"
       r"approvals?|conditions)|mortgages?|lending decisions?)\b"]),
@@ -107,11 +117,19 @@ PROHIBITED_RULES = [
       r"\b(match|link|merge|combine|cross-?reference)\w*\b[^.]{0,60}?\b(our|their|an?|the)\b[^.]{0,30}?"
       r"\b(list|database|register|registry|crm|customer data|client data)\b",
       r"\bsee who has\b", r"\bfind out who (has|is)\b",
-      r"\b(deny|refuse|exclude|blacklist)\w*\b[^.]{0,60}?\b(patients?|persons?|people|individuals?|customers?|"
-      r"applicants?)\b"]),
+      r"\bwhich of (?:our|their|the) (?:customers|clients|employees|staff|members|policyholders|applicants|users|"
+      r"tenants|students)\b",
+      r"\bidentify (?:individual|specific|single) (?:patients|persons|people|customers|employees|clients)\b",
+      r"\b(den(?:y|ied|ies|ial)|refus\w*|exclud\w*|blacklist\w*)\b[^.]{0,60}?\b(patients?|persons?|people|individuals?|"
+      r"customers?|applicants?)\b",
+      r"\b(patients?|persons?|people|individuals?|customers?|employees?|applicants?)\b[^.]{0,40}?\b(?:should|will|would|"
+      r"to|are|could) be (?:denied|refused|excluded|rejected|dismissed|charged more|penali[sz]ed)\b"]),
     ("54(1)(c)", "advertising or marketing",
      [r"\b(advertis\w*|marketing|promotional|ad campaigns?|sales campaigns?|sales strateg\w*|sales targets?|"
-      r"brand awareness|lead generation)\b",
+      r"brand awareness|lead generation|sales representatives?|sales reps?|sales force|field force|market share|"
+      r"sell more|(?:increase|boost|grow|drive)\w* (?:the |our |their )?sales)\b",
+      r"\bsales of (?:our|their|its) \b",
+      r"\bmarket(?:ing)? (?:it|them|this|our|their) (?:\w+ ){0,2}(?:to|for|among|towards)\b",
       r"\bpromot\w* (?:our|their|the|a|its|new) (?:\w+ )?(?:products?|drugs?|brands?|medicines?|services?)\b"]),
     ("54(1)(d)", "developing harmful products (tobacco, nicotine, alcohol, weapons, addictive products)",
      [r"__HARMFUL__"]),

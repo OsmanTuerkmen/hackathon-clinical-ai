@@ -30,11 +30,29 @@ class ProhibitedPurposeTest(unittest.TestCase):
                             "54(1)(d)")
         self.assertRejected("We develop alcoholic beverages and want to target regions with high consumption.", "54(1)(d)")
 
+    def test_more_prohibited_phrasings(self):
+        for purpose in (
+                "We are a pharmaceutical company and want to identify regions with low prescription rates to target "
+                "our sales representatives.",
+                "We want to know which of our customers have diabetes so we can adjust their contracts.",
+                "A betting company wants to find regions with high depression rates for its campaigns.",
+                "We want to increase sales of our new inhaler in regions with many asthma patients.",
+                "We want to develop an energy drink with high caffeine and market it to young adults.",
+                "We will use the data to decide which patients should be denied reimbursement.",
+                "We want to link the hospital data with our customer database to identify individual patients."):
+            d = policy.decide(req(purpose))
+            self.assertEqual((d.outcome, d.articles), (policy.REJECT, ["54"]), purpose)
+
     def test_benign_mentions_are_not_rejected(self):
         for purpose in ("Post-marketing surveillance of SGLT2 inhibitor safety for the medicines agency.",
                         "Research to evaluate a smoking cessation programme and support tobacco control policy.",
                         "Public health research on alcohol-related liver disease to improve prevention.",
-                        "The public health insurance fund plans prevention programmes for patients with diabetes."):
+                        "The public health insurance fund plans prevention programmes for patients with diabetes.",
+                        "A public health campaign against gambling addiction needs regional depression figures.",
+                        "Research on the labour market participation of people with chronic diseases, for policy.",
+                        "The national vaccination campaign of the health authority needs regional asthma prevalence.",
+                        "Occupational health research on sick leave patterns in healthcare workers (aggregated).",
+                        "Health technology assessment of GLP-1 receptor agonists for the reimbursement body."):
             d = policy.decide(req(purpose))
             self.assertNotEqual(d.outcome, policy.REJECT, purpose)
 

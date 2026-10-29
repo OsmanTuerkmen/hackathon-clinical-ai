@@ -530,7 +530,7 @@ class PlanBuilder:
             raw = re.sub(r"^(?:and|or)\s+", "", raw.strip(), flags=I)
             if not raw:
                 continue
-            parsed = [band(raw)] if band(raw) else [band(p) for p in re.split(r"\s+and\s+", raw)]
+            parsed = [band(raw)] if band(raw) else [band(p) for p in re.split(r"\s+and\s+", raw, flags=I)]
             if not all(parsed):
                 raise InterpretationError(f"cannot read the age band '{raw}'", where,
                                           "Write bands like '18-49, 50-64, 65+' or 'under 18, 18-64, 65 and older'.")
@@ -650,8 +650,9 @@ class PlanBuilder:
         if self.report is not None:
             raise InterpretationError("more than one 'Report' definition", where)
         low = t.lower()
-        if re.search(r"\b(?:for each|per|every) (?:individual )?patient\b|\bpatient ids?\b|\bbirth dates?\b|"
-                     r"\bpatient-level\b|\blist of patients\b", low):
+        if re.search(r"\b(?:for each|per|every|one row per|one line per) (?:individual )?patient\b"
+                     r"(?!'?s?\s+(?:region|sex|age|residence|hospital|home|data))|\bpatient ids?\b|\bbirth dates?\b|"
+                     r"\bpatient-level\b|\blist of (?:all )?patients\b|\bindividual records\b", low):
             self.report = {"kind": "patient_level", "where": where, "text": t}
             return
         if re.search(r"\b(?:size of the cohort|cohort size|number of patients in the cohort|size of the dataset)\b", low):
@@ -723,16 +724,20 @@ class PlanBuilder:
                 continue
             w = tk.norm
             if w in ("no", "not", "without", "never", "none", "non", "neither", "nor"):
-                items.append(Item(k, "neg", None, k + 1)); used[k] = True
+                items.append(Item(k, "neg", w, k + 1)); used[k] = True
             elif w in ("or", "either"):
                 if w == "or":
                     items.append(Item(k, "or", None, k + 1))
                 used[k] = True
+            elif w == "and":
+                items.append(Item(k, "and", None, k + 1)); used[k] = True
+            elif w in ("with", "who", "having", "whose", "that"):
+                items.append(Item(k, "with", None, k + 1)); used[k] = True
             elif w in ("active", "current", "currently", "ongoing"):
                 items.append(Item(k, "active", None, k + 1)); used[k] = True
-            elif w in ("latest", "last", "recent", "most"):
-                if w != "most":
-                    items.append(Item(k, "pick", "latest", k + 1))
+            elif w in ("latest", "last", "recent"):
+                items.append(Item(k, "pick", "latest", k + 1)); used[k] = True
+            elif w == "most" and k + 1 < n and tokens[k + 1].norm == "recent":
                 used[k] = True
             elif w in ("earliest", "first"):
                 items.append(Item(k, "pick", "earliest", k + 1)); used[k] = True
@@ -800,6 +805,13 @@ class PlanBuilder:
             (rf"\b(?:aged? )?(\d{{1,3}}) years? (?:old )?(?:or|and) (?:older|over|above){ref}", age_ge),
             (rf"\baged? (\d{{1,3}}) ?(?:\+|years? or older|or older|and older|and over|or over|or above){ref}", age_ge),
             (rf"\baged? (?:at least|no younger than) (\d{{1,3}})(?: years)?{ref}", age_ge),
+            (rf"\b(?:at least|no younger than) (\d{{1,3}}) years?(?: old)?{ref}", age_ge),
+            (rf"\b(?:older than|over) (\d{{1,3}}) years?(?: old)?{ref}", age_gt),
+            (rf"\bage[ds]?\s*(?:>=|≥)\s*(\d{{1,3}}){ref}", age_ge),
+            (rf"\bage[ds]?\s*>\s*(\d{{1,3}}){ref}", age_gt),
+            (rf"\bage[ds]?\s*<\s*(\d{{1,3}}){ref}", age_lt),
+            (rf"\bage[ds]?\s*(?:<=|≤)\s*(\d{{1,3}}){ref}", lambda m: ("atom", ("age", "<", int(m.group(1)) + 1))),
+            (rf"(?<![\w.-])(\d{{1,3}})\s*\+(?:\s+years)?{ref}(?![\w.])", age_ge),
             (rf"\baged? (?:over|above|older than) (\d{{1,3}})(?: years)?{ref}", age_gt),
             (rf"\baged? (?:under|below|younger than|less than) (\d{{1,3}})(?: years)?{ref}", age_lt),
             (rf"\b(?:who are |that are )?(?:younger than|under) (\d{{1,3}}) years?(?: old)?{ref}", age_lt),
@@ -823,13 +835,13 @@ class PlanBuilder:
 
     def _assemble(self, items: list[Item], text: str, where: str, want_head: bool):
         atoms: list[dict] = []   # each: {"expr":..., "neg":bool, "or_before":bool, "pos":int}
-        pending_neg = pending_active = pending_or = False
-        pending_pick = None
-        pending_atleast = None
+        pending_neg = pending_active = pending_or = pending_and = pending_with = False
+        pending_pick = pending_atleast = pending_neg_word = None
         enc_head = None
         for it in items:
             if it.kind == "neg":
                 pending_neg = True
+                pending_neg_word = it.payload
             elif it.kind == "active":
                 pending_active = True
             elif it.kind == "or":
@@ -838,15 +850,26 @@ class PlanBuilder:
                 pending_pick = it.payload
             elif it.kind == "atleast":
                 pending_atleast = it.payload
+            elif it.kind == "and":
+                pending_and = True
+            elif it.kind == "with":
+                pending_with = True
             elif it.kind == "atom":
                 expr, enc = self._atom_expr(it.payload, pending_active, pending_pick, pending_atleast, where)
                 if pending_active and not (expr.get("op") == "has_medication"):
                     raise InterpretationError(f"'active' must be followed by a medication in \"{text}\"", where)
                 if want_head and enc and not atoms and enc_head is None:
                     enc_head = enc
-                atoms.append({"expr": expr, "neg": pending_neg, "or_before": pending_or and bool(atoms), "pos": it.pos})
-                pending_neg = pending_active = pending_or = False
-                pending_pick = pending_atleast = None
+                if atoms and atoms[-1]["neg"] and not pending_neg and pending_and and not pending_with \
+                        and not atoms[-1]["neg_word"] in ("neither", "nor"):
+                    raise InterpretationError(
+                        f"\"{text}\" is ambiguous: does the negation cover both terms?", where,
+                        "Write 'without A and without B' (neither), 'without A or B' (neither), or "
+                        "'without A and with B'.")
+                atoms.append({"expr": expr, "neg": pending_neg, "neg_word": pending_neg_word,
+                              "or_before": pending_or and bool(atoms), "pos": it.pos})
+                pending_neg = pending_active = pending_or = pending_and = pending_with = False
+                pending_pick = pending_atleast = pending_neg_word = None
             elif it.kind in ("cmp", "date", "pdiag"):
                 if not atoms:
                     raise InterpretationError(f"'{text}': a filter appears before the thing it applies to", where)
@@ -861,12 +884,18 @@ class PlanBuilder:
         else:
             groups: list[list[dict]] = []
             for a in atoms:
-                e = {"op": "not", "arg": a["expr"]} if a["neg"] else a["expr"]
                 if a["or_before"]:
-                    groups[-1].append(e)
+                    groups[-1].append(a)
                 else:
-                    groups.append([e])
-            parts = [g[0] if len(g) == 1 else {"op": "or", "args": g} for g in groups]
+                    groups.append([a])
+            parts = []
+            for g in groups:
+                if len(g) > 1 and g[0]["neg"] and not any(a["neg"] for a in g[1:]):
+                    # "without A or B" = neither A nor B
+                    parts.append({"op": "not", "arg": {"op": "or", "args": [a["expr"] for a in g]}})
+                    continue
+                es = [{"op": "not", "arg": a["expr"]} if a["neg"] else a["expr"] for a in g]
+                parts.append(es[0] if len(es) == 1 else {"op": "or", "args": es})
             expr = parts[0] if len(parts) == 1 else {"op": "and", "args": parts}
         return expr, (enc_head if want_head else None)
 
@@ -881,6 +910,9 @@ class PlanBuilder:
         cid = payload[1]
         c = self.concept(cid)
         c.referenced = True
+        if pick and c.kind != "observation":
+            raise InterpretationError(f"'{'first' if pick == 'earliest' else 'latest'}' only applies to measurements, "
+                                      f"not to '{c.label}'", where, SUPPORTED_HINT)
         if atleast and c.kind != "encounter":
             raise InterpretationError(f"'at least N' is only supported for encounters (got '{c.label}')", where)
         if c.kind == "set":
@@ -982,7 +1014,8 @@ class PlanBuilder:
         for p in parts:
             p = " ".join(p.split())
             p = re.sub(r"^(?:the |each |every )?(?:patient'?s? )?", "", p).strip()
-            if re.fullmatch(r"(?:regions?|federal states?|states?|bundesl[aä]nder|bundesland|province)", p):
+            if re.fullmatch(r"(?:(?:home )?regions?|federal states?|states?|bundesl[aä]nder|bundesland|province|"
+                            r"(?:region|state|place) of residence|residence|patient region)", p):
                 d = {"type": "region", "groups": list(V.REGIONS)}
             elif re.fullmatch(r"(?:\d+-year )?(?:age ?bands?|bands?|age ?groups?|age ?categor(?:y|ies)|age)", p):
                 if not self.age_bands:
@@ -1017,7 +1050,7 @@ class PlanBuilder:
         for ch in text:
             depth += ch == "("
             depth -= ch == ")"
-            if ch == "," and depth == 0:
+            if ch in ",;" and depth == 0:
                 parts.append(cur)
                 cur = ""
             else:
@@ -1025,11 +1058,11 @@ class PlanBuilder:
         parts.append(cur)
         out: list[str] = []
         for part in parts:
-            part = part.strip()
+            part = re.sub(r"^\s*(?:and|or|as well as|plus)\s+", "", part.strip(), flags=I)
             if not part or FORMAT_RE.fullmatch(part) or re.fullmatch(r"(?:with |to )?(?:one|1) decimal(?: places?)?", part,
                                                                        I):
                 continue
-            chunks = re.split(r"\s+and\s+", part)
+            chunks = re.split(r"\s+and\s+", part, flags=I)
             merged = [chunks[0]]
             for ch in chunks[1:]:
                 if self._starts_measure(ch):
@@ -1051,6 +1084,8 @@ class PlanBuilder:
         if not toks:
             return False
         if toks[0].norm in HEAD_WORDS or toks[0].text == "%":
+            return True
+        if len(toks) > 1 and toks[0].norm == "of" and toks[1].norm in ("whom", "them", "these", "those"):
             return True
         hit = self.index.match_at(toks, 0)
         return bool(hit and self.concepts[hit[1]].kind in ("set", "ratio", "encounter"))
@@ -1079,6 +1114,14 @@ class PlanBuilder:
                 num = self._count_for(c.spec["numerator"], None, hidden=True)
                 den = self._count_for(c.spec["denominator"], None, hidden=True)
                 self._add_measure({"type": "percent", "label": f"{c.label} (%)", "phrase": p,
+                                   "numerator": num, "denominator": den, "visible": True})
+            elif (pm := re.match(r"^(?:the )?(?:prevalence|share|proportion|percentage|rate|%)\s+of\s+(.+?)\s+"
+                                 r"(?:among|within|in)\s+(?:all\s+|the\s+)?(.+)$", core, I)):
+                den_set = self.parse_set(pm.group(2), where)
+                den = self._count_for(den_set, None, hidden=True)
+                num = self._count_for(_and([den_set, self.parse_set(pm.group(1), where)]), self._measure(den), hidden=True)
+                label = p if "%" in p else f"{p} (%)"
+                self._add_measure({"type": "percent", "label": label[0].upper() + label[1:], "phrase": p,
                                    "numerator": num, "denominator": den, "visible": True})
             elif mean:
                 fn = mean.group(1).lower()
@@ -1205,7 +1248,12 @@ class PlanBuilder:
             reasons.append(f"patients without {self.concepts[cid].label} are left out ({where})")
             self.concepts[cid].referenced = True
         q_tokens = tokenize(self.req.get("question", ""))
-        q_hits = {cid for _, _, cid in self.index.find_all(q_tokens)}
+        q_hits, q_negated = set(), set()
+        for s, _, cid in self.index.find_all(q_tokens):
+            q_hits.add(cid)
+            if any(t.norm in ("without", "no", "not", "excluding", "except", "never", "non", "neither", "nor")
+                   for t in q_tokens[max(0, s - 3):s]):
+                q_negated.add(cid)
         for c in list(self.concepts.values()):
             if c.referenced or c.source == "vocabulary" or c.source.startswith("derived"):
                 continue
@@ -1214,6 +1262,11 @@ class PlanBuilder:
             if c.kind == "ratio":
                 self.notes.append(f"'{c.label}' is defined but not requested in the report; it was not computed.")
                 continue
+            if c.cid in q_negated:
+                raise InterpretationError(f"'{c.label}' appears negated in the question but is not used in the report "
+                                          "line, so its role is ambiguous", c.source,
+                                          "State it in the report line, e.g. 'patients with hypertension without "
+                                          f"{c.label.lower()}'.")
             if c.cid in q_hits:
                 expr, _ = self._atom_expr(("concept", c.cid), False, None, None, c.source)
                 parts.append(expr)
@@ -1270,18 +1323,20 @@ class PlanBuilder:
             out.append({"table": "encounters"})
         if re.search(r"\b(demographics?|birth dates?|age|sex|region|data[_ ]holder)\b", text, I):
             out.append({"table": "patients"})
-        loincs = []
-        if re.search(r"\b(observations?|measurements?|lab(?:oratory)? (?:values|results)|vital signs)\b", text, I):
+        # data minimisation: named measurements (e.g. "HbA1c values") restrict observations to their LOINC codes;
+        # only a generic word ("observations", "lab results") without any named measurement copies all of them
+        loincs: list | None = []
+        toks = tokenize(text)
+        for _, _, cid in self.index.find_all(toks):
+            c = self.concepts[cid]
+            if c.kind == "observation":
+                loincs.append(c.spec["loinc"])
+        for _, _, entry in self.vocab_index.find_all(toks):
+            if entry.kind == "observation" and entry.codes[0] not in loincs:
+                loincs.append(entry.codes[0])
+        if not loincs and re.search(r"\b(observations?|measurements?|lab(?:oratory)? (?:values|results)|vital signs)\b",
+                                    text, I):
             loincs = None
-        else:
-            toks = tokenize(text)
-            for _, _, cid in self.index.find_all(toks):
-                c = self.concepts[cid]
-                if c.kind == "observation":
-                    loincs.append(c.spec["loinc"])
-            for _, _, entry in self.vocab_index.find_all(toks):
-                if entry.kind == "observation" and entry.codes[0] not in loincs:
-                    loincs.append(entry.codes[0])
         if loincs is None:
             out.append({"table": "observations"})
         elif loincs:

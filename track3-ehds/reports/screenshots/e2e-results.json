@@ -10,14 +10,24 @@
     "detail": "Hackathon simulation · synthetic data only · not a real gove…"
   },
   {
+    "name": "Data status pill shows the synthetic dataset",
+    "ok": true,
+    "detail": "Synthetic data · 19 161 patients · 839 opt-outs excluded · 3 hospitals"
+  },
+  {
+    "name": "Request filter narrows the list",
+    "ok": true,
+    "detail": "filter 'COPD' -> R10"
+  },
+  {
     "name": "R10 nicotine pouches -> REJECT, Art. 54, no data queried",
     "ok": true,
-    "detail": "answered in 104 ms"
+    "detail": "answered in 104 ms; stepper stops at the purpose check"
   },
   {
     "name": "R08 statistics -> APPROVE_STATISTICAL with <10 and suppressed cells",
     "ok": true,
-    "detail": "9 regions, small cells masked, NÖ 15 / 27.2"
+    "detail": "9 regions, small cells masked, NÖ 15 / 27.2, 6/6 steps ok, CSV export offered"
   },
   {
     "name": "R01 statistics -> prevalence table",
@@ -30,9 +40,9 @@
     "detail": "cohort 1 152; Conditions (ICD-10):all of the cohort's rows | Medications (ATC):all of the cohort's rows | Observations (LOINC):LOINC 4548-4 only"
   },
   {
-    "name": "R05 download attempt is blocked (HTTP 403)",
+    "name": "R05 download attempt is blocked (HTTP 403) and logged",
     "ok": true,
-    "detail": "Download blocked · HTTP 403"
+    "detail": "Download blocked · HTTP 403 + access log shown"
   },
   {
     "name": "N01 new request: primary_icd10 + hospital grouping",
@@ -43,6 +53,26 @@
     "name": "Pasted custom request (edited JSON) is processed",
     "ok": true,
     "detail": "female:104, male:105"
+  },
+  {
+    "name": "N07 unsupported definition: approved but clearly not produced",
+    "ok": true,
+    "detail": "The request could not be interpreted safely "
+  },
+  {
+    "name": "File upload fills the editor",
+    "ok": true,
+    "detail": "uploaded file loaded"
+  },
+  {
+    "name": "Ctrl+Enter submits the edited request",
+    "ok": true,
+    "detail": "3 hospital rows"
+  },
+  {
+    "name": "Request text is rendered as text, never as HTML (XSS)",
+    "ok": true,
+    "detail": "payload shown literally, no element injected"
   },
   {
     "name": "Invalid JSON gives a clear error",
@@ -57,7 +87,12 @@
   {
     "name": "Evaluation tab shows the five metrics",
     "ok": true,
-    "detail": "10/10 Correct decisions (decision + articles) | 6/6 Correct numbers (approved requests) | 0 Privacy leaks | 10/10 Consistent across 3 runs | 0.24 s Slowest answer (R09), target < 60 s"
+    "detail": "10/10 Correct decisions (decision + articles) | 6/6 Correct numbers (approved requests) | 0 Privacy leaks | 10/10 Consistent across 3 runs | 0.22 s Slowest answer (R09), target < 60 s"
+  },
+  {
+    "name": "Mobile layout (390 px) has no horizontal overflow",
+    "ok": true,
+    "detail": "fits the viewport"
   },
   {
     "name": "No browser console errors (incl. CSP violations)",

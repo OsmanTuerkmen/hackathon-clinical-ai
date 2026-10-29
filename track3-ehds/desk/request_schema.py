@@ -30,7 +30,10 @@ def parse_request(raw) -> dict:
     if isinstance(raw, (bytes, bytearray)):
         if len(raw) > MAX_BYTES:
             raise RequestError([f"request is larger than {MAX_BYTES // 1024} KB"])
-        raw = raw.decode("utf-8")
+        try:
+            raw = raw.decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise RequestError(["the request must be UTF-8 encoded JSON"]) from exc
     if isinstance(raw, str):
         if len(raw.encode("utf-8")) > MAX_BYTES:
             raise RequestError([f"request is larger than {MAX_BYTES // 1024} KB"])

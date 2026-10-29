@@ -5,6 +5,7 @@ import hashlib
 import json
 import threading
 import time
+import traceback
 
 from . import policy
 from .audit import audit_spe, audit_statistics
@@ -85,6 +86,14 @@ class Desk:
             except PlanValidationError as exc:
                 case["fulfilment"] = {"status": "NOT_PRODUCED", "error": {"message": "; ".join(exc.errors)},
                                       "message": "The query plan failed validation; no data was released."}
+            except Exception as exc:  # fail closed: an unexpected error never releases partial results
+                traceback.print_exc()
+                case["result"] = None
+                case["fulfilment"] = {"status": "NOT_PRODUCED",
+                                      "error": {"message": f"internal error ({type(exc).__name__}); nothing was "
+                                                           "released"},
+                                      "message": "The desk hit an internal error, so nothing was released. Staff "
+                                                 "have been notified."}
         case["elapsed_ms"] = round((time.perf_counter() - t0) * 1000, 1)
         case["fingerprint"] = fingerprint(case)
         return self._store(case)
@@ -116,10 +125,12 @@ class Desk:
         cohort = ex.cohort_ids(plan["spe"]["cohort"])
         permit = {"articles": decision.articles, "purpose": req["purpose"],
                   "applicant": (req.get("applicant") or {}).get("organisation", "")}
-        manifest = self.spe.build(req, plan["spe"]["record_types"], cohort, permit)
-        status, _ = self.spe.request_download(manifest["workspace_id"], actor="privacy audit (self-test)")
-        db_path = self.spe.path(manifest["workspace_id"]) / "workspace.sqlite"
-        case["privacy_checks"] = audit_spe(manifest, cohort, plan["spe"]["record_types"], self.store, db_path, status)
+        with self.spe.lock:  # build and audit the same workspace atomically
+            manifest = self.spe.build(req, plan["spe"]["record_types"], cohort, permit)
+            status, _ = self.spe.request_download(manifest["workspace_id"], actor="privacy audit (self-test)")
+            db_path = self.spe.path(manifest["workspace_id"]) / "workspace.sqlite"
+            case["privacy_checks"] = audit_spe(manifest, cohort, plan["spe"]["record_types"], self.store, db_path,
+                                               status)
         if any(c["status"] == "fail" for c in case["privacy_checks"]):
             case["fulfilment"] = {"status": "WITHHELD", "message": "A privacy check failed; the workspace is locked."}
             return
