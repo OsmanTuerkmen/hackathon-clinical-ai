@@ -25,6 +25,7 @@ from ehds_desk.models import (
     RawPercent,
     RawRow,
     RawTable,
+    RegionCriterion,
     SexCriterion,
 )
 
@@ -33,7 +34,7 @@ HBA1C = CodeSet(system="loinc", prefixes=["4548-4"], label="HbA1c", source="expl
 
 
 def count(name: str, **kw) -> CountMetric:
-    return CountMetric(name=name, label=name, **kw)
+    return CountMetric(kind="count", name=name, label=name, **kw)
 
 
 def test_spec_rejects_percent_with_unknown_metric():
@@ -41,7 +42,7 @@ def test_spec_rejects_percent_with_unknown_metric():
         QuerySpec(
             metrics=[
                 count("a"),
-                PercentMetric(name="p", label="p", numerator="a", denominator="missing"),
+                PercentMetric(kind="percent", name="p", label="p", numerator="a", denominator="missing"),
             ]
         )
 
@@ -51,8 +52,8 @@ def test_spec_rejects_percent_on_mean():
         QuerySpec(
             metrics=[
                 count("a"),
-                MeanMetric(name="m", label="m", codes=HBA1C),
-                PercentMetric(name="p", label="p", numerator="m", denominator="a"),
+                MeanMetric(kind="mean", name="m", label="m", codes=HBA1C),
+                PercentMetric(kind="percent", name="p", label="p", numerator="m", denominator="a"),
             ]
         )
 
@@ -62,7 +63,7 @@ def test_percent_with_valid_counts_is_accepted():
         metrics=[
             count("a"),
             count("b"),
-            PercentMetric(name="p", label="p", numerator="a", denominator="b"),
+            PercentMetric(kind="percent", name="p", label="p", numerator="a", denominator="b"),
         ]
     )
     assert len(spec.metrics) == 3
@@ -95,17 +96,17 @@ def test_mean_only_for_patient_unit():
         QuerySpec(
             unit="encounter",
             encounter_scope=EncounterScope(),
-            metrics=[MeanMetric(name="m", label="m", codes=HBA1C)],
+            metrics=[MeanMetric(kind="mean", name="m", label="m", codes=HBA1C)],
         )
-    spec = QuerySpec(metrics=[MeanMetric(name="m", label="m", codes=HBA1C)])
+    spec = QuerySpec(metrics=[MeanMetric(kind="mean", name="m", label="m", codes=HBA1C)])
     assert spec.metrics[0].method == "latest"
 
 
 def _build() -> QuerySpec:
     return QuerySpec(
-        population=[AgeCriterion(min=18, max=None), SexCriterion(value="female")],
+        population=[AgeCriterion(kind="age", min=18, max=None), SexCriterion(kind="sex", value="female")],
         group_by=[Dimension(kind="region")],
-        metrics=[count("adults", where=[ConditionCriterion(codes=E11)])],
+        metrics=[count("adults", where=[ConditionCriterion(kind="condition", codes=E11)])],
     )
 
 
@@ -145,12 +146,14 @@ def test_access_request_loads_example_file(settings):
 def test_criterion_discriminator_roundtrip():
     spec = QuerySpec(
         population=[
-            AgeCriterion(min=18, max=None),
+            AgeCriterion(kind="age", min=18, max=None),
             MedicationCriterion(
+                kind="medication",
                 codes=CodeSet(system="atc", prefixes=["A10"], label="antidiabetics", source="lexicon"),
                 negate=True,
             ),
             EncounterCriterion(
+                kind="encounter",
                 types=["inpatient"],
                 start_from=date(2025, 1, 1),
                 start_to=date(2025, 12, 31),
@@ -158,7 +161,7 @@ def test_criterion_discriminator_roundtrip():
             ),
         ],
         group_by=[Dimension(kind="age_band", bands=[AgeBand(label="18-64", min=18, max=64)])],
-        metrics=[count("a"), count("b"), PercentMetric(name="p", label="p", numerator="a", denominator="b")],
+        metrics=[count("a"), count("b"), PercentMetric(kind="percent", name="p", label="p", numerator="a", denominator="b")],
     )
     again = QuerySpec.model_validate(json.loads(json.dumps(spec.model_dump(mode="json"))))
     assert again == spec
@@ -193,3 +196,35 @@ def test_raw_table_and_decision_models():
     assert d.outcome == "REJECT"
     with pytest.raises(ValidationError):
         Decision(outcome="MAYBE", articles=[], headline="h", reasons=[], trace=[], warnings=[])
+
+
+def test_discriminator_is_required_in_json_schema():
+    assert "kind" in AgeCriterion.model_json_schema()["required"]
+    assert "kind" in CountMetric.model_json_schema()["required"]
+    with pytest.raises(ValidationError):
+        AgeCriterion(min=18)
+
+
+def test_spec_rejects_duplicate_metric_names():
+    with pytest.raises(ValidationError):
+        QuerySpec(metrics=[count("a"), count("a")])
+
+
+def test_spec_rejects_duplicate_dimension_kinds():
+    with pytest.raises(ValidationError):
+        QuerySpec(
+            group_by=[Dimension(kind="region"), Dimension(kind="region")],
+            metrics=[count("a")],
+        )
+
+
+def test_canonical_json_keeps_non_ascii_and_sorts_nested_keys():
+    spec = QuerySpec(
+        population=[RegionCriterion(kind="region", values=["Kärnten"])],
+        metrics=[count("a", where=[ConditionCriterion(kind="condition", codes=E11)])],
+    )
+    text = spec.canonical_json()
+    assert "K\u00e4rnten" in text and "\\u00e4" not in text
+    nested = json.loads(text)["metrics"][0]
+    assert list(nested) == sorted(nested)
+    assert text.index('"metrics"') < text.index('"population"')

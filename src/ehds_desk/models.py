@@ -55,47 +55,47 @@ class CodeSet(_Frozen):
 
 
 class AgeCriterion(_Frozen):
-    kind: Literal["age"] = "age"
+    kind: Literal["age"]
     min: int | None = None
     max: int | None = None
 
 
 class SexCriterion(_Frozen):
-    kind: Literal["sex"] = "sex"
+    kind: Literal["sex"]
     value: Literal["female", "male"]
 
 
 class RegionCriterion(_Frozen):
-    kind: Literal["region"] = "region"
+    kind: Literal["region"]
     values: list[str]
 
 
 class DataHolderCriterion(_Frozen):
-    kind: Literal["data_holder"] = "data_holder"
+    kind: Literal["data_holder"]
     values: list[str]
 
 
 class ConditionCriterion(_Frozen):
-    kind: Literal["condition"] = "condition"
+    kind: Literal["condition"]
     codes: CodeSet
     negate: bool = False
 
 
 class MedicationCriterion(_Frozen):
-    kind: Literal["medication"] = "medication"
+    kind: Literal["medication"]
     codes: CodeSet
     active_only: bool = True
     negate: bool = False
 
 
 class ObservationCriterion(_Frozen):
-    kind: Literal["observation"] = "observation"
+    kind: Literal["observation"]
     codes: CodeSet
     negate: bool = False
 
 
 class EncounterCriterion(_Frozen):
-    kind: Literal["encounter"] = "encounter"
+    kind: Literal["encounter"]
     types: list[EncounterType] = []
     start_from: date | None = None
     start_to: date | None = None
@@ -146,7 +146,7 @@ class EncounterScope(_Frozen):
 
 
 class CountMetric(_Frozen):
-    kind: Literal["count"] = "count"
+    kind: Literal["count"]
     name: str
     label: str
     where: list[Criterion] = []
@@ -154,7 +154,7 @@ class CountMetric(_Frozen):
 
 
 class PercentMetric(_Frozen):
-    kind: Literal["percent"] = "percent"
+    kind: Literal["percent"]
     name: str
     label: str
     numerator: str
@@ -162,7 +162,7 @@ class PercentMetric(_Frozen):
 
 
 class MeanMetric(_Frozen):
-    kind: Literal["mean"] = "mean"
+    kind: Literal["mean"]
     name: str
     label: str
     codes: CodeSet
@@ -191,6 +191,12 @@ class QuerySpec(_Frozen):
             raise ValueError("unit 'encounter' requires encounter_scope")
         if self.output == "statistics" and not self.metrics:
             raise ValueError("output 'statistics' requires at least one metric")
+        names = [m.name for m in self.metrics]
+        if len(names) != len(set(names)):
+            raise ValueError("metric names must be unique")
+        dim_kinds = [d.kind for d in self.group_by]
+        if len(dim_kinds) != len(set(dim_kinds)):
+            raise ValueError("group_by must not contain the same dimension kind twice")
         count_names = {m.name for m in self.metrics if isinstance(m, CountMetric)}
         for m in self.metrics:
             if isinstance(m, MeanMetric) and self.unit != "patient":
