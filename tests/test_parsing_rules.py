@@ -60,9 +60,9 @@ def test_parsed_numbers_match_expected(settings, db, term, rid):
     answer = expected(settings)[rid]["answer"]
     assert set(answer) == set(groups)
     for key, exp in answer.items():
+        # per metric, in report order (metric names differ from expected.json, positions do not)
         wanted = list(exp.values()) if isinstance(exp, dict) else [exp]
-        for value in wanted:
-            assert value in groups[key], (rid, key, value, groups[key])
+        assert groups[key] == wanted, (rid, key, groups[key], wanted)
 
 
 def test_r01_percent_comes_from_definition(settings, term):
@@ -241,3 +241,296 @@ def test_no_metrics_returns_none(term):
     spec, report = parse_rules(make_request(["Something entirely different."], question="Tell me."), term)
     assert spec is None
     assert not report.complete
+
+
+# --- Fix round 1: jury-style wordings (review probes) ---------------------------------------------
+
+D = "Diabetes = any condition with an ICD-10 code starting with E11."
+H = "Hypertension = any condition with an ICD-10 code starting with I10."
+INS = "Insulin = ATC code starting with A10A."
+
+
+def parse(term, defs, question="How many patients?", **kw):
+    return parse_rules(make_request(defs, question, **kw), term)
+
+
+def all_criteria(spec):
+    crit = list(spec.population)
+    for m in spec.metrics:
+        crit += list(getattr(m, "where", []))
+    return crit
+
+
+@pytest.mark.parametrize(
+    ("defs", "question"),
+    [
+        ([D, "Report per region: smokers with diabetes."], None),
+        ([D, "Report per sex: patients with diabetes treated at LKH Graz."], None),
+        ([D, "Report per region: patients diagnosed with diabetes after 2020."], None),
+        ([D, "Report per region: patients with diabetes diagnosed in 2024."], None),
+        (["Report per region: median BMI of adults with diabetes."], None),
+        (["Report per region: patients with an inpatient stay in the last 12 months."], None),
+        (["Report per region: patients with at least two inpatient stays."], None),
+        (["Report per hospital: readmissions within 30 days."], None),
+        ([D, "Report per region: the total."], None),
+        (["Report per region: patients with diabetes with HbA1c above 8%."], None),
+        ([D, "Report per region: patients with diabetes, how many have an HbA1c value above 9 %."], None),
+        (["Cohort = adults with diabetes who smoke.", D, "Report the size of the cohort."], None),
+        (["Cohort = adults with diabetes and with retinopathy.", D, "Report the size of the cohort."], None),
+        ([D, "Report per region: patients with diabetes and women."], None),
+        ([D], "How many smokers have diabetes, by region?"),
+        (["Asthma = any condition with an ICD-10 code starting with J45."], "How many patients have asthma, by municipality and region?"),
+        ([D], "How many patients have diabetes, per hospital and per region and per year?"),
+        (["Report per region: patients with type 1 or type 2 diabetes."], None),
+        (["Asthma = any condition with an ICD-10 code starting with J45.", "Report per region: patients with asthma and their mean age."], None),
+    ],
+)
+def test_residual_words_are_not_understood(term, defs, question):
+    _spec, report = parse(term, defs, question or "How many patients?")
+    assert not report.complete
+
+
+@pytest.mark.parametrize(
+    ("defs", "item_crit"),
+    [
+        ([D, INS, "Report per region: patients with diabetes, how many of them are not treated with insulin."], "where"),
+        ([D, INS, "Report per region: patients with diabetes, how many of them never received insulin."], "where"),
+        ([D, INS, "Report per region: patients with diabetes, how many of them lack insulin."], "where"),
+        ([D, INS, "Report per region: patients with diabetes who have never been on insulin."], "population"),
+        ([D, H, "Report per region: patients with diabetes excluding those with hypertension."], "population"),
+        ([D, H, "Report per region: patients with diabetes except those with hypertension."], "population"),
+        ([D, H, "Report per region: patients with diabetes but free of hypertension."], "population"),
+        ([D, "Report per region: patients with diabetes other than those on insulin."], "population"),
+        ([D, "Report per region: adults, how many of them are diabetes-free."], "where"),
+    ],
+)
+def test_exclusion_wordings_negate(term, defs, item_crit):
+    spec, report = parse(term, defs)
+    assert report.complete, report.not_understood
+    crit = spec.population if item_crit == "population" else [c for m in spec.metrics for c in getattr(m, "where", [])]
+    negated = [c for c in crit if getattr(c, "negate", False)]
+    assert len(negated) == 1
+    assert negated[0].codes.prefixes in (["A10A"], ["I10"], ["E11"])
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        "patients with diabetes but not hypertension",
+        "adults, how many of them are non-diabetic",
+    ],
+)
+def test_unhandled_exclusion_is_not_understood(term, item):
+    _spec, report = parse(term, [D, f"Report per region: {item}."])
+    assert not report.complete
+
+
+@pytest.mark.parametrize(
+    ("item", "values"),
+    [
+        ("patients in Vienna with diabetes", ["Wien"]),
+        ("patients with diabetes in Steiermark or Wien", ["Steiermark", "Wien"]),
+        ("patients with diabetes living in Upper Austria", ["Oberösterreich"]),
+    ],
+)
+def test_region_filters(term, item, values):
+    spec, report = parse(term, [D, f"Report per sex: {item}."])
+    assert report.complete, report.not_understood
+    assert [c.values for c in spec.population if c.kind == "region"] == [values]
+
+
+@pytest.mark.parametrize("item", ["patients with diabetes not living in Wien", "patients with diabetes outside Wien"])
+def test_negated_region_is_not_understood(term, item):
+    _spec, report = parse(term, [D, f"Report per sex: {item}."])
+    assert not report.complete
+
+
+def test_main_diagnosis_from_defined_term(term):
+    spec, report = parse(
+        term,
+        [
+            "Hip fracture = main diagnosis (primary_icd10) starting with S72.",
+            "Count inpatient stays in 2025.",
+            "Report per hospital: inpatient stays with a main diagnosis of hip fracture.",
+        ],
+    )
+    assert report.complete, report.not_understood
+    assert spec.unit == "encounter"
+    assert spec.encounter_scope.types == ["inpatient"]
+    assert spec.encounter_scope.primary_icd10.prefixes == ["S72"]
+    assert str(spec.encounter_scope.start_from) == "2025-01-01"
+    assert [d.kind for d in spec.group_by] == ["data_holder"]
+    assert spec.population == []
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        "inpatient stays with a main diagnosis of hip fracture",
+        "inpatient stays with main diagnosis hip fracture",
+        "inpatient stays whose main diagnosis is hip fracture",
+        "inpatient stays with primary_icd10 S72",
+        "inpatient stays whose main diagnosis starts with S72",
+    ],
+)
+def test_main_diagnosis_without_definition(term, item):
+    spec, report = parse(term, ["Count inpatient stays in 2025.", f"Report per hospital: {item}."])
+    assert report.complete, report.not_understood
+    assert spec.unit == "encounter"
+    assert spec.encounter_scope.types == ["inpatient"]
+    assert spec.encounter_scope.primary_icd10.prefixes == ["S72"]
+    assert spec.population == []
+
+
+def test_main_diagnosis_in_count_sentence(term):
+    spec, report = parse(
+        term,
+        [
+            "Count inpatient stays whose main diagnosis (primary_icd10) starts with S72 and whose start_date is in 2025.",
+            "Report per hospital: stays.",
+        ],
+    )
+    assert report.complete, report.not_understood
+    assert spec.encounter_scope.primary_icd10.prefixes == ["S72"]
+    assert spec.encounter_scope.types == ["inpatient"]
+
+
+@pytest.mark.parametrize(
+    ("defs", "types", "prefixes"),
+    [
+        (["Count emergency visits in 2024.", "Report per hospital: visits."], ["emergency"], None),
+        (
+            ["Fracture stay = inpatient stay whose main diagnosis starts with S72 or S82.", "Report per hospital: fracture stays."],
+            ["inpatient"],
+            ["S72", "S82"],
+        ),
+        (
+            ["Hip fracture stay = inpatient stay with primary_icd10 S72.", "Report per hospital: hip fracture stays."],
+            ["inpatient"],
+            ["S72"],
+        ),
+        (
+            ["Hospital stay = encounter with type 'inpatient' or 'emergency'.", "Report per hospital: hospital stays."],
+            ["inpatient", "emergency"],
+            None,
+        ),
+    ],
+)
+def test_encounter_wordings(term, defs, types, prefixes):
+    spec, report = parse(term, defs)
+    assert report.complete, report.not_understood
+    assert spec.unit == "encounter"
+    assert spec.encounter_scope.types == types
+    primary = spec.encounter_scope.primary_icd10
+    assert (primary.prefixes if primary else None) == prefixes
+
+
+@pytest.mark.parametrize(
+    "defs",
+    [
+        ["Pneumonia = any condition with an ICD-10 code starting with J18.", "Count inpatient stays in 2024.",
+         "Report per hospital: inpatient stays for pneumonia."],
+        ["Pneumonia = any condition with an ICD-10 code starting with J18.", "Count inpatient stays in 2024.",
+         "Report per hospital: inpatient stays with pneumonia."],
+        ["Count inpatient stays in 2025.", "Report per hospital: inpatient stays for hip fracture."],
+        ["Pneumonia stay = inpatient encounter with a diagnosis code starting with J18.",
+         "Count stays (not patients) whose start_date is in 2024.", "Report per hospital: pneumonia stays."],
+    ],
+)
+def test_condition_on_stays_without_main_diagnosis_is_not_understood(term, defs):
+    _spec, report = parse(term, defs)
+    assert not report.complete
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Count stays (not patients) whose end_date is in 2024.",
+        "Count stays (not patients) whose start_date is after 2023.",
+        "Count stays (not patients) whose start_date is in 2024 or 2025.",
+    ],
+)
+def test_unsupported_date_rules_are_not_understood(term, sentence):
+    _spec, report = parse(
+        term, ["Inpatient stay = encounter with type 'inpatient'.", sentence, "Report per hospital: inpatient stays."]
+    )
+    assert not report.complete
+    assert sentence in report.not_understood
+
+
+@pytest.mark.parametrize(
+    ("definition", "item", "expected"),
+    [
+        ("Elderly diabetic = patient aged 65 or older with an ICD-10 code starting with E11.", "elderly diabetics",
+         {("age", 65, None), ("condition", "E11")}),
+        ("Female diabetic = female patient with an ICD-10 code starting with E11.", "female diabetics",
+         {("sex", "female"), ("condition", "E11")}),
+        ("Young = aged under 40.", "young patients", {("age", None, 39)}),
+    ],
+)
+def test_definition_analysers_combine(term, definition, item, expected):
+    spec, report = parse(term, [definition, f"Report per region: {item}."])
+    assert report.complete, report.not_understood
+    got = set()
+    for c in spec.population:
+        if c.kind == "age":
+            got.add(("age", c.min, c.max))
+        elif c.kind == "sex":
+            got.add(("sex", c.value))
+        else:
+            got.add((c.kind, c.codes.prefixes[0]))
+    assert got == expected
+
+
+@pytest.mark.parametrize(
+    "definition",
+    [
+        "Hypertension = any condition with an ICD-10 code starting with I10, excluding I15.",
+        "Hypertension = any condition with an ICD-10 code starting with I10 recorded since 2020.",
+        "Hypertension = BMI of 30 or more.",
+        "Hypertension = HbA1c value of 8 or higher.",
+        "Hypertension = high blood pressure requiring three drugs.",
+        "Hypertension = type 2 diabetes mellitus diagnosed by a GP.",
+    ],
+)
+def test_bad_definition_bodies_are_not_understood(term, definition):
+    _spec, report = parse(term, [definition, "Report per region: patients with hypertension."])
+    assert definition in report.not_understood
+
+
+@pytest.mark.parametrize(
+    ("item", "lo", "hi"),
+    [
+        ("patients between 18 and 64 with hypertension", 18, 64),
+        ("patients aged 18 to 64 with hypertension", 18, 64),
+        ("patients older than 70 with hypertension", 71, None),
+        ("patients over 65 with hypertension", 66, None),
+        ("patients younger than 18 with hypertension", None, 17),
+        ("patients aged >= 65 with hypertension", 65, None),
+        ("patients aged 65 and older with hypertension", 65, None),
+    ],
+)
+def test_age_wordings(term, item, lo, hi):
+    spec, report = parse(term, [f"Report per region: {item}."])
+    assert report.complete, report.not_understood
+    assert [(c.min, c.max) for c in spec.population if c.kind == "age"] == [(lo, hi)]
+
+
+def test_threshold_is_not_an_age(term):
+    _spec, report = parse(term, ["Report per region: patients with a BMI over 30."])
+    assert not report.complete
+
+
+@pytest.mark.parametrize(("body", "active"), [("an active prescription of atorvastatin", True), ("atorvastatin", False)])
+def test_active_in_definition_body(term, body, active):
+    spec, report = parse(term, [f"Statin = {body}.", D, "Report per region: patients with diabetes, % on a statin."])
+    assert report.complete, report.not_understood
+    meds = [c for c in all_criteria(spec) if c.kind == "medication"]
+    assert [m.active_only for m in meds] == [active]
+
+
+def test_unused_term_mentioned_in_failed_item_does_not_join_population(term):
+    spec, report = parse(term, [D, "Report per region: patients, patients with diabetes treated at LKH Graz."])
+    assert not report.complete
+    assert spec is not None
+    assert spec.population == []
