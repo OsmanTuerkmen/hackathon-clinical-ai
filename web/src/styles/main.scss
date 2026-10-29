@@ -251,6 +251,15 @@ textarea:focus-visible,
   color: var(--cds-text-secondary);
 }
 
+.safe-indicators--compact {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.page-heading[tabindex="-1"]:focus {
+  outline: none;
+}
+
 .safe-indicator--pass svg {
   fill: var(--accessdesk-status-pass-text);
 }
@@ -283,6 +292,13 @@ textarea:focus-visible,
     var(--accessdesk-hatch) 6px
   );
   color: var(--cds-text-secondary);
+}
+
+.value-chip {
+  display: inline-block;
+  padding-inline: var(--cds-spacing-03);
+  background: var(--cds-layer-01);
+  color: var(--cds-text-primary);
 }
 
 .five-safes-table th:first-child,

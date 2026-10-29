@@ -1,6 +1,7 @@
 import {
   ChartColumn,
   CheckmarkFilled,
+  CheckmarkOutline,
   CircleDash,
   Locked,
   Misuse,
@@ -53,11 +54,12 @@ export function StatusTag({
       ? "green"
       : status === "held_identity" || status === "review_needed"
         ? "warm-gray"
-        : "blue";
+        : "cool-gray";
   const warning = status === "held_identity" || status === "review_needed";
   return (
     <Tag type={type} className={warning ? "accessdesk-tag--held" : undefined}>
       {warning && <WarningAltFilled size={16} aria-hidden="true" />}
+      {status === "released" && <CheckmarkOutline size={16} aria-hidden="true" />}
       {t(language, `status.${status}`)}
     </Tag>
   );
@@ -71,7 +73,8 @@ export function DecisionTag({
   language: Language;
 }) {
   const type = decision === "REJECT" ? "red" : decision === "APPROVE_SPE" ? "teal" : "green";
-  return <Tag type={type}>{t(language, `decision.${decision}`)}</Tag>;
+  const Icon = decision === "REJECT" ? Misuse : decision === "APPROVE_SPE" ? Locked : ChartColumn;
+  return <Tag type={type}><Icon size={16} aria-hidden="true" />{t(language, `decision.${decision}`)}</Tag>;
 }
 
 export function SafeIndicators({
@@ -118,7 +121,9 @@ export function ValueCell({
   const hidden = value === "<10" || value === "suppressed";
   return (
     <span className={`value-cell${hidden ? " value-cell--hidden" : ""}`}>
-      {formatCell(value, language, type)}
+      {hidden
+        ? <span className="value-chip">{formatCell(value, language, type)}</span>
+        : formatCell(value, language, type)}
     </span>
   );
 }
@@ -146,7 +151,7 @@ export function ResultTable({
             ))}
             {released.measures.map((measure) => (
               <th key={measure.key} className="data-table__number" scope="col">
-                {measure.label}
+                {measureLabel(measure.label)}
               </th>
             ))}
           </tr>
@@ -287,10 +292,13 @@ export function ResultChart({
   if (!released || released.rows.length === 0) return null;
   if (released.group_dims.length !== 1) return null;
   const dimension = released.group_dims[0];
+  const firstPercent = released.measures.findIndex((item) => item.type === "pct");
+  const firstMean = released.measures.findIndex((item) => item.type === "mean");
+  const preferred = firstPercent >= 0 ? firstPercent : firstMean >= 0 ? firstMean : 0;
   if (dimension === "region") {
-    return <AustriaMap released={released} language={language} measureIndex={measureIndex} />;
+    return <AustriaMap released={released} language={language} measureIndex={preferred} />;
   }
-  return <BarChart released={released} language={language} measureIndex={measureIndex} />;
+  return <BarChart released={released} language={language} measureIndex={preferred} />;
 }
 
 export function BarChart({
@@ -315,7 +323,7 @@ export function BarChart({
   return (
     <figure className="chart-frame">
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby="bar-chart-title bar-chart-desc">
-        <title id="bar-chart-title">{measure.label}</title>
+        <title id="bar-chart-title">{measureLabel(measure.label)}</title>
         <desc id="bar-chart-desc">
           {language === "de" ? "Balkendiagramm nach Gruppe." : "Bar chart by group."}
         </desc>
@@ -417,7 +425,7 @@ export function AustriaMap({
         </label>
       )}
       <svg viewBox="0 0 720 470" role="img" aria-labelledby="austria-map-title austria-map-desc">
-        <title id="austria-map-title">{measure.label}</title>
+      <title id="austria-map-title">{measureLabel(measure.label)}</title>
         <desc id="austria-map-desc">
           {language === "de" ? "Karte der neun österreichischen Bundesländer." : "Map of the nine Austrian states."}
         </desc>
@@ -455,6 +463,11 @@ export function AustriaMap({
       </figcaption>
     </figure>
   );
+}
+
+export function measureLabel(label: string): string {
+  const cleaned = label.replace(/^(?:the|a|an|number of)\s+/i, "").trim();
+  return cleaned ? cleaned[0].toLocaleUpperCase() + cleaned.slice(1) : label;
 }
 
 export function PageState({

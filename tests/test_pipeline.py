@@ -11,9 +11,11 @@ def _request(data_dir, request_id):
 def test_pipeline_returns_five_safes_funnel_and_inbox_status(data_dir, desk):
     statistical = desk.process(_request(data_dir, "R01"), use_cache=False)
     assert statistical["ai"] == {
-        "status": {"enabled": False, "reason": "AI not configured"},
+        "status": {"enabled": False, "model": "claude-opus-5-5", "reason": "disabled"},
         "opinion": None,
         "agrees": None,
+        "model": "claude-opus-5-5",
+        "cached": False,
     }
     assert set(statistical["five_safes"]) == {
         "people", "projects", "data", "settings", "outputs",

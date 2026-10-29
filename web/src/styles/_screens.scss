@@ -259,9 +259,8 @@ body {
 }
 
 .case-header__articles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cds-spacing-03);
+  display: grid;
+  gap: var(--cds-spacing-01);
 }
 
 .app-main {
@@ -273,6 +272,28 @@ body {
   gap: var(--cds-spacing-03);
   padding: 0;
   list-style: none;
+}
+
+.case-panel mark[data-category="prohibited"] {
+  background: color-mix(in srgb, var(--cds-support-error) 18%, var(--cds-layer-01));
+  color: var(--cds-text-primary);
+  text-decoration-color: var(--cds-support-error);
+}
+
+.case-panel mark[data-category="allowed"] {
+  background: color-mix(in srgb, var(--cds-support-success) 18%, var(--cds-layer-01));
+  color: var(--cds-text-primary);
+  text-decoration-color: var(--cds-support-success);
+}
+
+.case-panel mark[data-category="justification"] {
+  background: color-mix(in srgb, var(--cds-support-info) 18%, var(--cds-layer-01));
+  color: var(--cds-text-primary);
+  text-decoration-color: var(--cds-support-info);
+}
+
+.case-section p + .section-heading {
+  margin-top: var(--cds-spacing-07);
 }
 
 .evidence-category {

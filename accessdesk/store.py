@@ -50,6 +50,8 @@ class Store:
     opted_ids: frozenset
     domains: dict = field(default_factory=dict)
     descriptions: dict = field(default_factory=dict)
+    patient_bits: dict = field(default_factory=dict)
+    encounter_bits: dict = field(default_factory=dict)
     load_seconds: float = 0.0
     lock: threading.RLock = field(default_factory=threading.RLock)
 
@@ -126,6 +128,18 @@ def load(data_dir):
         con.execute("CREATE INDEX ix_medications_atc ON medications(atc)")
         con.execute("CREATE INDEX ix_observations_patient_loinc_date ON observations(patient_id, loinc, date)")
         con.execute("CREATE INDEX ix_encounters_patient ON encounters(patient_id)")
+        patient_bits = {
+            patient_id: bit
+            for bit, (patient_id,) in enumerate(
+                con.execute("SELECT patient_id FROM patients ORDER BY patient_id").fetchall()
+            )
+        }
+        encounter_bits = {
+            encounter_id: bit
+            for bit, (encounter_id,) in enumerate(
+                con.execute("SELECT encounter_id FROM encounters ORDER BY encounter_id").fetchall()
+            )
+        }
 
         descriptions = {}
         for code, description in con.execute(
@@ -162,6 +176,8 @@ def load(data_dir):
         opted_ids=opted_ids,
         domains=domains,
         descriptions=descriptions,
+        patient_bits=patient_bits,
+        encounter_bits=encounter_bits,
         load_seconds=round(time.perf_counter() - started, 2),
         lock=lock,
     )

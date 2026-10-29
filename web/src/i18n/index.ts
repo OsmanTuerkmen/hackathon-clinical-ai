@@ -11,6 +11,9 @@ export const t = (language: Language, key: TranslationKey): string =>
 export const locale = (language: Language): string =>
   language === "de" ? "de-AT" : "en-GB";
 
+const numberLocale = (language: Language): string =>
+  language === "de" ? "de-DE" : "en-GB";
+
 export function formatDate(value: string | null | undefined, language: Language): string {
   if (!value) return "—";
   const date = new Date(value);
@@ -33,7 +36,7 @@ export function formatDateTime(value: string | null | undefined, language: Langu
 }
 
 export function formatNumber(value: number, language: Language, decimals?: number): string {
-  return new Intl.NumberFormat(locale(language), {
+  return new Intl.NumberFormat(numberLocale(language), {
     maximumFractionDigits: decimals ?? 1,
     minimumFractionDigits: decimals ?? 0,
   }).format(value);

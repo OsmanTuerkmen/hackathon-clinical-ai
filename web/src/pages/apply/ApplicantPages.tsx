@@ -110,8 +110,11 @@ export function ApplicantCasePage({ caseId }: { caseId: string }) {
   return (
     <section aria-labelledby="page-title">
       <h1 className="page-heading" id="page-title" tabIndex={-1}>
-        {result?.summary.id ?? caseId}
+        {language === "de" ? "Antrag" : "Application"} {result?.summary.id ?? caseId}
       </h1>
+      {result?.summary.question && (
+        <p className="page-subtitle">{result.summary.question}</p>
+      )}
       {loading || error ? (
         <PageState loading={loading} error={error} language={language} onRetry={load} />
       ) : result && (
@@ -124,7 +127,7 @@ export function ApplicantCasePage({ caseId }: { caseId: string }) {
                 ? (language === "de" ? "Datengenehmigung erteilt" : "Data permit issued")
                 : (language === "de" ? "Statistische Antwort" : "Statistical response")}</h2>
             <p>{language === "de" ? result.decision.reason_de : result.decision.reason_en}</p>
-            <ul className="article-list">
+            <ul className="article-list article-list--stacked">
               {result.decision.articles_detail.map((article) => (
                 <li key={article.n}>Art. {article.n}: {language === "de" ? article.title_de : article.title_en}</li>
               ))}
@@ -144,16 +147,23 @@ export function ApplicantCasePage({ caseId }: { caseId: string }) {
                   <ResultTable released={result.released} language={language} />
                   <div className="gate-summary">
                     <h2 className="section-heading">{t(language, "case.gate")}</h2>
-                    <p>
-                      {result.released.gate.cells} {t(language, "case.cells")} ·{" "}
-                      {result.released.gate.counts_hidden
-                        + result.released.gate.pct_suppressed
-                        + result.released.gate.means_suppressed} {t(language, "case.hidden")}
-                    </p>
+                    <dl className="gate-stats">
+                      <div><dt>{t(language, "case.cells")}</dt><dd>{result.released.gate.cells}</dd></div>
+                      <div><dt>{t(language, "case.hiddenCounts")}</dt><dd>{result.released.gate.counts_hidden}</dd></div>
+                      <div><dt>{t(language, "case.suppressedValues")}</dt><dd>
+                        {result.released.gate.pct_suppressed + result.released.gate.means_suppressed}
+                      </dd></div>
+                    </dl>
                   </div>
                 </div>
               )}
-              {result.funnel && <Funnel steps={result.funnel} language={language} />}
+              {result.funnel && (
+                <section className="applicant-cohort">
+                  <h2 className="section-heading">{t(language, "case.cohort")}</h2>
+                  <Funnel steps={result.funnel} language={language} />
+                  <p className="secondary-text">{t(language, "case.rounded")}</p>
+                </section>
+              )}
               <div className="applicant-result-actions">
                 <Button kind="tertiary" onClick={() => navigate(`/letter/${caseId}`)}>
                   {t(language, "applicant.openLetter")}

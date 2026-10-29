@@ -227,9 +227,15 @@ class Compiler:
                 where.append(f"{expression} IS NOT NULL")
 
         columns, layout = [], []
+        cell_expressions, cell_fields = [], []
+        unit_id = "b.encounter_id" if unit == "encounter" else "b.patient_id"
         for index, measure in enumerate(plan["measures"]):
             if measure["type"] == "count":
                 condition = self.cond(measure["set"], skip=population_ids)
+                cell_expressions.append(
+                    f"CASE WHEN {condition or '1 = 1'} THEN {unit_id} END"
+                )
+                cell_fields.append((measure["key"], "value"))
                 columns.append(
                     f"SUM(CASE WHEN {condition} THEN 1 ELSE 0 END) AS m{index}"
                     if condition else f"COUNT(*) AS m{index}"
@@ -238,6 +244,11 @@ class Compiler:
             elif measure["type"] == "pct":
                 numerator = self.cond(measure["num_set"], skip=population_ids) or "1 = 1"
                 denominator = self.cond(measure["den_set"], skip=population_ids) or "1 = 1"
+                cell_expressions.extend([
+                    f"CASE WHEN {numerator} THEN {unit_id} END",
+                    f"CASE WHEN {denominator} THEN {unit_id} END",
+                ])
+                cell_fields.extend([(measure["key"], "num"), (measure["key"], "den")])
                 columns.extend([
                     f"SUM(CASE WHEN {numerator} THEN 1 ELSE 0 END) AS m{index}_num",
                     f"SUM(CASE WHEN {denominator} THEN 1 ELSE 0 END) AS m{index}_den",
@@ -252,6 +263,10 @@ class Compiler:
                     latest = self.latest_cte(value_concept)
                     self.joins[latest] = f"LEFT JOIN {latest} ON {latest}.patient_id = b.patient_id"
                     value = f"{latest}.value10"
+                cell_expressions.append(
+                    f"CASE WHEN ({condition}) AND {value} IS NOT NULL THEN b.patient_id END"
+                )
+                cell_fields.append((measure["key"], "patients"))
                 columns.extend([
                     f"SUM(CASE WHEN {condition} THEN {value} END) AS m{index}_sum10",
                     f"COUNT(CASE WHEN {condition} THEN {value} END) AS m{index}_n",
@@ -275,6 +290,13 @@ class Compiler:
             "WITH " + ",\n".join(ctes) + "\nSELECT " + ", ".join(group_names + columns)
             + "\nFROM base b" + "".join("\n" + join for join in self.joins.values())
             + (f"\nGROUP BY {', '.join(group_names)}" if group_names else "")
+        )
+        self.cell_fields = cell_fields
+        self.cell_group_names = group_names
+        self.cell_sql = (
+            "WITH " + ",\n".join(ctes) + "\nSELECT "
+            + ", ".join([*(f"b.{name}" for name in group_names), *cell_expressions])
+            + "\nFROM base b" + "".join("\n" + join for join in self.joins.values())
         )
         return sql, group_names, layout
 
@@ -338,6 +360,22 @@ def run(plan, store):
     return {"sql": sql, "group_names": group_names, "raw": raw, "layout": layout}
 
 
+def cell_sets(plan, store):
+    compiled = Compiler(plan, store)
+    compiled.compile()
+    with store.lock:
+        rows = store.con.execute(compiled.cell_sql).fetchall()
+    result = {}
+    group_count = len(compiled.cell_group_names)
+    for row in rows:
+        group = tuple(row[:group_count])
+        for index, field in enumerate(compiled.cell_fields):
+            unit_id = row[group_count + index]
+            if unit_id is not None:
+                result.setdefault((group, *field), set()).add(unit_id)
+    return result
+
+
 def funnel(plan, store):
     compiler = Compiler(plan, store)
     result = []
@@ -371,12 +409,12 @@ def funnel(plan, store):
             add("unit_years", "After requested years", "Nach den angefragten Jahren", filtered)
         return result
 
-    add("all_patients", "All patients in the data", "Alle Personen im Datensatz", store.total_patients)
+    add("all_patients", "All people in the data set", "Alle Personen im Datensatz", store.total_patients)
     with store.lock:
         count = store.con.execute(
             "SELECT COUNT(*) FROM patients WHERE opted_out = false"
         ).fetchone()[0]
-    add("not_opted_out", "After opt-outs are excluded", "Nach Ausschluss der Widersprüche", count)
+    add("not_opted_out", "Without opt-out (Art. 71)", "Ohne Widerspruch (Art. 71)", count)
 
     selected = []
     seen = set()
@@ -404,11 +442,11 @@ def funnel(plan, store):
         seen.add(identity)
         selected.append(term.model_dump(mode="python"))
         concept = compiler.concepts[term.concept]
-        after = f"Excluding {concept['name']}" if term.neg else f"After {concept['name']}"
+        after = f"+ {concept['name']}"
         add(
             f"term_{len(seen)}_{term.concept}",
             after,
-            f"Nach {concept['name']}",
+            after,
             count_terms(selected),
         )
 

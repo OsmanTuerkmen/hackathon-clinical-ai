@@ -18,7 +18,7 @@ def cases(data_dir, tmp_path):
 def test_case_registry_loads_official_and_demo_cases(cases):
     summaries = cases.list()
 
-    assert len(summaries) == 14
+    assert len(summaries) == 15
     by_id = {summary["id"]: summary for summary in summaries}
     assert by_id["R02"]["decision"] == "REJECT"
     assert by_id["R02"]["status"] == "auto_decided"
@@ -34,9 +34,9 @@ def test_case_registry_filters_and_searches(cases):
         "R02", "R04", "R06", "R10",
     }
     assert {case["id"] for case in cases.list(group="demo")} == {
-        "D01", "D02", "D03", "D04",
+        "D01", "D02", "D03", "D04", "D05",
     }
-    assert [case["id"] for case in cases.list(q="Sophie")] == ["R01"]
+    assert [case["id"] for case in cases.list(q="Sophie")] == ["D05", "R01"]
     assert {case["id"] for case in cases.list(status="review_needed")} == {"D04"}
 
 

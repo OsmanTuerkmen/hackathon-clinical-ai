@@ -17,7 +17,7 @@ function trackExternalRequests(page) {
 test("inbox renders real cases and supports keyboard selection", async ({ page }) => {
   const external = trackExternalRequests(page);
   await page.goto("/");
-  await expect(page.locator(".desktop-case-table tbody tr")).toHaveCount(14);
+  await expect(page.locator(".desktop-case-table tbody tr")).toHaveCount(15);
   await expect(page.getByRole("tab", { name: /Prüfung nötig/ })).toBeVisible();
 
   const rows = page.locator(".desktop-case-table tbody tr");

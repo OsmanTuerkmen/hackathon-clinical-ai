@@ -32,6 +32,7 @@ def main():
     parser.add_argument("--data", help="path to TRACK-3-ehds/data")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--runtime", default="runtime")
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
 
@@ -52,7 +53,10 @@ def main():
     host_for_url = "localhost" if args.host in ("0.0.0.0", "::") else args.host
     url = f"http://{host_for_url}:{port}"
     print(f"AccessDesk 2 is starting at {url}", flush=True)
-    app = create_app(data_dir, runtime_dir=ROOT / "runtime")
+    runtime_dir = Path(args.runtime)
+    if not runtime_dir.is_absolute():
+        runtime_dir = ROOT / runtime_dir
+    app = create_app(data_dir, runtime_dir=runtime_dir)
     if not args.no_browser:
         def open_browser():
             time.sleep(0.5)

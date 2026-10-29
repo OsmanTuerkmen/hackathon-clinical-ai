@@ -2,6 +2,7 @@ import {
   Button,
   DataTable,
   Search as CarbonSearch,
+  Tag,
   Table,
   TableBody,
   TableCell,
@@ -228,7 +229,7 @@ export function InboxPage() {
                             <TableCell><DecisionTag decision={item.decision} language={language} /></TableCell>
                             <TableCell><StatusTag status={item.status} language={language} /></TableCell>
                             <TableCell><SafeIndicators safes={item.five_safes} language={language} compact /></TableCell>
-                            <TableCell>{item.ai_involved ? t(language, "ai.on") : "—"}</TableCell>
+                            <TableCell>{item.ai_involved ? <Tag type="outline">KI</Tag> : "—"}</TableCell>
                           </TableRow>
                         );
                       })}

@@ -13,6 +13,7 @@ def mappings(plan, store):
                 "name": concept.name,
                 "kind": concept.kind,
                 "source": concept.source,
+                "ai": concept.source.startswith("AI mapping:"),
                 "codes": [],
             }
             if concept.kind == "condition":

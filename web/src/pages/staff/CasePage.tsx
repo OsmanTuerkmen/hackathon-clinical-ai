@@ -227,14 +227,14 @@ function FiveSafesOverview({
               const summary = language === "de" ? safe.summary_de : safe.summary_en;
               return (
                 <tr key={name}>
-                  <th scope="row">{t(language, `safe.${name}`)}</th>
+                  <th scope="row">{t(language, `safe.name.${name}`)}</th>
                   <td>{questions[name]}</td>
                   <td><FiveSafeStatus status={safe.status} language={language} /></td>
                   <td>{summary}</td>
                   <td>
-                    <button
-                      className="text-link"
-                      type="button"
+                    <Button
+                      kind="ghost"
+                      size="sm"
                       onClick={() => onSelectTab(({
                         people: "people",
                         projects: "decision",
@@ -243,8 +243,8 @@ function FiveSafesOverview({
                         outputs: "result",
                       } as Record<SafeName, CaseTab>)[name])}
                     >
-                      {language === "de" ? "Öffnen" : "View"}
-                    </button>
+                      {language === "de" ? "Zum Nachweis" : "Show evidence"}
+                    </Button>
                   </td>
                 </tr>
               );

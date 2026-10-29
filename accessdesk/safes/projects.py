@@ -100,13 +100,15 @@ ORG_LABELS = {
 SUSPICIOUS_ORGS = {"insurance", "bank", "marketing", "employer_hr", "harmful_industry"}
 
 ARTICLE_TITLES = {
-    "53": ("Purposes for which health data may be reused", "Zulässige Zwecke der Sekundärnutzung"),
-    "54": ("Prohibited purposes", "Verbotene Zwecke"),
-    "66": ("Data minimisation: anonymised first, pseudonymised only if justified", "Datenminimierung: zuerst anonymisiert, pseudonymisiert nur wenn begründet"),
-    "67": ("Health data access application", "Antrag auf Datenzugang"),
+    "53": ("Purposes for secondary use", "Zwecke der Sekundärnutzung"),
+    "54": ("Prohibited secondary use", "Unerlaubte Sekundärnutzung"),
+    "57": ("Tasks of health data access bodies", "Aufgaben der Zugangsstellen für Gesundheitsdaten"),
+    "61": ("Duties of health data users", "Pflichten der Gesundheitsdatennutzer"),
+    "66": ("Data minimisation and purpose limitation", "Datenminimierung und Zweckbindung"),
+    "67": ("Health data access applications", "Anträge auf Zugang zu Gesundheitsdaten"),
     "68": ("Data permit", "Datengenehmigung"),
-    "69": ("Health data request (anonymised statistics)", "Datenanfrage (anonymisierte Statistik)"),
-    "71": ("Right to opt out", "Widerspruchsrecht"),
+    "69": ("Health data request", "Gesundheitsdatenanfrage"),
+    "71": ("Right to opt out", "Recht zum Widerspruch"),
     "73": ("Secure processing environment", "Sichere Verarbeitungsumgebung"),
 }
 

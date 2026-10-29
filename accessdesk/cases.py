@@ -53,6 +53,7 @@ class CaseRegistry:
             use_cache=True,
             actor=f"system:case-registry",
             login=auth_login,
+            differencing=True,
         )
         self._cases[case_id] = {
             "group": group,
@@ -108,6 +109,7 @@ class CaseRegistry:
                 use_cache=True,
                 actor=f"applicant:{stored_request.get('applicant', {}).get('name', '?')}",
                 login=login or "",
+                differencing=True,
             )
             case = {
                 "group": "custom",
@@ -251,7 +253,7 @@ class CaseRegistry:
             "five_safes": five_safes,
             "flags_count": len(features.get("prohibited", [])) + len(result["who"].get("flags", [])),
             "ai_involved": bool(result["ai"].get("opinion")) or any(
-                "ai" in mapping.get("source", "").casefold()
+                mapping.get("ai", False)
                 for mapping in result.get("mappings", [])
             ),
             "permit_id": (result.get("spe") or {}).get("permit_id"),

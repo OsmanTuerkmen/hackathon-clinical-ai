@@ -6,6 +6,9 @@ import threading
 import time
 
 from . import audit as audit_module
+from . import ai as ai_module
+from . import ai_spec
+from . import differencing
 from . import store
 from .plan import compiler, parser
 from .safes import data as safe_data
@@ -18,8 +21,10 @@ class AccessDesk:
         os.makedirs(root, exist_ok=True)
         started = time.perf_counter()
         self.store = store.load(data_dir)
+        self.ai = ai_module.Assistant(root)
         self.load_seconds = round(time.perf_counter() - started, 2)
         self.audit = audit_module.Audit(os.path.join(root, "audit.jsonl"))
+        self.release_ledger = differencing.ReleaseLedger(root)
         self.registry = people.Registry(registry_path)
         self.expected = {}
         if expected_path and os.path.exists(expected_path):
@@ -28,13 +33,17 @@ class AccessDesk:
         self.cache = {}
         self.lock = threading.RLock()
 
-    def process(self, request, use_cache=True, actor=None, login=None):
+    def process(self, request, use_cache=True, actor=None, login=None, differencing=False):
         with self.lock:
-            return self._process(request, use_cache, actor, login)
+            return self._process(request, use_cache, actor, login, differencing)
 
-    def _process(self, request, use_cache, actor, login):
+    def _process(self, request, use_cache, actor, login, differencing_guard):
         cache_key = hashlib.sha256(
-            json.dumps([request, login], sort_keys=True, ensure_ascii=False).encode("utf-8")
+            json.dumps(
+                [request, login, differencing_guard],
+                sort_keys=True,
+                ensure_ascii=False,
+            ).encode("utf-8")
         ).hexdigest()
         if use_cache and cache_key in self.cache:
             return {**self.cache[cache_key], "cached": True}
@@ -65,7 +74,31 @@ class AccessDesk:
 
         t = time.perf_counter()
         decision = projects.decide(request, features)
-        ai = {"status": {"enabled": False, "reason": "AI not configured"}, "opinion": None, "agrees": None}
+        ai_status = self.ai.status()
+        ai = {
+            "status": ai_status,
+            "opinion": None,
+            "agrees": None,
+            "model": ai_status["model"],
+            "cached": False,
+        }
+        if ai_status["enabled"]:
+            system, user = ai_spec.purpose_messages(request)
+            answer = self.ai.call("purpose", system, user, ai_spec.purpose_schema())
+            ai["cached"] = answer["cached"]
+            if answer["value"] is not None:
+                opinion = dict(answer["value"])
+                quote = str(opinion.get("evidence_quote") or "")
+                request_text = "\n".join(
+                    str(request.get(key) or "") for key in ("purpose", "question")
+                )
+                opinion["evidence_quote_verified"] = bool(
+                    quote and quote.casefold() in request_text.casefold()
+                )
+                ai["opinion"] = opinion
+                ai["agrees"] = opinion.get("prohibited") == (decision["decision"] == "REJECT")
+            elif answer["reason"]:
+                ai["status"] = {**ai_status, "reason": answer["reason"]}
         timings["purpose"] = _ms(t)
         self.audit.log(
             "decision_made",
@@ -76,6 +109,7 @@ class AccessDesk:
         )
 
         t = time.perf_counter()
+        parser.AI_MAPPER = self._map_term if ai_status["enabled"] else None
         plan = parser.parse(request, self.store)
         mappings = safe_data.mappings(plan, self.store)
         timings["translation"] = _ms(t)
@@ -93,6 +127,11 @@ class AccessDesk:
             timings["computation"] = _ms(t)
             t = time.perf_counter()
             released = outputs.release(result, plan)
+            if differencing_guard:
+                released_sets = compiler.cell_sets(plan, self.store)
+                self.release_ledger.apply(
+                    released, released_sets, request, request_id, self.store, plan.unit
+                )
             outputs.assert_no_leak(released)
             timings["privacy_gate"] = _ms(t)
             self.audit.log(
@@ -130,7 +169,9 @@ class AccessDesk:
         delivery = self._delivery(decision, who, ai)
         self.audit.log("result_" + delivery["status"], request_id, decision=decision["decision"])
         timings["total"] = _ms(started)
-        five_safes = self._five_safes(decision, who, plan, released, manifest)
+        five_safes = self._five_safes(
+            decision, who, plan, released, manifest, differencing_guard
+        )
         funnel = (
             safe_data.applicant_funnel(plan, self.store)
             if decision["decision"] != "REJECT" else []
@@ -182,6 +223,38 @@ class AccessDesk:
         self.cache[cache_key] = result
         return result
 
+    def _map_term(self, name, body):
+        codes = ai_spec.allowed_codes(self.store)
+        system, user = ai_spec.term_messages(self.store, name, body)
+        answer = self.ai.call("term", system, user, ai_spec.term_schema(self.store))
+        value = answer["value"]
+        if not isinstance(value, dict) or value.get("system") not in ("icd10", "atc", "loinc"):
+            return None
+        allowed = {code.casefold(): code for code in codes}
+        selected = []
+        for code in value.get("codes", []):
+            canonical = allowed.get(str(code).casefold())
+            if canonical is None:
+                return None
+            selected.append(canonical)
+        if not selected:
+            return None
+        code_system = value["system"]
+        present = [
+            code for system_name, code in self.store.descriptions
+            if system_name == code_system
+        ]
+        if code_system == "loinc":
+            if not all(code in present for code in selected):
+                return None
+        elif not all(any(code_in_data.startswith(code) for code_in_data in present) for code in selected):
+            return None
+        return {
+            "system": code_system,
+            "codes": selected,
+            "note": str(value.get("note") or ""),
+        }
+
     @staticmethod
     def _delivery(decision, who, ai):
         if decision["decision"] == "REJECT":
@@ -231,7 +304,7 @@ class AccessDesk:
         return "auto_decided"
 
     @staticmethod
-    def _five_safes(decision, who, plan, released, manifest):
+    def _five_safes(decision, who, plan, released, manifest, differencing_guard=False):
         people_status = {
             "verified": "pass", "unverified": "warn", "failed": "fail",
         }[who["status"]]
@@ -266,6 +339,11 @@ class AccessDesk:
                 f"Kleinzellenschleuse auf {gate['cells']} Zellen angewandt; "
                 f"{gate['counts_hidden'] + gate['pct_suppressed'] + gate['means_suppressed']} unterdrückt."
             )
+            diff_count = len((released.get("differencing") or {}).get("suppressed", []))
+            if differencing_guard and diff_count:
+                outputs_status = "warn"
+                outputs_en = f"Differencing check: {diff_count} cells suppressed."
+                outputs_de = f"Differenz-Schutz: {diff_count} Zellen unterdrückt."
         elif decision["decision"] == "APPROVE_SPE":
             settings_status = outputs_status = "pass"
             settings_en = "Separate permit workspace; downloads are blocked."

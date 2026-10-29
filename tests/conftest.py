@@ -1,4 +1,8 @@
+import os
+
 import pytest
+
+os.environ["ACCESSDESK_AI"] = "off"
 
 from accessdesk.config import build_desk, find_data_dir
 

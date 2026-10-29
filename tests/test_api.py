@@ -44,11 +44,11 @@ def test_system_and_staff_case_endpoints(client):
         20_000, 839, "central", "2.0",
     )
     assert info["counts"]["review_needed"] == 1
-    assert client.get("/api/settings").json()["differencing_guard"] is False
+    assert client.get("/api/settings").json()["differencing_guard"] is True
     assert len(client.get("/api/identities").json()) == 14
 
     summaries = client.get("/api/cases").json()
-    assert len(summaries) == 14
+    assert len(summaries) == 15
     detail = client.get("/api/cases/R01").json()
     assert detail["summary"]["id"] == "R01"
     assert set(detail["result"]["five_safes"]) == {
@@ -164,6 +164,34 @@ def test_stateless_decision_and_public_register_are_privacy_safe(client, data_di
         item["label_en"] == "measurements (LOINC 4548-4 only)"
         for item in r05["permit"]["record_types"]
     )
+
+
+def test_register_preserves_organisation_and_templates_are_served(client):
+    root = Path(__file__).resolve().parents[1]
+    source = json.loads((root / "demo" / "requests" / "D03.json").read_text(encoding="utf-8"))
+    register = client.get("/api/register").json()
+    entry = next(item for item in register["entries"] if item["id"] == "D03")
+    assert entry["organisation"] == source["applicant"]["organisation"]
+    assert client.get("/api/templates").json() == json.loads(
+        (root / "demo" / "templates.json").read_text(encoding="utf-8")
+    )
+
+
+def test_article_titles_use_official_short_titles():
+    from accessdesk.safes.projects import ARTICLE_TITLES
+
+    assert ARTICLE_TITLES == {
+        "53": ("Purposes for secondary use", "Zwecke der Sekundärnutzung"),
+        "54": ("Prohibited secondary use", "Unerlaubte Sekundärnutzung"),
+        "57": ("Tasks of health data access bodies", "Aufgaben der Zugangsstellen für Gesundheitsdaten"),
+        "61": ("Duties of health data users", "Pflichten der Gesundheitsdatennutzer"),
+        "66": ("Data minimisation and purpose limitation", "Datenminimierung und Zweckbindung"),
+        "67": ("Health data access applications", "Anträge auf Zugang zu Gesundheitsdaten"),
+        "68": ("Data permit", "Datengenehmigung"),
+        "69": ("Health data request", "Gesundheitsdatenanfrage"),
+        "71": ("Right to opt out", "Recht zum Widerspruch"),
+        "73": ("Secure processing environment", "Sichere Verarbeitungsumgebung"),
+    }
 
 
 def test_spe_authorization_query_download_and_export_review(client):

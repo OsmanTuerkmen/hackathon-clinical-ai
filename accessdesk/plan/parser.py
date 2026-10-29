@@ -234,7 +234,9 @@ class Parser:
             if out:
                 kind = {"icd10": "condition", "atc": "medication", "loinc": "observation"}[out["system"]]
                 spec = {"loinc": out["codes"][0], "pick": "latest"} if kind == "observation" else {"prefixes": out["codes"]}
-                self.add(name, kind, original + "  [codes suggested by AI, chosen from the code list]", **spec)
+                note = str(out.get("note") or "").strip()
+                source = f"AI mapping: {note}".rstrip()
+                self.add(name, kind, source, **spec)
                 return
         self.warnings.append(f"Definition not understood: “{name} = {body}”")
 

@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import evaluation
+from . import ai_spec
 from .cases import CaseRegistry
 from .config import ROOT, build_desk, load_requests
 from .evidence import drop_contained_evidence
@@ -118,6 +119,13 @@ class PrecheckRequest(APIModel):
 
 class PrecheckBody(APIModel):
     request: PrecheckRequest
+    login: str | None = Field(default=None, max_length=120)
+
+
+class AIDraftBody(APIModel):
+    text: str = Field(min_length=5, max_length=2000)
+    lang: Literal["de", "en"]
+    purpose: str | None = Field(default=None, max_length=4000)
     login: str | None = Field(default=None, max_length=120)
 
 
@@ -238,7 +246,7 @@ def create_app(data_dir, runtime_dir=None):
         for status in DEFAULT_STATUSES:
             counts.setdefault(status, 0)
         identities = _identities(desk.registry)
-        ai = _ai_status(cases)
+        ai = desk.ai.status()
         return {
             "patients": desk.store.total_patients,
             "opted_out": desk.store.opted_out,
@@ -255,7 +263,7 @@ def create_app(data_dir, runtime_dir=None):
 
     @app.get("/api/settings")
     def get_settings():
-        return {"mode": "central", "ai": _ai_status(cases), "differencing_guard": False}
+        return {"mode": "central", "ai": desk.ai.status(), "differencing_guard": True}
 
     @app.get("/api/cases")
     def list_cases(
@@ -377,7 +385,7 @@ def create_app(data_dir, runtime_dir=None):
             warnings.extend(plan.warnings)
             mappings = safe_data.mappings(plan, desk.store)
             for mapping in mappings:
-                mapping["ai"] = "ai" in mapping.get("source", "").casefold()
+                mapping["ai"] = bool(mapping.get("ai"))
             if decision["decision"] != "REJECT":
                 protected_funnel = [
                     {**step, "count": outputs.protect_count(step["count"])}
@@ -442,6 +450,84 @@ def create_app(data_dir, runtime_dir=None):
             "flags": identity["flags"],
         }
 
+    @app.get("/api/templates")
+    def templates():
+        with (ROOT / "demo" / "templates.json").open(encoding="utf-8") as stream:
+            return json.load(stream)
+
+    @app.post("/api/ai/draft")
+    def ai_draft(body: AIDraftBody):
+        status = desk.ai.status()
+        if not status["enabled"]:
+            _raise_ai_inactive()
+        system, user = ai_spec.draft_messages(
+            desk.store, body.text, body.lang, body.purpose
+        )
+        answer = desk.ai.call("draft", system, user, ai_spec.draft_schema())
+        draft = answer["value"]
+        if draft is None:
+            raise HTTPException(
+                status_code=503,
+                detail={"de": "KI-Dienst ist nicht verfügbar.", "en": "AI service is unavailable."},
+            )
+        identity = next(
+            (
+                item for item in _identities(desk.registry)
+                if body.login and people.plain_name(item["name"]) == people.plain_name(body.login)
+            ),
+            None,
+        )
+        applicant = identity or {
+            "name": body.login or "",
+            "organisation": "",
+            "country": "",
+        }
+        request = {
+            key: draft[key]
+            for key in ("requested_as", "purpose", "question", "definitions")
+        }
+        request["applicant"] = {
+            key: applicant.get(key, "") for key in ("name", "organisation", "country")
+        }
+        precheck_response = precheck(
+            PrecheckBody(request=PrecheckRequest.model_validate(request), login=body.login)
+        )
+        return {
+            "draft": draft,
+            "precheck": precheck_response,
+            "model": answer["model"],
+            "cached": answer["cached"],
+        }
+
+    @app.post("/api/ai/explain/{case_id}")
+    def ai_explain(case_id: str, login: str = Query(min_length=1, max_length=120)):
+        case = cases.get(case_id)
+        if case is None:
+            raise HTTPException(status_code=404, detail="Case not found")
+        authorized = (
+            people.plain_name(case["summary"]["applicant"]["name"]) == people.plain_name(login)
+            or (
+                case["summary"].get("group") == "custom"
+                and people.plain_name(case.get("login") or "") == people.plain_name(login)
+            )
+        )
+        if not authorized or not case["visible_to_applicant"]:
+            raise HTTPException(status_code=403, detail="Applicant access denied")
+        if not desk.ai.status()["enabled"]:
+            _raise_ai_inactive()
+        system, user = ai_spec.explain_messages(case["result"])
+        answer = desk.ai.call("explain", system, user, ai_spec.explain_schema())
+        if answer["value"] is None:
+            raise HTTPException(
+                status_code=503,
+                detail={"de": "KI-Dienst ist nicht verfügbar.", "en": "AI service is unavailable."},
+            )
+        return {
+            **answer["value"],
+            "model": answer["model"],
+            "cached": answer["cached"],
+        }
+
     @app.post("/api/submit")
     def submit(body: SubmitBody):
         request = body.request.model_dump(exclude={"id"}, exclude_none=True)
@@ -476,9 +562,7 @@ def create_app(data_dir, runtime_dir=None):
                 "reference": f"HDAB-AT/2026/{summary['id']}",
                 "id": summary["id"],
                 "received": summary["received_at"],
-                "organisation": _public_text(
-                    summary["applicant"]["organisation"], summary["applicant"]["name"]
-                ),
+                "organisation": summary["applicant"]["organisation"],
                 "kind": summary["kind"],
                 "purpose": _public_text(request.get("purpose", ""), summary["applicant"]["name"]),
                 "purpose_categories": _purpose_points(result["features"]["allowed"], letter_texts["categories"]),
@@ -703,11 +787,17 @@ def _identities(registry):
 
 
 def _ai_status(cases):
-    summaries = cases.list()
-    if summaries:
-        detail = cases.get(summaries[0]["id"])
-        return detail["result"]["ai"]["status"]
-    return {"enabled": False, "reason": "AI not configured"}
+    return cases.desk.ai.status()
+
+
+def _raise_ai_inactive():
+    raise HTTPException(
+        status_code=503,
+        detail={
+            "de": "KI ist nicht aktiv (kein API-Schlüssel).",
+            "en": "AI is not active (no API key).",
+        },
+    )
 
 
 def _purpose_points(allowed, category_texts):
