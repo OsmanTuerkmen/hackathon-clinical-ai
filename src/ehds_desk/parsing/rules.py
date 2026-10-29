@@ -29,13 +29,18 @@ from ..terminology import Terminology, TermMapping
 from .metrics import Metrics, parse_item, resolve_percent_terms, split_items
 from .phrases import (
     KIND_FOR_SYSTEM,
+    MASK,
     TABLE_FOR_KIND,
     Context,
     Term,
     add_unique,
     age_sex_criteria,
+    coded_criterion,
+    mask,
     normalise,
     phrase_criteria,
+    primary_clause,
+    residual,
     strip_end,
 )
 
@@ -59,25 +64,40 @@ _AGE_BANDS = re.compile(r"^age\s+(?:bands?|groups?)\b(?P<head>[^:]*):\s*(?P<band
 _ACTIVE_RULE = re.compile(r"\bmedications?\s+(?:is|are)\s+active\b", re.I)
 _LATEST = re.compile(r"\buse the (?:latest|last|most recent) (?P<name>.+?) (?:\(loinc (?P<code>[\d-]+)\) )?per patient", re.I)
 _LEFT_OUT = re.compile(r"\bpatients without (?:a |an |any )?(?P<name>.+?) are (?:left out|excluded)", re.I)
-_ENC_COUNT = re.compile(r"\bcount (?:stays|encounters|visits|admissions)\b", re.I)
+_ENC_COUNT = re.compile(
+    r"^count\s+(?:(?P<type>inpatient|outpatient|emergency)\s+)?(?:stays|encounters|visits|admissions|hospitali[sz]ations)\b"
+)
+_START = r"(?:(?:whose|with|where)\s+(?:the\s+)?start_date\s+(?:is\s+)?|(?:that\s+|which\s+)?start(?:ed|ing|s)?\s+)?"
+_DATE_RANGE = re.compile(rf"\b{_START}between\s+(?P<a>\d{{4}}-\d{{2}}-\d{{2}})\s+and\s+(?P<b>\d{{4}}-\d{{2}}-\d{{2}})")
+_DATE_YEAR = re.compile(rf"\b{_START}in\s+(?P<y>\d{{4}})\b")
 _REPORT = re.compile(r"^report (?:per|by|for each) (?P<dims>[^:]+):\s*(?P<items>.+)$", re.I)
 _COHORT_SIZE = re.compile(r"\breport the size of the cohort\b|\bcohort size\b", re.I)
 
-_CODE_INTRO = re.compile(r"\b(?:start(?:s|ing)?|begin(?:s|ning)?)\s+with\b", re.I)
-_CODE = re.compile(r"\b[A-Z]\d{2}(?:[A-Z]{1,2}\d{0,2}|\.\d+)?\b")
+_CODE_LIST = re.compile(
+    r"\b(?:start(?:s|ing)?|begin(?:s|ning)?)\s+with\s+(?P<codes>[a-z]\d{2}[a-z0-9.]*(?:\s*(?:,|or|and)\s*[a-z]\d{2}[a-z0-9.]*)*)"
+)
 _ICD_SHAPE = re.compile(r"[A-Z]\d{2}(?:\.\d+)?")
 _ATC_SHAPE = re.compile(r"[A-Z]\d{2}[A-Z]{0,2}\d{0,2}")
-_LOINC = re.compile(r"\bloinc\s*(?:code\s*)?(\d+-\d)\b", re.I)
-_ENC_DEF = re.compile(
-    r"\bencounters?\s+(?:with|of)\s+type\s+'?(inpatient|outpatient|emergency)'?"
-    r"|\b(inpatient|outpatient|emergency)\s+(?:encounter|stay|admission|visit)s?\b",
-    re.I,
+_LOINC_DEF = re.compile(r"\(?\s*\bloinc\s*(?:code\s*)?(\d+-\d)\b\s*\)?")
+_ENC_TYPES_DEF = re.compile(
+    r"\b(?:encounters?|stays?|visits?|admissions?)\s+(?:with|of)\s+type\s+'?(?:inpatient|outpatient|emergency)'?"
+    r"(?:\s*(?:,|or)\s*'?(?:inpatient|outpatient|emergency)'?)*"
+    r"|\b(?:inpatient|outpatient|emergency)\s+(?:encounters?|stays?|visits?|admissions?)\b"
 )
-_PRIMARY = re.compile(r"\b(?:main|primary)\s+diagnosis\b|\bprimary_icd10\b", re.I)
-_PRIMARY_TEXT = re.compile(r"\b(?:main|primary)\s+diagnosis(?:\s*\(primary_icd10\))?(?:\s+(?:is|of|=))?\s+(?P<x>.+)$", re.I)
+_ENC_NOUN = re.compile(r"\b(?:stays?|encounters?|visits?|admissions?|hospitali[sz]ations?)\b")
 _PERCENT_DEF = re.compile(r"^(?P<num>.+?)\s*/\s*(?P<den>.+?)\s*(?:x|\*|times)\s*100\b", re.I)
 _ATC_HINT = re.compile(r"\batc\b|\bmedications?\b|\bprescriptions?\b|\bdrugs?\b", re.I)
 _ICD_HINT = re.compile(r"\bicd-?10\b|\bdiagnos[ie]s\b|\bconditions?\b", re.I)
+_EXCLUSION_DEF = re.compile(r"\b(?:excluding|except|but\s+not|not|other\s+than|without|no|never)\b")
+_REF_DATE = re.compile(r"\b(?:on|at|as\s+of)\s+(?P<d>\d{1,2}\s+[a-z]+\s+\d{4}|\d{4}-\d{2}-\d{2})")
+_DEF_WORDS = re.compile(r"\b(?:icd-?10|atc|loinc)(?:\s+codes?)?\b")
+_ACTIVE_DEF = re.compile(r"\b(?:active|current|currently)\b")
+# Words of a definition body that only describe where a code lives ("any condition with an ICD-10 code").
+DEF_FILLER = frozenset(
+    {"condition", "conditions", "code", "codes", "encounter", "encounters", "stay", "stays", "visit", "visits",
+     "admission", "admissions", "type", "medication", "medications", "drug", "drugs", "entry", "entries",
+     "record", "records", "sex", "gender"}
+)  # fmt: skip
 
 
 _DIMS: list[tuple[str, re.Pattern[str]]] = [
@@ -102,6 +122,8 @@ _VALUE_WORDS = re.compile(r"((?:[\w/+-]+\s+){0,2}[\w/+-]+)\s+values?\b", re.I)
 class _State:
     bands: list[AgeBand] | None = None
     enc_count: bool = False
+    enc_types: list[str] = field(default_factory=list)
+    enc_primary: CodeSet | None = None
     start_from: date | None = None
     start_to: date | None = None
     left_out: list[Any] = field(default_factory=list)
@@ -121,13 +143,8 @@ def _term_name(display: str) -> str:
     return re.sub(r"^(?:an?|the)\s+", "", display.lower()).strip()
 
 
-def _codes_after_intro(body: str) -> list[str]:
-    m = _CODE_INTRO.search(body)
-    return _CODE.findall(body[m.end() :]) if m else []
-
-
 def _explicit_codeset(body: str, codes: list[str], label: str) -> CodeSet | None:
-    if _ATC_HINT.search(body) and not _ICD_HINT.search(body.replace("ATC code", "")):
+    if _ATC_HINT.search(body) and not _ICD_HINT.search(re.sub(r"\batc\s+codes?\b", "", body)):
         system = "atc"
     elif _ICD_HINT.search(body) or all(_ICD_SHAPE.fullmatch(c) for c in codes):
         system = "icd10"
@@ -139,17 +156,6 @@ def _explicit_codeset(body: str, codes: list[str], label: str) -> CodeSet | None
     return CodeSet(system=system, prefixes=list(dict.fromkeys(codes)), label=label, source="explicit")
 
 
-def _system_hint(body: str) -> str | None:
-    b = body.lower()
-    if re.search(r"\bstay|\badmission|\bmain diagnosis|\bprimary diagnosis", b):
-        return "primary"
-    if re.search(r"\bprescription|\bmedication|\bdrug", b):
-        return "atc"
-    if re.search(r"\bmeasurement|\bvalue|\btest\b|\blevel", b):
-        return "loinc"
-    return None
-
-
 def _references(body_l: str, ctx: Context, own: str) -> bool:
     return any(t.name != own and t.kind != "percent" and t.pattern().search(body_l) for t in ctx.terms.values())
 
@@ -157,74 +163,105 @@ def _references(body_l: str, ctx: Context, own: str) -> bool:
 def _composite(name: str, display: str, body_l: str, ctx: Context) -> Term | None:
     """A term defined by a noun phrase over other terms ("Cohort = adults with ...")."""
     phrase = phrase_criteria(body_l, ctx)
-    if phrase.unresolved or not phrase.criteria:
+    if phrase.unresolved:
+        return None
+    if phrase.encounter_subject:  # "inpatient stay with main diagnosis hip fracture"
+        if phrase.criteria:
+            return None
+        return Term(name, display, "encounter", enc_types=phrase.enc_types, enc_primary=phrase.enc_primary)
+    if not phrase.criteria:
         return None
     return Term(name, display, "criteria", criteria=phrase.criteria)
 
 
-def _primary_from_text(text: str, ctx: Context) -> CodeSet | None:
-    """Main diagnosis named in words: a defined condition term, else the terminology."""
-    for term in sorted(ctx.terms.values(), key=lambda t: -len(t.name)):
-        if term.kind == "condition" and term.pattern().search(text.lower()):
-            ctx.used_terms.add(term.name)
-            return term.codes
-    return ctx.terminology.lookup(text, system="icd10")
+def _plain(name: str, display: str, body_l: str, active: bool, ctx: Context) -> Term | None:
+    """A definition in words only ("a diagnosis of asthma"): terminology lookup of the body.
+
+    The term name is looked up only when the body has no content of its own; otherwise a partial
+    body ("asthma requiring oral steroids") would silently map to the broader term.
+    """
+    if _ENC_NOUN.search(body_l):
+        return None  # a stay defined without main-diagnosis wording
+    system = "atc" if re.search(r"\bprescription|\bmedication|\bdrug", body_l) else None
+    if system is None and re.search(r"\bmeasurement|\bvalue|\btest\b|\blevel", body_l):
+        system = "loinc"
+    cs = ctx.terminology.lookup(body_l, system=system)
+    if cs is None and not residual(body_l, DEF_FILLER):
+        cs = ctx.terminology.lookup(display, system=system)
+    if cs is None:
+        return None
+    kind = KIND_FOR_SYSTEM[cs.system]
+    ctx.add_mapping(display, cs, TABLE_FOR_KIND[kind])
+    return Term(name, display, kind, codes=cs, active=active)
+
+
+def _analyse(name: str, display: str, body_l: str, ctx: Context) -> Term | None:
+    """Codes, age, sex and stay types of one definition body, combined; leftovers -> None."""
+    if _EXCLUSION_DEF.search(body_l):
+        ctx.note(f"'{display}': exclusions inside a definition are not supported.")
+        return None
+    active = bool(_ACTIVE_DEF.search(body_l))
+    masked = body_l
+    for m in list(_REF_DATE.finditer(masked)):
+        _check_reference_date(m.group(0), ctx, f"'{display}'")
+        masked = mask(masked, *m.span())
+    types: list[str] = []
+    for m in list(_ENC_TYPES_DEF.finditer(masked)):
+        add_unique(types, re.findall(r"inpatient|outpatient|emergency", m.group(0)))
+        masked = mask(masked, *m.span())
+    primary, primary_found, masked = primary_clause(masked, ctx)
+    if primary_found and primary is None:
+        return None
+    codes: list[str] = []
+    if m := _CODE_LIST.search(masked):
+        codes = [c.upper() for c in re.findall(r"[a-z]\d{2}[a-z0-9.]*", m.group("codes"))]
+        masked = mask(masked, *m.span())
+    loinc = None
+    if m := _LOINC_DEF.search(masked):
+        loinc = m.group(1)
+        masked = mask(masked, *m.span())
+    found, masked = age_sex_criteria(masked)
+    masked = _DEF_WORDS.sub(lambda w: MASK * len(w.group(0)), masked)
+    if not (types or primary or codes or loinc or found):
+        return _plain(name, display, body_l, active, ctx)
+    if residual(masked, DEF_FILLER):
+        return None
+    if types or primary:
+        if codes or loinc or found:
+            return None
+        return Term(name, display, "encounter", enc_types=types, enc_primary=primary)
+    cs: CodeSet | None = None
+    if codes:
+        if loinc or (cs := _explicit_codeset(body_l, codes, display)) is None:
+            return None
+    elif loinc:
+        cs = CodeSet(system="loinc", prefixes=[loinc], label=display, source="explicit")
+    if cs is None:
+        return Term(name, display, "criteria", criteria=found)
+    kind = KIND_FOR_SYSTEM[cs.system]
+    ctx.add_mapping(display, cs, TABLE_FOR_KIND[kind])
+    if not found:
+        return Term(name, display, kind, codes=cs, active=active)
+    crit = coded_criterion(kind, cs, negate=False, active=active or ctx.active_rule)
+    return Term(name, display, "criteria", criteria=[*found, crit])
 
 
 def _define(display: str, body: str, ctx: Context) -> Term | None:
     """Analyse one ``Term = body`` definition; None if it cannot be understood."""
     name = _term_name(display)
-    body_l = body.lower()
+    body_l = normalise(body).lower()
     if name == "cohort":
         return _composite(name, display, body_l, ctx)
-    m = _PERCENT_DEF.match(body_l)
-    if m:
-        return Term(name, display, "percent", percent=(m.group("num"), m.group("den")))
-
-    codes = _codes_after_intro(body)
-    enc = _ENC_DEF.search(body)
-    if enc or _PRIMARY.search(body):
-        types = [(enc.group(1) or enc.group(2)).lower()] if enc else []
-        primary = None
-        if _PRIMARY.search(body):
-            if codes:
-                primary = CodeSet(system="icd10", prefixes=list(dict.fromkeys(codes)), label=display, source="explicit")
-            elif pm := _PRIMARY_TEXT.search(body):
-                primary = _primary_from_text(strip_end(pm.group("x")), ctx)
-            if primary is None:
-                return None
-            ctx.add_mapping(display, primary, "primary_icd10")
-        return Term(name, display, "encounter", enc_types=types, enc_primary=primary)
+    if m := _PERCENT_DEF.match(body_l):
+        num, den = m.group("num"), m.group("den")
+        rest = residual(body_l[m.end() :].replace("one decimal", ""))
+        checks = [phrase_criteria(p, ctx, used=set()) for p in (num, den)]
+        if rest or any(p.unresolved for p in checks):
+            return None
+        return Term(name, display, "percent", percent=(num, den))
     if _references(body_l, ctx, name) and (term := _composite(name, display, body_l, ctx)):
         return term
-    if codes:
-        cs = _explicit_codeset(body, codes, display)
-        if cs is None:
-            return None
-        kind = KIND_FOR_SYSTEM[cs.system]
-        ctx.add_mapping(display, cs, TABLE_FOR_KIND[kind])
-        return Term(name, display, kind, codes=cs)
-    lm = _LOINC.search(body)
-    if lm:
-        cs = CodeSet(system="loinc", prefixes=[lm.group(1)], label=display, source="explicit")
-        ctx.add_mapping(display, cs, "observations")
-        return Term(name, display, "measurement", codes=cs)
-    found, _spans = age_sex_criteria(body_l)
-    if found:
-        return Term(name, display, "criteria", criteria=found)
-
-    hint = _system_hint(body)
-    system = None if hint in (None, "primary") else hint
-    cs = ctx.terminology.lookup(body, system=system) or ctx.terminology.lookup(display, system=system)
-    if cs is None:
-        return None
-    if hint == "primary" and cs.system == "icd10":
-        ctx.add_mapping(display, cs, "primary_icd10")
-        types = [t.lower() for t in re.findall(r"\b(inpatient|outpatient|emergency)\b", body_l)]
-        return Term(name, display, "encounter", enc_types=types, enc_primary=cs)
-    kind = KIND_FOR_SYSTEM[cs.system]
-    ctx.add_mapping(display, cs, TABLE_FOR_KIND[kind])
-    return Term(name, display, kind, codes=cs)
+    return _analyse(name, display, body_l, ctx)
 
 
 # --- Other sentence classes ----------------------------------------------------------------------
@@ -276,6 +313,36 @@ def _measurement(name: str, code: str | None, ctx: Context) -> tuple[str, CodeSe
     return name, cs
 
 
+def _count_sentence(text: str, ctx: Context, st: _State) -> bool:
+    """"Count [inpatient] stays [whose main diagnosis ...] [whose start_date is in YYYY | between d and d]".
+
+    Only the start date with exactly one year or one range is supported; anything else (end_date,
+    "after 2023", two years) is left over and makes the sentence not understood.
+    """
+    m = _ENC_COUNT.match(text)
+    assert m is not None
+    st.enc_count = True
+    if m.group("type"):
+        add_unique(st.enc_types, [m.group("type")])
+    masked = mask(text, *m.span())
+    primary, found, masked = primary_clause(masked, ctx)
+    if found:
+        if primary is None:
+            return False
+        st.enc_primary = primary
+    ranges, years = list(_DATE_RANGE.finditer(masked)), list(_DATE_YEAR.finditer(masked))
+    if len(ranges) + len(years) > 1:
+        return False
+    if ranges:
+        st.start_from, st.start_to = date.fromisoformat(ranges[0].group("a")), date.fromisoformat(ranges[0].group("b"))
+        masked = mask(masked, *ranges[0].span())
+    elif years:
+        year = int(years[0].group("y"))
+        st.start_from, st.start_to = date(year, 1, 1), date(year, 12, 31)
+        masked = mask(masked, *years[0].span())
+    return not residual(masked)
+
+
 def _other_sentence(text: str, ctx: Context, st: _State) -> bool:
     """Non-definition, non-report sentences; False if no pattern applies."""
     if m := _AGE_BANDS.match(text):
@@ -292,18 +359,16 @@ def _other_sentence(text: str, ctx: Context, st: _State) -> bool:
             return False
         name, cs = found
         ctx.terms.setdefault(name, Term(name, m.group("name"), "measurement", codes=cs))
-        if lo := _LEFT_OUT.search(text):
-            left = _measurement(lo.group("name"), None, ctx) or (None, cs)
+        masked = mask(text.lower(), *m.span())
+        if lo := _LEFT_OUT.search(masked):
+            left = _measurement(lo.group("name"), None, ctx)
+            if left is None:
+                return False
             add_unique(st.left_out, [ObservationCriterion(kind="observation", codes=left[1])])
-        return True
-    if _ENC_COUNT.search(text):
-        st.enc_count = True
-        if m := re.search(r"\bbetween\s+(\d{4}-\d{2}-\d{2})\s+and\s+(\d{4}-\d{2}-\d{2})", text):
-            st.start_from, st.start_to = date.fromisoformat(m.group(1)), date.fromisoformat(m.group(2))
-        elif m := re.search(r"\bin\s+(\d{4})\b", text):
-            year = int(m.group(1))
-            st.start_from, st.start_to = date(year, 1, 1), date(year, 12, 31)
-        return True
+            masked = mask(masked, *lo.span())
+        return not residual(masked)
+    if _ENC_COUNT.match(text.lower()):
+        return _count_sentence(text.lower(), ctx, st)
     if _COHORT_SIZE.search(text):
         st.cohort_size = True
         return True
@@ -400,7 +465,7 @@ def parse_rules(request: AccessRequest, terminology: Terminology) -> tuple[Query
     for order, text, m in definitions:
         name, body_l = _term_name(m.group("term")), m.group("body").lower()
         refers = any(Term(n, n, "criteria").pattern().search(body_l) for n in names - {name})
-        if name == "cohort" or (refers and not _PERCENT_DEF.match(body_l)):
+        if name == "cohort" or refers:
             deferred.append((order, text, m))
             continue
         term = _define(m.group("term").strip(), m.group("body"), ctx)
@@ -435,9 +500,13 @@ def parse_rules(request: AccessRequest, terminology: Terminology) -> tuple[Query
     question = normalise(request.question).lower()
     if not reports:
         for qm in re.finditer(r"\b(?:by|in each|per|for each|across)\s+([^?.;]+)", question):
-            dims = _dimensions(qm.group(1), st, ctx, strict=False)
+            chunk = re.sub(r"\b(?:by|in each|per|for each|across)\b", " ", qm.group(1))
+            dims = _dimensions(chunk, st, ctx, strict=True)
             if isinstance(dims, list):
                 add_unique(group_by, [d for d in dims if all(g.kind != d.kind for g in group_by)])
+            else:
+                st.record(len(sentences) + 0.5, request.question, False)
+                ctx.note(f"The grouping '{qm.group(0).strip()}' in the question is not supported.")
         if not st.cohort_size and (qm := re.search(r"\bhow many\s+(.+?)(?=,|\?|\.|\s+(?:by|in each|per|for each|across)\b|$)", question)):
             item = qm.group(1)
             entry = st.record(len(sentences) + 1, item, False)
@@ -471,18 +540,28 @@ def _build_spec(
             ctx.note("No metric could be derived from the request.")
             return None
         population = list(b.base or [])
+        failed = [normalise(t).lower() for _o, t, ok in st.outcomes if not ok]
         for term in ctx.terms.values():
-            if term.kind == "condition" and term.name not in ctx.used_terms and term.codes is not None:
-                add_unique(population, [ConditionCriterion(kind="condition", codes=term.codes)])
-                ctx.note(f"'{term.display}' is defined but not used in a report item; it restricts the population.")
+            if term.kind != "condition" or term.name in ctx.used_terms or term.codes is None:
+                continue
+            if any(term.pattern().search(f) for f in failed):
+                continue  # meant for an item we did not understand: do not guess where it belongs
+            add_unique(population, [ConditionCriterion(kind="condition", codes=term.codes)])
+            ctx.note(
+                f"'{term.display}' is defined but not used in a report item; it was added to the population "
+                "(staff: please check)."
+            )
         add_unique(population, st.left_out)
         metrics = b.metrics
 
     unit = "encounter" if (st.enc_count or b.encounter) else "patient"
     scope = None
     if unit == "encounter":
+        types = b.enc_types or st.enc_types
+        if b.enc_types and st.enc_types and set(b.enc_types) != set(st.enc_types):
+            ctx.note("The count sentence and the report item name different stay types; the report item is used.")
         scope = EncounterScope(
-            types=b.enc_types, start_from=st.start_from, start_to=st.start_to, primary_icd10=b.enc_primary
+            types=types, start_from=st.start_from, start_to=st.start_to, primary_icd10=b.enc_primary or st.enc_primary
         )
     record_types: list[str] = []
     obs_codes = None

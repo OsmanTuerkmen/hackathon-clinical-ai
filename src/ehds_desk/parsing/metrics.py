@@ -167,6 +167,8 @@ def parse_item(raw: str, ctx: Context, b: Metrics, entry: list[Any]) -> bool:
     phrase = phrase_criteria(text, ctx)
     if phrase.unresolved:
         return False
+    if not (phrase.has_subject or relative):
+        return False  # nothing says what is counted ("the total"): never fall back to "all units"
     if phrase.encounter_subject and not b.encounter_subject(phrase.enc_types, phrase.enc_primary):
         return False
     return b.count(label, phrase.criteria, relative=relative) is not None
@@ -185,7 +187,10 @@ def split_items(items: str) -> list[str]:
             i += 2
             continue
         if depth == 0 and items.startswith(" and ", i):
-            continues = re.search(r"\b(?:with|without|have|has)\b", cur, re.I) and not _ITEM_START.match(items[i + 5 :])
+            between_numbers = re.search(r"\d\s*$", cur) and re.match(r"\d|(?:older|over|above|younger|below|under)\b", items[i + 5 :])
+            continues = between_numbers or (
+                re.search(r"\b(?:with|without|have|has)\b", cur, re.I) and not _ITEM_START.match(items[i + 5 :])
+            )
             if not continues:
                 parts.append(cur)
                 cur = ""
