@@ -2,8 +2,10 @@
 import json
 import re
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 
+from .evidence import drop_contained_evidence
 from .safes.projects import ARTICLE_TITLES
 
 TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "letter_texts.json"
@@ -66,10 +68,12 @@ def build(case, lang):
     prohibited = features.get("prohibited") or []
     if prohibited:
         base_decision = case["result"]["decision"]
-        evidence = _quotes(
-            [item["phrase"] for entry in prohibited for item in entry.get("evidence", [])][:3],
-            lang,
-        )
+        evidence = _quotes([
+            item["phrase"]
+            for item in drop_contained_evidence([
+                phrase for entry in prohibited for phrase in entry.get("evidence", [])
+            ])[:3]
+        ], lang)
         reasoning.append(_format(
             texts["reasoning"]["purpose_prohibited"][lang],
             reason=base_decision["reason_de" if lang == "de" else "reason_en"],
@@ -96,10 +100,10 @@ def build(case, lang):
         )
         form_text = texts["reasoning"][form_key][lang]
         if form_key == "form_application_spe":
-            evidence = _quotes(
-                [item["phrase"] for item in features.get("justifies_records", [])[:3]],
-                lang,
-            )
+            evidence = _quotes([
+                item["phrase"]
+                for item in drop_contained_evidence(features.get("justifies_records", []))[:3]
+            ], lang)
             form_text = _format(form_text, evidence=evidence)
         reasoning.append(form_text)
 
@@ -118,31 +122,31 @@ def build(case, lang):
                 "type": "statistics",
                 "group_dims": released["group_dims"],
                 "measures": released["measures"],
-                "rows": released["rows"],
+                "rows": _localize_rows(released, lang),
             }
     elif decision_name == "APPROVE_SPE":
         copied, not_copied = _tables(manifest, lang)
         reasoning.append(_format(
             texts["reasoning"]["data_protection_spe"][lang],
-            cohort_size=manifest["cohort_size"],
+            cohort_size=_format_number(manifest["cohort_size"], "count", lang),
             tables=", ".join(copied),
             not_tables=", ".join(not_copied),
         ))
         values = {
             "tables": ", ".join(copied),
             "persons": ", ".join(manifest["persons_with_access"]),
-            "expires": manifest["expires"],
+            "expires": _format_date(manifest["expires"], lang),
         }
         conditions = [_format(item[lang], **values) for item in texts["conditions"]["spe"]]
         if case["visible_to_applicant"]:
             annex = {
                 "type": "permit",
                 "permit_id": manifest["permit_id"],
-                "cohort_size": manifest["cohort_size"],
+                "cohort_size": _format_number(manifest["cohort_size"], "count", lang),
                 "tables": copied,
                 "not_tables": not_copied,
                 "persons": manifest["persons_with_access"],
-                "expires": manifest["expires"],
+                "expires": _format_date(manifest["expires"], lang),
             }
     else:
         reasoning.append(texts["reasoning"]["no_processing"][lang])
@@ -211,14 +215,49 @@ def _quotes(phrases, lang):
 def _tables(manifest, lang):
     copied, not_copied = [], []
     for table in manifest["tables_copied"]:
-        name = TABLE_NAMES[table["table"]][lang]
-        if table.get("note"):
-            codes = re.findall(r"\d{1,6}-\d", table["note"])
-            if codes:
-                name += f" (LOINC {', '.join(codes)})"
-        copied.append(name)
-    not_copied = [TABLE_NAMES[table][lang] for table in manifest["tables_not_copied"]]
+        copied.append(table_label(table["table"], lang, table.get("note")))
+    not_copied = [table_label(table, lang) for table in manifest["tables_not_copied"]]
     return copied, not_copied
+
+
+def table_label(table, lang, note=None):
+    label = TABLE_NAMES[table][lang]
+    if table == "observations" and note:
+        codes = re.findall(r"\d{1,6}-\d", note)
+        if codes:
+            code_list = ", ".join(codes)
+            return (
+                f"{label} (nur LOINC {code_list})"
+                if lang == "de"
+                else f"{label} (LOINC {code_list} only)"
+            )
+    return label
+
+
+def _localize_rows(released, lang):
+    measure_types = {measure["key"]: measure["type"] for measure in released["measures"]}
+    rows = []
+    for row in released["rows"]:
+        values = {}
+        for key, value in row["values"].items():
+            if value == "suppressed":
+                value = "unterdrückt" if lang == "de" else "suppressed"
+            elif isinstance(value, (int, float)) and not isinstance(value, bool):
+                value = _format_number(value, measure_types[key], lang)
+            values[key] = value
+        rows.append({"group": row["group"], "values": values})
+    return rows
+
+
+def _format_number(value, measure_type, lang):
+    if measure_type == "count" and isinstance(value, int):
+        formatted = f"{value:,}"
+        return formatted.replace(",", ".") if lang == "de" else formatted
+    formatted = f"{Decimal(str(value)):,.1f}"
+    if lang == "de":
+        formatted = formatted.replace(",", "\0").replace(".", ",").replace("\0", ".")
+        return formatted + (" %" if measure_type == "pct" else "")
+    return formatted + ("%" if measure_type == "pct" else "")
 
 
 def _latest_audit_entry(case, request_id):

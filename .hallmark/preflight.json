@@ -1,0 +1,20 @@
+{
+  "source": "docs/design.md",
+  "frontend_present": false,
+  "framework": "React and Vite, specified by the F1 brief",
+  "font_stack": "IBM Plex Sans and IBM Plex Mono, bundled locally through Carbon Sass",
+  "palette": "IBM Carbon White and G100 with Carbon tokens",
+  "motion": "motion-cut; the design spec uses Carbon defaults only",
+  "spacing": "8 px base grid with 4 px fine spacing",
+  "preserve": [
+    "dense, factual operations interface",
+    "offline runtime assets",
+    "Carbon typography, themes, and semantic tokens",
+    "keyboard access and WCAG 2.1 AA"
+  ],
+  "introduce": [
+    "hash-route React frontend",
+    "responsive implementations of the specified staff, applicant, letter, and register screens"
+  ],
+  "direction_source": "User-provided F1 handoff and docs/design.md"
+}

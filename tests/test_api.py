@@ -35,7 +35,10 @@ def _submit_body():
 
 
 def test_system_and_staff_case_endpoints(client):
-    assert client.get("/api/health").json() == {"ok": True}
+    health = client.get("/api/health")
+    assert health.json() == {"ok": True}
+    assert health.headers["content-type"] == "application/json; charset=utf-8"
+    assert client.get("/openapi.json").headers["content-type"] == "application/json; charset=utf-8"
     info = client.get("/api/info").json()
     assert (info["patients"], info["opted_out"], info["mode"], info["version"]) == (
         20_000, 839, "central", "2.0",
@@ -52,6 +55,7 @@ def test_system_and_staff_case_endpoints(client):
         "people", "projects", "data", "settings", "outputs",
     }
     assert client.get("/api/cases/missing").status_code == 404
+    assert client.get("/api/cases/missing").headers["content-type"] == "application/json; charset=utf-8"
 
 
 def test_precheck_shows_prohibited_evidence_without_releasing_values(client):
@@ -77,6 +81,21 @@ def test_precheck_shows_prohibited_evidence_without_releasing_values(client):
         for mapping in result["mappings"] for code in mapping["codes"]
     )
     assert client.get("/api/audit?limit=300").json() == before
+
+
+def test_precheck_art54_evidence_drops_contained_phrases(client):
+    result = client.post("/api/precheck", json={
+        "request": {
+            "applicant": {"name": "Draft User", "organisation": "Alpenland Insurance", "country": "AT"},
+            "requested_as": "health data request",
+            "purpose": "We want to align private health insurance premiums with actual risk.",
+            "question": "What is the average HbA1c?",
+            "definitions": ["HbA1c = LOINC 4548-4."],
+        },
+    }).json()
+    phrases = [item["phrase"] for item in result["art54"][0]["evidence"]]
+    assert "insurance premiums" in phrases
+    assert "premiums" not in phrases
 
 
 def test_submit_validates_and_persists_a_custom_case(client):
@@ -140,6 +159,11 @@ def test_stateless_decision_and_public_register_are_privacy_safe(client, data_di
     held = next(entry for entry in register["entries"] if entry["id"] == "D04")
     assert held["publication_status"] == "in_review"
     assert "decision" not in held
+    r05 = next(entry for entry in register["entries"] if entry["id"] == "R05")
+    assert any(
+        item["label_en"] == "measurements (LOINC 4548-4 only)"
+        for item in r05["permit"]["record_types"]
+    )
 
 
 def test_spe_authorization_query_download_and_export_review(client):
@@ -211,7 +235,11 @@ def test_spe_authorization_query_download_and_export_review(client):
     assert downloaded.headers["content-disposition"].endswith(f"export_{export['id']}.csv\"")
 
 
-def test_static_root_has_a_fallback_when_dist_is_absent(client):
+def test_static_root_serves_the_build_or_fallback(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert "Frontend not built" in response.text
+    assert response.headers["content-type"].startswith("text/html")
+    if (Path(__file__).resolve().parents[1] / "web" / "dist").is_dir():
+        assert '<div id="root"></div>' in response.text
+    else:
+        assert "Frontend not built" in response.text

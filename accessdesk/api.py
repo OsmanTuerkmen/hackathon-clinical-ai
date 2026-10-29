@@ -9,16 +9,21 @@ from collections import Counter
 from pathlib import Path
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse, Response
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import evaluation
 from .cases import CaseRegistry
 from .config import ROOT, build_desk, load_requests
+from .evidence import drop_contained_evidence
 from .exports import ExportConflict, ExportRegistry
-from .letter import build as build_letter
+from .letter import build as build_letter, table_label
 from .plan import compiler, parser
 from .safes import data as safe_data
 from .safes import outputs, people, projects, settings
@@ -38,6 +43,10 @@ DOWNLOAD_DETAIL = {
 DEFAULT_STATUSES = (
     "auto_decided", "review_needed", "held_identity", "released", "rejected_after_review",
 )
+
+
+class UTF8JSONResponse(JSONResponse):
+    media_type = "application/json; charset=utf-8"
 
 
 class APIModel(BaseModel):
@@ -137,11 +146,32 @@ def create_app(data_dir, runtime_dir=None):
     desk = build_desk(data_dir, runtime_dir=runtime_dir)
     cases = CaseRegistry(desk, data_dir)
     exports = ExportRegistry(desk.root)
-    app = FastAPI(title="AccessDesk 2", version="2.0")
+    app = FastAPI(
+        title="AccessDesk 2",
+        version="2.0",
+        default_response_class=UTF8JSONResponse,
+        openapi_url=None,
+        docs_url=None,
+    )
     app.state.desk = desk
     app.state.cases = cases
     app.state.exports = exports
     app.add_event_handler("shutdown", desk.store.con.close)
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_exception(request: Request, exc: StarletteHTTPException):
+        return UTF8JSONResponse(
+            {"detail": exc.detail},
+            status_code=exc.status_code,
+            headers=exc.headers,
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def request_validation_error(request: Request, exc: RequestValidationError):
+        return UTF8JSONResponse(
+            {"detail": jsonable_encoder(exc.errors())},
+            status_code=422,
+        )
 
     def find_case(case_id):
         case = cases.get(case_id)
@@ -385,7 +415,7 @@ def create_app(data_dir, runtime_dir=None):
                 "label_en": item["label_en"],
                 "evidence": [
                     {key: evidence[key] for key in ("phrase", "field", "start", "end")}
-                    for evidence in item["evidence"]
+                    for evidence in drop_contained_evidence(item["evidence"])
                 ],
             }
             for item in features["prohibited"]
@@ -624,6 +654,19 @@ def create_app(data_dir, runtime_dir=None):
                 own = evaluation.run_strict(desk, all_requests, oracle)
         return {"official": official, "own": own}
 
+    @app.get("/openapi.json", include_in_schema=False)
+    def openapi_document():
+        if app.openapi_schema is None:
+            app.openapi_schema = app.openapi()
+        return app.openapi_schema
+
+    @app.get("/docs", include_in_schema=False, response_class=HTMLResponse)
+    def api_docs():
+        return get_swagger_ui_html(
+            openapi_url="/openapi.json",
+            title=f"{app.title} - Swagger UI",
+        )
+
     dist = ROOT / "web" / "dist"
     if dist.is_dir():
         app.mount("/", StaticFiles(directory=dist, html=True), name="frontend")
@@ -697,7 +740,14 @@ def _public_permit(manifest):
         return None
     return {
         "expires": manifest["expires"],
-        "record_types": [item["table"] for item in manifest["tables_copied"]],
+        "record_types": [
+            {
+                "table": item["table"],
+                "label_de": table_label(item["table"], "de", item.get("note")),
+                "label_en": table_label(item["table"], "en", item.get("note")),
+            }
+            for item in manifest["tables_copied"]
+        ],
     }
 
 

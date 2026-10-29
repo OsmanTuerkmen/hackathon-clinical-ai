@@ -1,0 +1,29 @@
+@use "@carbon/colors" as carbon-colors;
+
+:root {
+  --accessdesk-status-rejected: var(--cds-support-error);
+  --accessdesk-status-statistics: var(--cds-support-success);
+  --accessdesk-status-spe: var(--cds-support-info);
+  --accessdesk-status-held: var(--cds-support-warning);
+  --accessdesk-status-held-text: #{carbon-colors.$gray-100};
+  --accessdesk-status-pass-text: #{carbon-colors.$green-70};
+  --accessdesk-status-fail-text: #{carbon-colors.$red-70};
+  --accessdesk-status-warn-text: #{carbon-colors.$yellow-80};
+  --accessdesk-status-na: var(--cds-text-secondary);
+  --accessdesk-hatch: var(--cds-border-strong);
+  --accessdesk-font-sans: "IBM Plex Sans", sans-serif;
+  --accessdesk-font-mono: "IBM Plex Mono", monospace;
+  --accessdesk-map-bin-1: #{carbon-colors.$blue-10};
+  --accessdesk-map-bin-2: #{carbon-colors.$blue-20};
+  --accessdesk-map-bin-3: #{carbon-colors.$blue-30};
+  --accessdesk-map-bin-4: #{carbon-colors.$blue-50};
+  --accessdesk-map-bin-5: #{carbon-colors.$blue-70};
+  --accessdesk-content-width: 1584px;
+  --accessdesk-header-height: 3rem;
+}
+
+.cds--g100 {
+  --accessdesk-status-pass-text: #{carbon-colors.$green-30};
+  --accessdesk-status-fail-text: #{carbon-colors.$red-40};
+  --accessdesk-status-warn-text: #{carbon-colors.$yellow-30};
+}

@@ -1,0 +1,38 @@
+{
+  "name": "accessdesk2-web",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build",
+    "test:e2e": "playwright test",
+    "screens": "node scripts/screens.mjs"
+  },
+  "dependencies": {
+    "@carbon/icons-react": "11.91.0",
+    "@carbon/react": "1.119.0",
+    "d3-array": "3.2.4",
+    "d3-geo": "3.1.1",
+    "d3-scale": "4.0.2",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.64.1",
+    "@types/d3-array": "3.2.2",
+    "@types/d3-geo": "3.1.1",
+    "@types/d3-scale": "4.0.9",
+    "@types/d3-time": "3.0.4",
+    "@types/geojson": "7946.0.16",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "csstype": "3.2.3",
+    "@vitejs/plugin-react": "6.1.2",
+    "sass-embedded": "1.106.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
+  }
+}
