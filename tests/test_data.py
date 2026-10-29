@@ -1,6 +1,8 @@
+import dataclasses
 from datetime import date
+from pathlib import Path
 
-from ehds_desk import config
+from ehds_desk import config, data
 from ehds_desk.config import load_settings
 from ehds_desk.data import REGIONS, SEXES
 
@@ -91,3 +93,22 @@ def test_settings_env_override(monkeypatch, tmp_path):
     assert s.data_dir == tmp_path
     assert s.var_dir == tmp_path / "v"
     assert s.llm_mode == "off"
+
+
+def test_get_database_is_cached_per_data_dir(settings, db, monkeypatch, tmp_path):
+    assert data.get_database(settings) is db
+    assert data.get_database(settings) is data.get_database(settings)
+
+    built: list[Path] = []
+
+    class _Stub:
+        def __init__(self, data_dir):
+            built.append(Path(data_dir))
+
+    monkeypatch.setattr(data, "Database", _Stub)
+    other = dataclasses.replace(settings, data_dir=tmp_path)
+    first = data.get_database(other)
+    assert first is not db
+    assert data.get_database(other) is first
+    assert built == [tmp_path]
+    assert data.get_database(settings) is db

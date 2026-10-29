@@ -147,14 +147,14 @@ class Database:
             return self._con.cursor()
 
 
-_db: Database | None = None
+_dbs: dict[Path, Database] = {}
 _db_lock = threading.Lock()
 
 
 def get_database(settings: Settings | None = None) -> Database:
-    """Process-wide cached Database."""
-    global _db
+    """Process-wide Database, cached per resolved data directory."""
+    data_dir = Path((settings or load_settings()).data_dir).resolve()
     with _db_lock:
-        if _db is None:
-            _db = Database((settings or load_settings()).data_dir)
-        return _db
+        if data_dir not in _dbs:
+            _dbs[data_dir] = Database(data_dir)
+        return _dbs[data_dir]
