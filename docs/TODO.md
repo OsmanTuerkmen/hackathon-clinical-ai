@@ -20,4 +20,6 @@ Stand: 2026-10-29. Reihenfolge laut `docs/superpowers/plans/2026-10-29-ehds-acce
 - [ ] Demo-Video (Nutzer)
 
 Später / bekannte Grenzen: sekundäre Unterdrückung (Differenzbildung, Komplement bei Prozenten), Qualifier nach dem
-Begriff („stroke, hemorrhagic“), föderierte Ausführung.
+Begriff („stroke, hemorrhagic“), föderierte Ausführung. Verneinungs-Erkennung in den Art.-54-Regeln ist
+regex-basiert: konstruierte Sätze wie „No, we will use the data for advertising.“ rutschen ohne LLM durch
+(ADR-007, Ruling R11); Einschübe mit „but“ nach „not,“ ebenso.
