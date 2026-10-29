@@ -6,9 +6,11 @@ from ehds_desk.data import get_database
 
 @pytest.fixture(autouse=True)
 def _isolate_env(monkeypatch):
-    """A developer .env (loaded into os.environ by load_settings) must not leak into tests.
+    """Shield tests from the developer's shell environment for the optional settings.
 
-    TRACK3_DATA is intentionally left alone so data discovery keeps working.
+    Tests never read a .env file (they call `load_settings(env_file=None)`), so only variables
+    exported in the shell could leak; those four are removed. TRACK3_DATA is intentionally left
+    alone so data discovery keeps working.
     """
     for name in ("EHDS_LLM", "EHDS_VAR_DIR", "EHDS_LLM_MODEL", "ANTHROPIC_API_KEY"):
         monkeypatch.delenv(name, raising=False)
@@ -16,7 +18,7 @@ def _isolate_env(monkeypatch):
 
 @pytest.fixture(scope="session")
 def settings():
-    return load_settings()
+    return load_settings(env_file=None)
 
 
 @pytest.fixture(scope="session")

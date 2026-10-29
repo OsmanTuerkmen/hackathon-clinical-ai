@@ -39,8 +39,10 @@ def _find_data_dir() -> Path:
     )
 
 
-def load_settings() -> Settings:
-    load_dotenv(REPO_ROOT / ".env")
+def load_settings(env_file: Path | None = REPO_ROOT / ".env") -> Settings:
+    """Read settings from the environment, loading `env_file` first (None = do not read any .env)."""
+    if env_file is not None:
+        load_dotenv(env_file)
     data_env = os.environ.get("TRACK3_DATA", "").strip()
     var_env = os.environ.get("EHDS_VAR_DIR", "").strip()
     mode = os.environ.get("EHDS_LLM", "auto").strip().lower() or "auto"

@@ -65,6 +65,7 @@ def test_data_holders(db):
 
 
 def test_loads_from_unicode_path(db, settings):
+    """Loading works from the checkout's data path (non-ASCII such as "ü" on some machines)."""
     # On machines whose data path contains non-ASCII characters (e.g. "ü") the `db` fixture
     # loading at all proves such paths work; on other machines this is a plain load check.
     assert settings.data_dir.is_dir()
@@ -76,7 +77,7 @@ def test_loads_from_unicode_path(db, settings):
 
 def test_settings_find_track3_from_worktree(monkeypatch):
     monkeypatch.delenv("TRACK3_DATA", raising=False)
-    s = load_settings()
+    s = load_settings(env_file=None)
     assert (s.data_dir / "requests" / "expected.json").is_file()
     assert (s.data_dir / "data" / "patients.csv").is_file()
 
@@ -86,7 +87,7 @@ def test_settings_env_override(monkeypatch, tmp_path):
     monkeypatch.setenv("EHDS_VAR_DIR", str(tmp_path / "v"))
     monkeypatch.setenv("EHDS_LLM", "off")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    s = load_settings()
+    s = load_settings(env_file=None)
     assert s.data_dir == tmp_path
     assert s.var_dir == tmp_path / "v"
     assert s.llm_mode == "off"
