@@ -21,9 +21,10 @@ ICD = re.compile(r"^[A-Z]\d{0,2}(\.[0-9A-Z]{0,4})?$")
 ATC = re.compile(r"^[A-Z](\d{2}([A-Z]([A-Z](\d{2})?)?)?)?$")
 LOINC = re.compile(r"^\d{1,7}-\d$")
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-KINDS = {"condition", "medication", "observation", "encounter", "set", "ratio"}
+KINDS = {"condition", "medication", "observation", "encounter", "set", "ratio", "derived"}
 OPS = {"and", "or", "not", "all", "age", "age_between", "attr", "ref", "has_condition", "has_medication",
        "has_observation", "observation_value", "has_encounter"}
+DERIVED = {("patient", "age"), ("encounter", "duration_days")}
 CMPS = {"<", "<=", ">", ">=", "="}
 DIMS = {"region", "age_band", "sex", "data_holder", "year"}
 MEASURES = {"count_patients", "count_encounters", "percent", "mean", "median"}
@@ -93,6 +94,9 @@ def validate(ir: dict) -> None:
             date_ok(c.get("start_to"), w)
             if c.get("data_holders") is not None and not all(isinstance(h, str) for h in c["data_holders"]):
                 errs.append(f"{w}: invalid data_holders")
+        elif k == "derived":
+            if (c.get("of"), c.get("formula")) not in DERIVED:
+                errs.append(f"{w}: unsupported derived value {c.get('of')}/{c.get('formula')}")
         elif k == "set":
             _expr(c.get("expr"), concepts, errs, w, 0)
         elif k == "ratio":
@@ -153,11 +157,18 @@ def validate(ir: dict) -> None:
         if t == "count_encounters" and concepts.get(m.get("encounter"), {}).get("kind") != "encounter":
             errs.append(f"{w}: 'encounter' must reference an encounter concept")
         if t in ("mean", "median"):
-            obs = concepts.get(m.get("observation"), {})
-            if obs.get("kind") != "observation":
-                errs.append(f"{w}: 'observation' must reference an observation concept")
-            elif not obs.get("pick"):
-                errs.append(f"{w}: observation '{m.get('observation')}' has no per-patient value rule")
+            if m.get("derived"):
+                dv = concepts.get(m["derived"], {})
+                if dv.get("kind") != "derived":
+                    errs.append(f"{w}: 'derived' must reference a derived-value concept")
+                elif dv.get("of") == "encounter" and concepts.get(m.get("encounter"), {}).get("kind") != "encounter":
+                    errs.append(f"{w}: an encounter-level value needs an 'encounter' concept")
+            else:
+                obs = concepts.get(m.get("observation"), {})
+                if obs.get("kind") != "observation":
+                    errs.append(f"{w}: 'observation' must reference an observation concept")
+                elif not obs.get("pick"):
+                    errs.append(f"{w}: observation '{m.get('observation')}' has no per-patient value rule")
         if t == "percent":
             for key in ("numerator", "denominator"):
                 ref = seen.get(m.get(key))
@@ -167,8 +178,9 @@ def validate(ir: dict) -> None:
     if measures and not any(m.get("visible") for m in measures if isinstance(m, dict)):
         errs.append("no visible measure")
     if any(d.get("type") == "year" for d in dims if isinstance(d, dict)):
-        if any(m.get("type") not in ("count_encounters", "percent") for m in measures if m.get("visible")):
-            errs.append("year grouping is only allowed for encounter counts")
+        if any(m.get("type") not in ("count_encounters", "percent") and not m.get("encounter")
+               for m in measures if m.get("visible")):
+            errs.append("year grouping is only allowed for encounter counts and encounter-level values")
 
     if ir.get("mode") == "spe":
         spe = ir.get("spe")

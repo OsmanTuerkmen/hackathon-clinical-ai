@@ -116,11 +116,27 @@ class NewRequestsTest(unittest.TestCase):
             exp[r] = [cnt(len(grp)), cnt(len(on)), pct(len(on), len(grp))]
         self.assertEqual(answer_of(case), exp)
 
-    def test_n07_unsupported_definition_fails_clearly(self):
+    def test_n07_length_of_stay_mean_and_median(self):
+        import datetime as dt
         case = self.process("N07")
+        self.assertEqual(case["fulfilment"]["status"], "RELEASED")
+        exp = {}
+        for h in HOLDERS:
+            stays = [e for e in self.ref.enc if e["type"] == "inpatient" and e["start_date"].startswith("2025")
+                     and e["data_holder"] == h]
+            days = sorted((dt.date.fromisoformat(e["end_date"]) - dt.date.fromisoformat(e["start_date"])).days
+                          for e in stays)
+            mid = len(days) // 2
+            median = Decimal(days[mid]) if len(days) % 2 else (Decimal(days[mid - 1]) + Decimal(days[mid])) / 2
+            r1 = lambda x: float(Decimal(x).quantize(Decimal("0.1"), ROUND_HALF_UP))
+            exp[h] = [cnt(len(stays)), r1(Decimal(sum(days)) / len(days)), r1(median)]
+        self.assertEqual(answer_of(case), exp)
+
+    def test_n08_maximum_is_refused_for_privacy(self):
+        case = self.process("N08")
         self.assertEqual(case["decision"]["outcome"], "APPROVE_STATISTICAL")
         self.assertEqual(case["fulfilment"]["status"], "NOT_PRODUCED")
-        self.assertIn("end_date minus start_date", case["fulfilment"]["error"]["message"])
+        self.assertIn("single patient", case["fulfilment"]["error"]["message"])
         self.assertIsNone(case["result"])
 
 

@@ -54,19 +54,19 @@ def audit_statistics(released: dict, internal, ir: dict, store: DataStore) -> li
                     expect = float(D.round_half_up(Fraction(num * 100, den), 1))
                     pct_bad += val != expect
             else:
-                n = raw[mid]["n"]
+                n, k = raw[mid]["n"], raw[mid].get("k", raw[mid]["n"])  # n = distinct patients, k = values
                 if n < 10:
                     mean_n += 1
                     mean_bad += val != D.SUPPRESSED
                 elif m["type"] == "mean":
-                    expect = float(D.round_half_up(Fraction(raw[mid]["sum"]) / n, 1))
+                    expect = float(D.round_half_up(Fraction(raw[mid]["sum"]) / k, 1))
                     mean_bad += val != expect
     checks.append(_check("Counts below 10 (including 0) shown as \"<10\"", small_bad == 0,
                          f"{small_n} small cell(s) masked" if small_bad == 0 else f"{small_bad} cell(s) wrong"))
     checks.append(_check("Percentages with numerator or denominator below 10 suppressed", pct_bad == 0,
                          f"{pct_n} percentage(s) suppressed; others rounded half-up to one decimal"
                          if pct_bad == 0 else f"{pct_bad} percentage(s) wrong"))
-    checks.append(_check("Means based on fewer than 10 patients suppressed", mean_bad == 0,
+    checks.append(_check("Means and medians based on fewer than 10 patients suppressed", mean_bad == 0,
                          f"{mean_n} mean(s) suppressed" if mean_bad == 0 else f"{mean_bad} mean(s) wrong"))
 
     opted = store.opted_out_ids

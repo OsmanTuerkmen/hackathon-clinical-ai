@@ -55,17 +55,20 @@ def percent_cell(numerator: int, denominator: int):
     return round_half_up(Fraction(numerator * 100, denominator), 1)
 
 
-def mean_cell(values: Iterable[Fraction]):
-    """A mean is suppressed if it is based on fewer patients than the threshold."""
+def mean_cell(values: Iterable[Fraction], n_patients: int | None = None):
+    """A mean is suppressed if it is based on fewer patients than the threshold.
+
+    For encounter-level values (e.g. length of stay) several values can come from one patient, so the number
+    of distinct patients is passed explicitly."""
     vals = list(values)
-    if is_small(len(vals)):
+    if is_small(len(vals) if n_patients is None else n_patients) or not vals:
         return SUPPRESSED
     return round_half_up(sum(vals, Fraction(0)) / len(vals), 1)
 
 
-def median_cell(values: Iterable[Fraction]):
+def median_cell(values: Iterable[Fraction], n_patients: int | None = None):
     vals = sorted(values)
-    if is_small(len(vals)):
+    if is_small(len(vals) if n_patients is None else n_patients) or not vals:
         return SUPPRESSED
     mid = len(vals) // 2
     med = vals[mid] if len(vals) % 2 else (vals[mid - 1] + vals[mid]) / 2

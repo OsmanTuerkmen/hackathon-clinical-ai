@@ -101,6 +101,34 @@ class ConservativeFailureTest(unittest.TestCase):
         self.assertFails(["Report per age band: patients."], "no age bands")
 
 
+class DerivedValueTest(unittest.TestCase):
+    def test_length_of_stay_and_age(self):
+        plan = build_plan(req(["Inpatient stay = encounter with type 'inpatient'.",
+                               "Length of stay = end_date minus start_date in days.",
+                               "Report per hospital: inpatient stays and median length of stay."]), "statistics")
+        m = plan["measures"][1]
+        self.assertEqual((m["type"], plan["concepts"][m["derived"]]["formula"]), ("median", "duration_days"))
+        self.assertEqual(plan["concepts"][m["encounter"]]["types"], ["inpatient"])
+        plan = build_plan(req(["Report per sex: women with asthma and their mean age."]), "statistics")
+        self.assertEqual(plan["concepts"][plan["measures"][1]["derived"]]["formula"], "age")
+
+    def test_default_length_of_stay_is_announced(self):
+        plan = build_plan(req(["Inpatient stay = encounter with type 'inpatient'.",
+                               "Report per year: inpatient stays and mean length of stay."]), "statistics")
+        self.assertTrue(any("end_date minus start_date" in n for n in plan["notes"]))
+
+    def test_minimum_maximum_and_question_only_periods_are_refused(self):
+        with self.assertRaises(InterpretationError) as ctx:
+            build_plan(req(["Inpatient stay = encounter with type 'inpatient'.",
+                            "Report per hospital: maximum length of stay."]), "statistics")
+        self.assertIn("single patient", ctx.exception.message)
+        with self.assertRaises(InterpretationError) as ctx:
+            build_plan(req(["Inpatient stay = encounter with type 'inpatient'.",
+                            "Report per region: patients with an inpatient stay."],
+                           question="How many patients had an inpatient stay in 2024?"), "statistics")
+        self.assertIn("2024", ctx.exception.message)
+
+
 class NegationScopeTest(unittest.TestCase):
     def measure_set(self, line, question="How many patients?", extra=()):
         plan = build_plan(req(list(extra) + [line], question), "statistics")

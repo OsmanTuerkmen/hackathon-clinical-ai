@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import datetime as dt
 import itertools
 import operator
 from dataclasses import dataclass, field
@@ -244,7 +245,7 @@ class Executor:
         dims = ir["dimensions"]
         exprs = [ir["population"]] + [m["set"] for m in measures if "set" in m]
         for m in measures:
-            if m["type"] in ("mean", "median"):
+            if m["type"] in ("mean", "median") and m.get("observation"):
                 self._atom(("obs_val", m["observation"]))
         rows = self.patient_rows(exprs)
         groups = self._groups(dims)
@@ -252,12 +253,17 @@ class Executor:
         internal = Internal()
         counts = {m["id"]: [0] * len(groups) for m in measures if m["type"].startswith("count")}
         values = {m["id"]: [[] for _ in groups] for m in measures if m["type"] in ("mean", "median")}
+        value_patients = {m["id"]: [set() for _ in groups] for m in measures if m["type"] in ("mean", "median")}
         contributors = {m["id"]: set() for m in measures if m["type"] != "percent"}
         pop_rows = [r for r in rows if self.ev(ir["population"], r)]
         internal.population_size = len(pop_rows)
         by_id = {r["patient_id"]: r for r in pop_rows}
 
-        pmeasures = [m for m in measures if m["type"] in ("count_patients", "mean", "median")]
+        def encounter_level(m):
+            return m["type"] in ("mean", "median") and m.get("derived") and \
+                self.concepts[m["derived"]]["of"] == "encounter"
+
+        pmeasures = [m for m in measures if m["type"] in ("count_patients", "mean", "median") and not encounter_level(m)]
         for r in pop_rows:
             k = self._key(dims, r)
             if k is None or k not in gindex:
@@ -270,10 +276,34 @@ class Executor:
                     counts[m["id"]][gi] += 1
                     contributors[m["id"]].add(r["patient_id"])
                 else:
-                    v = self.value(m["observation"], r)
+                    v = self.value(m["observation"], r) if m.get("observation") else Fraction(r["age"])
                     if v is not None:
                         values[m["id"]][gi].append(v)
+                        value_patients[m["id"]][gi].add(r["patient_id"])
                         contributors[m["id"]].add(r["patient_id"])
+
+        for m in measures:  # encounter-level values, e.g. length of stay (one value per stay)
+            if not encounter_level(m):
+                continue
+            dv = self.concepts[m["derived"]]
+            where, params = self._encounter_where(self.concepts[m["encounter"]])
+            sql = ("SELECT e.encounter_id, e.patient_id, e.data_holder, substr(e.start_date, 1, 4) AS year, "
+                   f"e.start_date, e.end_date\nFROM encounters e\nWHERE {where} AND e.end_date IS NOT NULL\n"
+                   "ORDER BY e.encounter_id")
+            enc_rows = self.store.query(sql, params, purpose="encounter values")
+            self.sql.append({"purpose": f"Encounter values for '{m['label']}' (end_date - start_date in days)",
+                             "sql": sql, "params": params, "rows": len(enc_rows)})
+            for _eid, pid, holder, year, start, end in enc_rows:
+                r = by_id.get(pid)
+                if r is None or not self.ev(m["set"], r):
+                    continue
+                k = self._key(dims, r, {"data_holder": holder, "year": year})
+                if k is None or k not in gindex:
+                    continue
+                days = (dt.date.fromisoformat(end) - dt.date.fromisoformat(start)).days + (1 if dv.get("plus_one") else 0)
+                values[m["id"]][gindex[k]].append(Fraction(days))
+                value_patients[m["id"]][gindex[k]].add(pid)
+                contributors[m["id"]].add(pid)
 
         for m in measures:
             if m["type"] != "count_encounters":
@@ -314,8 +344,9 @@ class Executor:
                     released = D.percent_cell(num, den)
                 else:
                     vals = values[mid][gi]
-                    raw[mid] = {"n": len(vals), "sum": str(sum(vals, Fraction(0)))}
-                    released = D.mean_cell(vals) if t == "mean" else D.median_cell(vals)
+                    n_pat = len(value_patients[mid][gi])
+                    raw[mid] = {"n": n_pat, "k": len(vals), "sum": str(sum(vals, Fraction(0)))}
+                    released = D.mean_cell(vals, n_pat) if t == "mean" else D.median_cell(vals, n_pat)
                 if m.get("visible"):
                     cells[mid] = released
             out_rows.append({"group": list(g), "label": " · ".join(str(x) for x in g) if g else "All patients",

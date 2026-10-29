@@ -52,7 +52,8 @@ PATIENT_NOUNS = {"patient", "person", "people", "individual", "subject", "adult"
 FORMAT_RE = re.compile(r"[,;]?\s*\(?(?:with |rounded to |to |as )?(?:one|1|a single) decimal(?: place)?s?\)?\s*$", I)
 HEAD_WORDS = {"%", "percentage", "percent", "proportion", "share", "that", "their", "the", "this", "its", "mean",
               "average", "median", "number", "how", "count", "total", "patient", "adult", "woman", "man", "child",
-              "person", "people", "stay", "encounter", "visit", "admission", "rate", "prevalence"}
+              "person", "people", "stay", "encounter", "visit", "admission", "rate", "prevalence", "maximum",
+              "minimum", "max", "min", "highest", "lowest", "longest", "shortest"}
 MONTHS = {m: i for i, m in enumerate(["january", "february", "march", "april", "may", "june", "july", "august",
                                       "september", "october", "november", "december"], 1)}
 DATE_TXT = r"(\d{4}-\d{2}-\d{2}|\d{1,2} (?:january|february|march|april|may|june|july|august|september|october|november|december) \d{4})"
@@ -340,6 +341,17 @@ class PlanBuilder:
             den = FORMAT_RE.sub("", den).strip().rstrip(",")
             return self.add_concept(name, "ratio", {"_num": num.strip(), "_den": den.strip(), "scale": 100},
                                     where, original, aliases, pending="ratio")
+        # derived numeric values: length of stay (end_date - start_date) and age (2025 - birth year)
+        if re.search(r"\bend_date\b[^.]*?(?:\bminus\b|\s[-−–]\s)[^.]*?\bstart_date\b|\bdays between\b[^.]*\bstart_date\b"
+                     r"[^.]*\bend_date\b|\bdischarge date\b[^.]*\bminus\b[^.]*\badmission date\b", low):
+            plus_one = bool(re.search(r"\+\s*1\b|\bplus (?:one|1)\b|\binclusive\b", low))
+            return self._duration_concept(name, where, original, aliases, plus_one)
+        if re.search(r"\b\d{4}\s*(?:minus|-|−)\s*(?:the\s+)?(?:patient'?s?\s+)?(?:birth year|year of birth)\b|"
+                     r"\bage in (?:completed )?years\b", low) and re.search(r"\bage\b", name, I):
+            c = self._age_concept()
+            for alias in [name] + aliases:
+                self.index.add(alias, c.cid)
+            return c
         enc_word = re.search(r"\b(encounters?|primary_icd10|main diagnosis|primary diagnosis|principal diagnosis|"
                              r"stays?|visits?|admissions?|hospitali[sz]ations?)\b", low)
         patient_head = re.match(r"^(?:all |any )?(patients?|people|persons?|adults?|women|men|children|individuals?)\b",
@@ -370,6 +382,37 @@ class PlanBuilder:
                                     where, original, aliases)
         # everything else is a patient set described in words (age, sex, region, other concepts, vocabulary)
         return self.add_concept(name, "set", {}, where, original, aliases, pending=b)
+
+    DURATION_ALIASES = ["length of stay", "length of stays", "duration of stay", "los", "length of hospital stay",
+                        "days in hospital", "length of the stay"]
+
+    def _duration_concept(self, name: str | None = None, where: str = "", original: str = "",
+                          aliases: list[str] | None = None, plus_one: bool = False) -> Concept:
+        existing = next((c for c in self.concepts.values() if c.kind == "derived"
+                         and c.spec.get("formula") == "duration_days"), None)
+        if existing:
+            for alias in ([name] if name else []) + (aliases or []):
+                self.index.add(alias, existing.cid)
+            return existing
+        if name is None:
+            self.notes.append("No definition of 'length of stay' was supplied; used end_date minus start_date in days "
+                              "for each encounter.")
+        c = self.add_concept(name or "Length of stay", "derived",
+                             {"of": "encounter", "formula": "duration_days", "plus_one": plus_one,
+                              "unit": "days"}, where or "built-in default", original,
+                             (aliases or []) + self.DURATION_ALIASES)
+        return c
+
+    def _age_concept(self) -> Concept:
+        existing = next((c for c in self.concepts.values() if c.kind == "derived" and c.spec.get("formula") == "age"),
+                        None)
+        if existing:
+            return existing
+        c = Concept(self._new_cid("Age"), "Age", "derived", {"of": "patient", "formula": "age", "unit": "years"},
+                    "data/README.md: age = 2025 minus birth year")
+        c.head = "age"
+        self.concepts[c.cid] = c
+        return c
 
     def _check_leftover(self, rest: str, where: str, original: str, extra: set[str] | frozenset = frozenset()) -> None:
         extra_n = {norm_word(x) for x in extra} | set(extra)
@@ -939,6 +982,8 @@ class PlanBuilder:
             return e, cid
         if c.kind == "ratio":
             raise InterpretationError(f"'{c.label}' is a ratio and cannot be used to select patients", where)
+        if c.kind == "derived":
+            return {"op": "has_value", "id": cid}, None
         raise InterpretationError(f"unsupported concept kind {c.kind}", where)
 
     def _bind(self, expr: dict, it: Item, text: str, where: str) -> dict:
@@ -985,7 +1030,19 @@ class PlanBuilder:
         return c.cid
 
     # ------------------------------------------------------------------ statistics mode
+    def _check_question_years(self) -> None:
+        """A period named only in the question (not in any definition) would be silently ignored - refuse it."""
+        q = re.sub(r"31 december \d{4}", " ", self.req.get("question", ""), flags=I)
+        defs = " ".join(self.req.get("definitions", []))
+        missing = sorted({y for y in re.findall(r"\b((?:19|20)\d{2})\b", q) if y not in defs})
+        if missing:
+            raise InterpretationError(f"the question refers to {', '.join(missing)}, but no definition restricts the "
+                                      "data to that period", "question",
+                                      f"Add the period to a definition, e.g. 'Count stays whose start_date is in "
+                                      f"{missing[0]}.'")
+
     def _build_statistics(self) -> dict:
+        self._check_question_years()
         if self.report is None:
             raise InterpretationError("no 'Report ...' definition says which statistics to produce", "definitions")
         if self.report["kind"] == "patient_level":
@@ -1123,31 +1180,65 @@ class PlanBuilder:
                 label = p if "%" in p else f"{p} (%)"
                 self._add_measure({"type": "percent", "label": label[0].upper() + label[1:], "phrase": p,
                                    "numerator": num, "denominator": den, "visible": True})
+            elif re.match(r"^(?:the |their |its )?(?:minimum|maximum|min|max|lowest|highest|smallest|largest|longest|"
+                          r"shortest)\b", core, I):
+                raise InterpretationError(f"\"{p}\" asks for a minimum or maximum, which describes a single patient and "
+                                          "is never released as an anonymised statistic", where,
+                                          "Ask for a mean or median instead (suppressed below 10 patients).")
             elif mean:
                 fn = mean.group(1).lower()
                 fn = "mean" if fn == "average" else fn
-                rest = mean.group(2)
-                expr = self.parse_set(rest, where) if rest.strip() else {"op": "all"}
+                rest = mean.group(2).strip()
                 value, others = None, []
-                for a in _and_args(expr):
-                    if a.get("op") == "has_observation" and value is None:
-                        value = a["id"]
-                    else:
-                        others.append(a)
+                age_m = re.match(r"^age\b(?:\s*\((?:in\s+)?years\))?(?:\s+in years)?(?:\s+on 31 december \d{4})?"
+                                 r"(?:\s+(?:of|among|for|in)\s+(.+))?$", rest, I)
+                dur_m = re.match(r"^(?:length|duration)\s+of\s+(?!(?:the\s+)?(?:hospital\s+)?stays?\b)(.+)$", rest, I)
+                if age_m:
+                    value = self._age_concept().cid
+                    others = _and_args(self.parse_set(age_m.group(1), where)) if age_m.group(1) else []
+                elif dur_m:
+                    value = self._duration_concept().cid
+                    others = _and_args(self.parse_set(dur_m.group(1), where))
+                else:
+                    if re.search(r"\b(?:length|duration) of (?:the )?(?:hospital )?stay|\blos\b|\bdays in hospital\b",
+                                 rest, I):
+                        self._duration_concept()
+                    expr = self.parse_set(rest, where) if rest else {"op": "all"}
+                    for a in _and_args(expr):
+                        if a.get("op") in ("has_observation", "has_value") and value is None:
+                            value = a["id"]
+                        else:
+                            others.append(a)
                 if value is None:
-                    raise InterpretationError(f"\"{p}\" does not name a measurement to average", where)
-                obs = self.concepts[value]
-                if not obs.spec.get("pick"):
-                    raise InterpretationError(f"the definitions do not say which {obs.label} value per patient to "
-                                              "use", where, f"Add e.g. 'Use the latest {obs.label} per patient'.")
+                    raise InterpretationError(f"\"{p}\" does not name a measurement or value to average", where)
+                vc = self.concepts[value]
+                vc.referenced = True
+                measure = {"type": fn, "phrase": p, "visible": True}
+                if vc.kind == "observation":
+                    if not vc.spec.get("pick"):
+                        raise InterpretationError(f"the definitions do not say which {vc.label} value per patient to "
+                                                  "use", where, f"Add e.g. 'Use the latest {vc.label} per patient'.")
+                    measure.update(observation=value, label=f"{fn.capitalize()} {vc.label}")
+                else:
+                    measure.update(derived=value, label=f"{fn.capitalize()} {vc.label.lower()} ({vc.spec['unit']})")
+                    if vc.spec["of"] == "encounter":
+                        enc = next((a["id"] for a in others if a.get("op") == "has_encounter"), None)
+                        if enc:
+                            others = [a for a in others if not (a.get("op") == "has_encounter" and a["id"] == enc)]
+                        elif last_count and self._measure(last_count)["type"] == "count_encounters":
+                            enc = self._measure(last_count)["encounter"]
+                        else:
+                            raise InterpretationError(f"\"{p}\" does not say which encounters (e.g. inpatient stays) "
+                                                      "the length of stay refers to", where)
+                        measure["encounter"] = enc
                 if others:
                     base_set = _and(others)
                 elif last_count:
                     base_set = self._measure(last_count)["set"]
                 else:
                     base_set = {"op": "all"}
-                self._add_measure({"type": fn, "label": f"{fn.capitalize()} {obs.label}", "phrase": p,
-                                   "observation": value, "set": base_set, "visible": True})
+                measure["set"] = base_set
+                self._add_measure(measure)
             elif percent:
                 stripped = re.sub(r"^(?:the |a )?(?:%|percent(?:age)?s?|proportions?|shares?)\s*", "", core, flags=I)
                 if re.fullmatch(r"(?:that|this|the|their|its)?\s*(?:share|proportion|percentage)?\s*", core, I) or \
@@ -1220,6 +1311,10 @@ class PlanBuilder:
         return next(m for m in self.measures if m["id"] == mid)
 
     def _add_measure(self, m: dict) -> str:
+        if "has_value" in json.dumps(m.get("set", {})):
+            raise InterpretationError(f"\"{m.get('phrase')}\" uses a computed value (like length of stay or age) as a "
+                                      "filter", "report", "Ask for its mean or median, or define the filter with an "
+                                      "explicit threshold on a measurement.")
         m["id"] = f"m{len(self.measures) + 1}"
         self.measures.append(m)
         return m["id"]
@@ -1257,7 +1352,7 @@ class PlanBuilder:
         for c in list(self.concepts.values()):
             if c.referenced or c.source == "vocabulary" or c.source.startswith("derived"):
                 continue
-            if c.kind == "observation":
+            if c.kind in ("observation", "derived"):
                 continue
             if c.kind == "ratio":
                 self.notes.append(f"'{c.label}' is defined but not requested in the report; it was not computed.")
@@ -1298,6 +1393,7 @@ class PlanBuilder:
 
     # ------------------------------------------------------------------ SPE mode
     def _build_spe(self) -> dict:
+        self._check_question_years()
         cohort = self._cohort_expr()
         record_types = self._record_types()
         self.measures = [{"id": "m1", "type": "count_patients", "label": "Patients in the cohort",
@@ -1350,8 +1446,10 @@ class PlanBuilder:
     # ------------------------------------------------------------------ IR assembly
     def _ir(self, population: dict, dims: list[dict]) -> dict:
         if any(d["type"] == "year" for d in dims):
-            if not all(m["type"] == "count_encounters" for m in self.measures if m["visible"]):
-                raise InterpretationError("grouping by year is only supported for encounter counts", "report")
+            if not all(m["type"] in ("count_encounters", "percent") or m.get("encounter")
+                       for m in self.measures if m["visible"]):
+                raise InterpretationError("grouping by year is only supported for encounter counts and encounter-level "
+                                          "values such as length of stay", "report")
         used = set()
 
         def walk(e):
@@ -1366,7 +1464,7 @@ class PlanBuilder:
         walk(population)
         for m in self.measures:
             walk(m)
-            for key in ("encounter", "observation"):
+            for key in ("encounter", "observation", "derived"):
                 if m.get(key):
                     used.add(m[key])
         changed = True
@@ -1452,6 +1550,10 @@ def describe_concept(c: Concept, pb: "PlanBuilder | None" = None) -> str:
         return f"'{c.label}' = encounters with " + ", ".join(bits)
     if c.kind == "ratio":
         return f"'{c.label}' = ratio x 100 (numerator / denominator)"
+    if c.kind == "derived":
+        if s.get("formula") == "age":
+            return f"'{c.label}' = 2025 minus birth year (per patient)"
+        return f"'{c.label}' = end_date minus start_date{' + 1' if s.get('plus_one') else ''} in days (per encounter)"
     if c.pending is not None:
         return f"'{c.label}' = patients: {c.pending}"
     if pb is not None and "expr" in s:

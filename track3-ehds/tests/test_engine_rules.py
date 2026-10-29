@@ -147,6 +147,16 @@ class MiniDataTest(unittest.TestCase):
             self.assertEqual(raw[("Klinikum Nord",)]["m1"]["n"], 2, definition)  # J18.9 stay excluded
             self.assertEqual(raw[("Klinikum Süd",)]["m1"]["n"], 1, definition)   # p6: HF in conditions, K35.8 stay
 
+    def test_length_of_stay_suppressed_below_ten_distinct_patients(self):
+        req = request(["Inpatient stay = encounter with type 'inpatient'.",
+                       "Length of stay = end_date minus start_date in days.",
+                       "Report per hospital: inpatient stays and mean length of stay."],
+                      question="Mean length of inpatient stays by hospital?")
+        _, _, raw, rows = self.run_raw(req)
+        self.assertEqual(raw[("Klinikum Nord",)]["m2"]["k"], 3)   # three stays ...
+        self.assertEqual(raw[("Klinikum Nord",)]["m2"]["n"], 1)   # ... from one patient
+        self.assertEqual(rows[("Klinikum Nord",)]["m2"], "suppressed")
+
     # ------------------------------------------------------------------ percentages
     def test_percentage_suppression(self):
         req = request(["Adult = aged 18 or older on 31 December 2025.",

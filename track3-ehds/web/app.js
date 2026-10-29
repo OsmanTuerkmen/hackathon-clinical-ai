@@ -558,6 +558,7 @@ function codesOf(c) {
     if (c.data_holders) bits.push(c.data_holders.join(", "));
     return bits.join("; ");
   }
+  if (c.kind === "derived") return c.formula === "age" ? "age = 2025 − birth year" : `end_date − start_date${c.plus_one ? " + 1" : ""} (days)`;
   if (c.kind === "set") return "patient group";
   if (c.kind === "ratio") return "ratio × 100";
   return "";

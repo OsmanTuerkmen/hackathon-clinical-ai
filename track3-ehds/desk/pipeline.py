@@ -221,6 +221,12 @@ def describe_plan(plan: dict, pb: PlanBuilder) -> dict:
         elif m["type"] == "percent":
             measures.append({"id": m["id"], "label": m["label"], "visible": True,
                              "computes": f"{m['numerator']} / {m['denominator']} x 100"})
+        elif m.get("derived"):
+            dv = pb.concepts[m["derived"]]
+            what = (f"{dv.label.lower()} per '{pb.concepts[m['encounter']].label}' encounter (end_date - start_date, "
+                    "suppressed below 10 distinct patients)") if m.get("encounter") else f"{dv.label.lower()} per patient"
+            measures.append({"id": m["id"], "label": m["label"], "visible": True,
+                             "computes": f"{m['type']} of {what} over {describe_expr(m['set'], pb)}"})
         else:
             measures.append({"id": m["id"], "label": m["label"], "visible": True,
                              "computes": f"{m['type']} of {pb.concepts[m['observation']].label} "
