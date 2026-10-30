@@ -17,8 +17,12 @@ const silentMp4 = path.join(demoDir, "accessdesk2-demo.mp4");
 const captionedMp4 = path.join(demoDir, "accessdesk2-demo-untertitel.mp4");
 
 await fs.mkdir(demoDir, { recursive: true });
-await assertPortFree(port);
 await fs.writeFile(srtPath, await makeSrt(), "utf8");
+if (process.argv.includes("--captions-only")) {
+  await renderCaptions();
+  process.exit(0);
+}
+await assertPortFree(port);
 
 const runtime = await fs.mkdtemp(path.join(os.tmpdir(), "accessdesk-demo-runtime-"));
 const videoDir = await fs.mkdtemp(path.join(os.tmpdir(), "accessdesk-demo-video-"));
@@ -125,12 +129,7 @@ try {
     "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23",
     "-preset", "medium", "-movflags", "+faststart", silentMp4,
   ]);
-  runFfmpeg([
-    "-y", "-i", silentMp4, "-t", String(totalSeconds),
-    "-vf", "subtitles=docs/demo/accessdesk2-demo.de.srt:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H80000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=38,Alignment=2'",
-    "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23",
-    "-preset", "medium", "-movflags", "+faststart", captionedMp4,
-  ]);
+  await renderCaptions();
   const info = JSON.parse(spawnSync("ffprobe", [
     "-v", "error", "-show_entries", "format=duration,size",
     "-of", "json", silentMp4,
@@ -197,6 +196,53 @@ function runFfmpeg(args) {
   if (result.status !== 0) throw new Error(`ffmpeg failed with exit code ${result.status}`);
 }
 
+async function renderCaptions() {
+  const assPath = path.join(demoDir, "accessdesk2-demo.de.ass");
+  const srt = await fs.readFile(srtPath, "utf8");
+  await fs.writeFile(assPath, srtToAss(srt), "utf8");
+  try {
+    runFfmpeg([
+      "-y", "-i", silentMp4, "-t", String(totalSeconds),
+      "-vf", "pad=iw:ih+72:0:0:color=white,ass=docs/demo/accessdesk2-demo.de.ass",
+      "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23",
+      "-preset", "medium", "-movflags", "+faststart", captionedMp4,
+    ]);
+  } finally {
+    await fs.rm(assPath, { force: true });
+  }
+}
+
+function srtToAss(srt) {
+  const blocks = srt.trim().split(/\r?\n\r?\n/u);
+  const events = blocks.map((block) => {
+    const lines = block.split(/\r?\n/u);
+    const [start, end] = lines[1].split(" --> ");
+    return `Dialogue: 0,${assTime(start)},${assTime(end)},Default,,0,0,0,,${lines.slice(2).join("\\N")}`;
+  });
+  return [
+    "[Script Info]",
+    "ScriptType: v4.00+",
+    "PlayResX: 1440",
+    "PlayResY: 972",
+    "ScaledBorderAndShadow: yes",
+    "",
+    "[V4+ Styles]",
+    "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+    "Style: Default,Arial,20,&H00FFFFFF,&H000000FF,&H80000000,&H80000000,0,0,0,0,100,100,0,0,3,1,0,2,40,40,12,1",
+    "",
+    "[Events]",
+    "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+    ...events,
+    "",
+  ].join("\n");
+}
+
+function assTime(value) {
+  const [hours, minutes, rest] = value.split(":");
+  const [seconds, milliseconds] = rest.split(",");
+  return `${Number(hours)}:${minutes}:${seconds}.${milliseconds.slice(0, 2)}`;
+}
+
 async function makeSrt() {
   const markdown = await fs.readFile(path.join(root, "DEMO.md"), "utf8");
   const rows = markdown.split(/\r?\n/u).filter((line) => /^\|\s*\d+:\d\d\s*\|/u.test(line))
@@ -211,11 +257,14 @@ async function makeSrt() {
     const end = rows[rowIndex + 1]?.start ?? totalSeconds;
     const chunks = cueChunks(row.speech);
     const slot = end - row.start;
+    const totalWeight = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    let elapsed = row.start;
     return chunks.map((chunk, chunkIndex) => {
-      const start = row.start + slot * chunkIndex / chunks.length;
+      const start = elapsed;
       const stop = chunkIndex === chunks.length - 1
         ? end
-        : row.start + slot * (chunkIndex + 1) / chunks.length;
+        : start + slot * chunk.length / totalWeight;
+      elapsed = stop;
       return `${srtTime(start)} --> ${srtTime(stop)}\n${wrapLines(chunk).join("\n")}`;
     });
   }).map((cue, index) => `${index + 1}\n${cue}`).join("\n\n") + "\n";
@@ -223,17 +272,69 @@ async function makeSrt() {
 
 function cueChunks(text) {
   const chunks = [];
-  let words = [];
-  for (const word of text.split(/\s+/u)) {
-    const candidate = [...words, word].join(" ");
-    if (words.length && wrapLines(candidate).length > 2) {
-      chunks.push(words.join(" "));
-      words = [word];
-    } else {
-      words.push(word);
+  let current = "";
+  for (const sentence of splitSentences(text)) {
+    const parts = wrapLines(sentence).length <= 2
+      ? [sentence]
+      : splitLongSentence(sentence);
+    for (const part of parts) {
+      const candidate = current ? `${current} ${part}` : part;
+      if (current && wrapLines(candidate).length > 2) {
+        chunks.push(current);
+        current = part;
+      } else {
+        current = candidate;
+      }
     }
   }
-  if (words.length) chunks.push(words.join(" "));
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+function splitSentences(text) {
+  const protectedText = text
+    .replace(/\bArt\./gu, "Art\uE000")
+    .replace(/\bz\.B\./giu, "z\uE001B\uE001")
+    .replace(/\bd\.h\./giu, "d\uE002h\uE002");
+  return protectedText
+    .split(/(?:(?<=[.!?])|(?<=[.!?][“”»"']))\s+/u)
+    .map((sentence) => sentence
+      .replaceAll("\uE000", ".")
+      .replaceAll("\uE001", ".")
+      .replaceAll("\uE002", "."))
+    .filter(Boolean);
+}
+
+function splitLongSentence(sentence) {
+  const chunks = [];
+  let current = "";
+  for (const clause of sentence.split(/(?<=,)\s+/u)) {
+    const candidate = current ? `${current} ${clause}` : clause;
+    if (current && wrapLines(candidate).length > 2) {
+      chunks.push(current);
+      current = clause;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks.flatMap((chunk) => splitLongClause(chunk));
+}
+
+function splitLongClause(clause) {
+  if (wrapLines(clause).length <= 2) return [clause];
+  const chunks = [];
+  let current = "";
+  for (const word of clause.split(/\s+/u)) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (current && wrapLines(candidate).length > 2) {
+      chunks.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) chunks.push(current);
   return chunks;
 }
 
