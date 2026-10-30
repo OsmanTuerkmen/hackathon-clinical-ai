@@ -68,12 +68,12 @@ cd web; npm ci; npm run build; npx playwright test   # UI tests (uses the instal
 
 The interactive API documentation is at `/docs`. New requests can be sent as JSON to `POST /api/decide` (stateless), submitted through `POST /api/submit`, or pasted into the request builder in the UI.
 
-**Optional AI:**
+**Optional AI:** put one key into a local `.env` file next to `start.py`. The file is git-ignored; see [docs/ai-setup.md](docs/ai-setup.md).
 
-1. Run `.venv\Scripts\python -m pip install -r requirements-ai.txt`.
-2. Set `ANTHROPIC_API_KEY` in the environment or in a local `.env` file. `.env` is git-ignored.
+- **Google Gemini** (free tier: an API key from Google AI Studio is enough): `GEMINI_API_KEY=...`. The default model is `gemini-3.1-flash-lite`.
+- **Anthropic Claude**: `ANTHROPIC_API_KEY=...`, plus `.venv\Scripts\python -m pip install -r requirements-ai.txt`. The default model is `claude-opus-5-5`. If both keys are set, Claude is used.
 
-Without a key, everything works except the AI draft and the AI second opinion, and the UI says so.
+Without a key, everything works except the AI draft, the AI second opinion and the plain-language explanation, and the UI says so. At startup the AI is used cache-only and makes no network calls. Live calls happen only for a new submission, a draft, an explanation or the staff button "KI-Zweitmeinung einholen".
 
 ## Architecture
 
@@ -140,7 +140,8 @@ web/           React + TypeScript + IBM Carbon, built into web/dist and served b
 | FastAPI + Uvicorn | API and serving the web app | Local only |
 | React 19, TypeScript, Vite, IBM Carbon, d3-geo/d3-scale | Web app | Built into `web/dist`; no external requests at runtime |
 | Ed25519 (pure Python, RFC 8032) | Signature checks of credentials | `cryptography` is used if installed |
-| Anthropic Claude (`claude-opus-5-5`), optional | 1) draft the formal definitions from a free-text question (DE/EN), 2) a second opinion on the purpose, 3) map a term to codes, 4) a plain-language explanation | Structured JSON outputs. It sees request text and the code list only, never patient data. The term → code mapping can only choose from an enum of codes in the data, every answer is cached per input, and a disagreement only sends the case to staff review |
+| Google Gemini (`gemini-3.1-flash-lite`, free tier) or Anthropic Claude (`claude-opus-5-5`), optional | 1) draft the formal definitions from a free-text question (DE/EN), 2) a second opinion on the purpose, 3) map a term to codes, 4) a plain-language explanation | Structured JSON outputs with the same prompts and schemas for both providers (`accessdesk/ai_spec.py`). It sees request text and the code list only, never patient data. The term → code mapping can only choose from an enum of codes in the data, every answer is cached per input, and a disagreement only sends the case to staff review. Tested live: the German question "Wie viele Frauen mit Brustkrebs haben einen BMI über 30, nach Bundesland?" became four definitions that the parser accepted with no warnings |
+| Gemini TTS (`gemini-3.8-flash-tts`, voice "Charon") | Voiceover of the demo video (`tools/voiceover.py --provider gemini`) | Every clip is checked by transcribing it back. An ElevenLabs path is also included |
 | Natural Earth admin-1 boundaries | Austria map | Public domain, bundled (`web/src/assets/SOURCES.md`) |
 
 The eID, the business register, the ROR, the e-mandate service and the Medical Chamber are **simulated** (`demo/registry.json`). The signatures are real.
