@@ -32,7 +32,7 @@ PROHIBITED = {
         "label_en": "Decisions about employees", "label_de": "Entscheidungen über Beschäftigte",
     },
     "marketing": {
-        "patterns": [r"advertis", r"\bmarketing\b", r"promotional", r"\bpromote (?:our|the|a|their) (?:product|drug|brand)",
+        "patterns": [r"\badvertis\w*(?:\s+campaign)?", r"\bmarketing\b", r"promotional", r"\bpromote (?:our|the|a|their) (?:product|drug|brand)",
                      r"sales (?:team|target|campaign)", r"target (?:our |the )?(?:campaign|ads)",
                      r"\bbrand communications?\b",
                      r"\braise awareness (?:for|of) .{0,40}\bbrand\b",

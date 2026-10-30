@@ -1,4 +1,4 @@
-import { Button, InlineNotification } from "@carbon/react";
+import { Button } from "@carbon/react";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../api/client";
 import type { DecisionLetter } from "../../api/types";
@@ -31,7 +31,9 @@ export function LetterPage({ caseId }: { caseId: string }) {
   return (
     <section aria-labelledby="page-title">
       <div className="page-toolbar letter-actions">
-        <h1 className="page-heading" id="page-title" tabIndex={-1}>{t(language, "letter.print")}</h1>
+        <h1 className="page-heading" id="page-title" tabIndex={-1}>
+          {language === "de" ? "Bescheid" : "Decision"} {caseId}
+        </h1>
         <div className="letter-actions__controls">
           <Button kind="ghost" size="sm" onClick={() => setLanguage((current) => current === "de" ? "en" : "de")}>
             {language.toUpperCase()}
@@ -63,7 +65,7 @@ function LetterDocument({ letter, language }: { letter: DecisionLetter; language
         <p><strong>{letter.header.labels.reference}</strong><span className="mono">{letter.header.reference}</span></p>
         <p><strong>{letter.header.labels.date}</strong>{letter.header.date}</p>
       </div>
-      <h1 className="letter-document-title">{letter.header.title}</h1>
+      <h2 className="letter-document-title">{letter.header.title}</h2>
       <section>
         <h2>{letter.header.labels.applicant}</h2>
         <p>{letter.applicant.name}</p>
@@ -73,7 +75,7 @@ function LetterDocument({ letter, language }: { letter: DecisionLetter; language
         <h2>{letter.header.labels.subject}</h2>
         <p>{letter.subject}</p>
       </section>
-      <section>
+      <section className="letter-operative">
         <h2>{letter.header.labels.operative}</h2>
         <p>{letter.operative}</p>
       </section>
@@ -109,7 +111,7 @@ function LetterDocument({ letter, language }: { letter: DecisionLetter; language
       {permitAnnex && (
         <section>
           <h2>{letter.header.labels.permit}</h2>
-          <dl>
+          <dl className="letter-annex-table">
             <div><dt>{language === "de" ? "Genehmigung" : "Permit"}</dt><dd className="mono">{permitAnnex.permit_id}</dd></div>
             <div><dt>{language === "de" ? "Kohorte" : "Cohort"}</dt><dd>{permitAnnex.cohort_size}</dd></div>
             <div><dt>{language === "de" ? "Gültig bis" : "Expires"}</dt><dd>{permitAnnex.expires}</dd></div>
@@ -121,7 +123,10 @@ function LetterDocument({ letter, language }: { letter: DecisionLetter; language
       )}
       <section>
         <h2>{letter.header.labels.remedy}</h2>
-        <p className="letter-remedy-placeholder">{letter.remedy}</p>
+        <div className="letter-remedy-placeholder">
+          <strong>{language === "de" ? "DEMO-PLATZHALTER" : "DEMO PLACEHOLDER"}</strong>
+          <p>{letter.remedy}</p>
+        </div>
       </section>
       <section>
         <h2>{letter.header.labels.signature}</h2>
@@ -129,9 +134,12 @@ function LetterDocument({ letter, language }: { letter: DecisionLetter; language
       </section>
       <section className="letter-articles">
         <h2>{language === "de" ? "Artikel" : "Articles"}</h2>
-        <ul>
-          {letter.articles.map((article) => <li key={article.n}>Art. {article.n}: {article.title}</li>)}
-        </ul>
+        <table className="data-table">
+          <thead><tr><th scope="col">{language === "de" ? "Artikel" : "Article"}</th><th scope="col">{language === "de" ? "Titel" : "Title"}</th></tr></thead>
+          <tbody>{letter.articles.map((article) => (
+            <tr key={article.n}><th scope="row">Art. {article.n}</th><td>{article.title}</td></tr>
+          ))}</tbody>
+        </table>
       </section>
     </article>
   );

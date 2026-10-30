@@ -1,7 +1,12 @@
 import {
   Button,
   DataTable,
+  Select,
+  SelectItem,
   Search as CarbonSearch,
+  Tab,
+  TabList,
+  Tabs,
   Tag,
   Table,
   TableBody,
@@ -10,6 +15,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TabPanel,
+  TabPanels,
 } from "@carbon/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api/client";
@@ -131,19 +138,45 @@ export function InboxPage() {
           </Button>
         </div>
         <div className="page-toolbar">
-          <div className="page-toolbar__filters" role="tablist" aria-label={t(language, "inbox.status")}>
-            {FILTERS.map((filter) => (
-              <Button
-                key={filter}
-                kind={status === filter ? "primary" : "tertiary"}
-                size="sm"
-                role="tab"
-                aria-selected={status === filter}
-                onClick={() => setStatus(filter)}
-              >
-                {filterLabel(filter)} <span className="filter-count">{counts[filter]}</span>
-              </Button>
-            ))}
+          <div className="inbox-tabs">
+            <Tabs
+              selectedIndex={FILTERS.indexOf(status)}
+              onChange={({ selectedIndex }) => setStatus(FILTERS[selectedIndex] ?? "all")}
+            >
+              <TabList aria-label={t(language, "inbox.status")} size="sm">
+                {FILTERS.map((filter) => (
+                  <Tab key={filter}>
+                    {filterLabel(filter)} <span className="filter-count">{counts[filter]}</span>
+                  </Tab>
+                ))}
+              </TabList>
+              <TabPanels>
+                {FILTERS.map((filter) => (
+                  <TabPanel key={filter}>
+                    <span className="visually-hidden">
+                      {filterLabel(filter)}: {counts[filter]} {t(language, "inbox.question").toLowerCase()}
+                    </span>
+                  </TabPanel>
+                ))}
+              </TabPanels>
+            </Tabs>
+          </div>
+          <div className="inbox-filter-select">
+            <Select
+              id="inbox-status-filter"
+              labelText={t(language, "inbox.status")}
+              value={status}
+              onChange={(event) => setStatus(event.target.value as StatusFilter)}
+              size="sm"
+            >
+              {FILTERS.map((filter) => (
+                <SelectItem
+                  key={filter}
+                  value={filter}
+                  text={`${filterLabel(filter)} (${counts[filter]})`}
+                />
+              ))}
+            </Select>
           </div>
           <CarbonSearch
             id="case-search"
@@ -241,7 +274,9 @@ export function InboxPage() {
             </div>
             <div className="mobile-case-list" aria-label={t(language, "title.inbox")}>
               {filtered.map((item) => (
-                <button
+                <Button
+                  kind="ghost"
+                  size="md"
                   className="mobile-case-row"
                   key={item.id}
                   onClick={() => navigate(`/staff/case/${encodeURIComponent(item.id)}`)}
@@ -255,7 +290,7 @@ export function InboxPage() {
                   <span className="secondary-text">{item.applicant.organisation}</span>
                   <span className="secondary-text">{formatDateTime(item.received_at, language)}</span>
                   <SafeIndicators safes={item.five_safes} language={language} compact />
-                </button>
+                </Button>
               ))}
             </div>
           </>

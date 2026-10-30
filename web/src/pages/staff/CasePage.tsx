@@ -1,4 +1,11 @@
-import { Button, InlineNotification } from "@carbon/react";
+import {
+  Button,
+  InlineNotification,
+  Tag,
+  Toggletip,
+  ToggletipButton,
+  ToggletipContent,
+} from "@carbon/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
 import type { AuditEntry, CaseDetail, SafeName } from "../../api/types";
@@ -9,6 +16,7 @@ import {
   Funnel,
   groupDimensionLabel,
   PageState,
+  measureLabel,
   ResultChart,
   ResultTable,
   StatusTag,
@@ -100,11 +108,12 @@ export function CasePage({ caseId }: { caseId: string }) {
             }}
           >
             {TABS.map((item) => (
-              <button
+              <Button
                 className={`case-tab${tab === item ? " case-tab--selected" : ""}`}
                 id={`case-tab-${item}`}
                 key={item}
-                type="button"
+                kind={tab === item ? "primary" : "ghost"}
+                size="sm"
                 role="tab"
                 aria-selected={tab === item}
                 tabIndex={tab === item ? 0 : -1}
@@ -112,7 +121,7 @@ export function CasePage({ caseId }: { caseId: string }) {
                 onClick={() => setTab(item)}
               >
                 {t(language, `case.tab.${item === "environment" ? "environment" : item}`)}
-              </button>
+              </Button>
             ))}
           </div>
           <section
@@ -176,7 +185,7 @@ function CaseHeader({
           <span className="case-header__articles">
             {detail.result.decision.articles_detail.map((article) => (
               <span key={article.n}>
-                Art. {article.n}: {language === "de" ? article.title_de : article.title_en}
+                Art. {article.n} · {language === "de" ? article.title_de : article.title_en}
               </span>
             ))}
           </span>
@@ -364,7 +373,27 @@ function DecisionPanel({ detail, language }: { detail: CaseDetail; language: "de
       {result.ai.opinion && (
         <section className="case-section">
           <h2 className="section-heading">{t(language, "case.aiOpinion")}</h2>
-          <pre className="sql-block">{JSON.stringify(result.ai.opinion, null, 2)}</pre>
+          <Tag type="blue">KI</Tag>
+          <p>{String(result.ai.opinion[language === "de" ? "explanation_de" : "explanation_en"] ?? "")}</p>
+          <p className="secondary-text">
+            {language === "de" ? "Abweichung:" : "Disagreement:"}{" "}
+            {String(result.ai.opinion.prohibited) !== String(result.decision.decision === "REJECT")
+              ? (language === "de" ? "Ja" : "Yes")
+              : (language === "de" ? "Nein" : "No")}
+          </p>
+          <p>
+            <strong>{language === "de" ? "Beleg" : "Evidence"}:</strong>{" "}
+            {String(result.ai.opinion.evidence_quote ?? "")}
+            {result.ai.opinion.evidence_quote_verified === false && (
+              <span className="secondary-text"> · {language === "de" ? "Zitat nicht verifiziert" : "Quote not verified"}</span>
+            )}
+          </p>
+          <Toggletip>
+            <ToggletipButton label={language === "de" ? "KI-Hinweis" : "AI note"} />
+            <ToggletipContent><p>{language === "de"
+              ? "Die KI gibt nur eine Zweitmeinung. Die regelbasierte Entscheidung bleibt maßgeblich."
+              : "AI provides a second opinion only. The rule-based decision remains authoritative."}</p></ToggletipContent>
+          </Toggletip>
         </section>
       )}
     </div>
@@ -391,7 +420,7 @@ function DataPanel({ detail, language }: { detail: CaseDetail; language: "de" | 
             {result.mappings.flatMap((mapping) =>
               mapping.codes.map((code) => (
                 <tr key={`${mapping.name}-${code.system}-${code.code}`}>
-                  <td>{mapping.name}</td>
+                  <td>{mapping.name}{mapping.ai && <Tag type="blue">KI</Tag>}</td>
                   <td>{code.system}</td>
                   <td className="mono">{code.code}</td>
                   <td>{code.label ?? "—"}</td>
@@ -451,14 +480,33 @@ function ResultPanel({ detail, language }: { detail: CaseDetail; language: "de" 
           <ResultChart released={released} language={language} />
           <ResultTable released={released} language={language} />
           <section>
-            <h3>{t(language, "case.gate")}</h3>
+            <h3 className="section-heading">{t(language, "case.gate")}</h3>
             <dl className="gate-stats">
               <div><dt>{t(language, "case.cells")}</dt><dd>{released.gate.cells}</dd></div>
+              <div><dt>{t(language, "case.hiddenCounts")}</dt><dd>{released.gate.counts_hidden}</dd></div>
               <div><dt>{t(language, "case.hidden")}</dt><dd>
-                {released.gate.counts_hidden + released.gate.pct_suppressed + released.gate.means_suppressed}
+                {released.gate.pct_suppressed + released.gate.means_suppressed}
               </dd></div>
+              {(released.differencing?.suppressed.length ?? 0) > 0 && (
+                <div><dt>Differencing</dt><dd>{released.differencing?.suppressed.length}</dd></div>
+              )}
             </dl>
           </section>
+          <section className="case-section">
+            <h3 className="section-heading">{t(language, "case.cohort")}</h3>
+            <Funnel steps={detail.result.funnel} language={language} />
+          </section>
+          {(released.differencing?.suppressed ?? []).length > 0 && (
+            <ol className="differencing-notes">
+              {released.differencing?.suppressed.map((item, index) => (
+                <li key={`${item.measure}-${item.part}-${index}`}>
+                  {language === "de"
+                    ? `Unterscheidet sich um ${formatNumber(item.difference, language, 0)} Personen von der früheren Antwort ${item.against.request_id} (${item.against.group.join(" · ")} · ${measureLabel(item.against.measure)}).`
+                    : `Differs by ${formatNumber(item.difference, language, 0)} people from earlier answer ${item.against.request_id} (${item.against.group.join(" · ")} · ${measureLabel(item.against.measure)}).`}
+                </li>
+              ))}
+            </ol>
+          )}
         </div>
       )}
     </div>

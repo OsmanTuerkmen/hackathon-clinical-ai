@@ -149,3 +149,26 @@ def test_ai_draft_is_disabled_or_returns_precheck(tmp_path, data_dir, monkeypatc
     assert response.json()["draft"]["question"] == "How many adults have asthma?"
     assert response.json()["precheck"]["mappings"]
     assert response.json()["model"] == "fake-model"
+
+
+def test_ai_explanation_requires_the_visible_applicant_and_returns_bilingual_text(
+    tmp_path,
+    data_dir,
+    monkeypatch,
+):
+    app = create_app(data_dir, runtime_dir=tmp_path / "runtime")
+    client = TestClient(app)
+    desk = app.state.desk
+    monkeypatch.setattr(desk.ai, "status", lambda: {
+        "enabled": True, "model": "fake-model", "reason": None,
+    })
+    monkeypatch.setattr(desk.ai, "call", lambda *args: {
+        "value": {"explanation_de": "Die Statistik ist anonymisiert.", "explanation_en": "The statistics are anonymous."},
+        "reason": None, "model": "fake-model", "cached": False,
+    })
+
+    denied = client.post("/api/ai/explain/R01?login=Wrong Person")
+    assert denied.status_code == 403
+    response = client.post("/api/ai/explain/R01?login=Dr.%20Sophie%20Lechner")
+    assert response.status_code == 200
+    assert response.json()["explanation_en"] == "The statistics are anonymous."

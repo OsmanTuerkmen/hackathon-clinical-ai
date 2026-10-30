@@ -8,9 +8,12 @@ import {
   WarningAltFilled,
 } from "@carbon/icons-react";
 import {
+  Button,
   InlineLoading,
   InlineNotification,
   Modal,
+  Select,
+  SelectItem,
   Tag,
 } from "@carbon/react";
 import { max as maxValue } from "d3-array";
@@ -113,16 +116,18 @@ export function ValueCell({
   value,
   language,
   type,
+  footnote = false,
 }: {
   value: CellValue;
   language: Language;
   type?: string;
+  footnote?: boolean;
 }) {
   const hidden = value === "<10" || value === "suppressed";
   return (
     <span className={`value-cell${hidden ? " value-cell--hidden" : ""}`}>
       {hidden
-        ? <span className="value-chip">{formatCell(value, language, type)}</span>
+        ? <span className="value-chip">{formatCell(value, language, type)}{footnote && <sup>1</sup>}</span>
         : formatCell(value, language, type)}
     </span>
   );
@@ -168,6 +173,10 @@ export function ResultTable({
                     value={row.values[measure.key] ?? "suppressed"}
                     language={language}
                     type={types[measure.key]}
+                    footnote={Boolean(released.differencing?.suppressed.some(
+                      (item) => item.measure === measure.key
+                        && item.group.join("|") === row.group.join("|"),
+                    ))}
                   />
                 </td>
               ))}
@@ -322,7 +331,7 @@ export function BarChart({
   const height = Math.max(180, released.rows.length * rowHeight + 36);
   return (
     <figure className="chart-frame">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby="bar-chart-title bar-chart-desc">
+      <svg className="chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby="bar-chart-title bar-chart-desc">
         <title id="bar-chart-title">{measureLabel(measure.label)}</title>
         <desc id="bar-chart-desc">
           {language === "de" ? "Balkendiagramm nach Gruppe." : "Bar chart by group."}
@@ -415,16 +424,21 @@ export function AustriaMap({
   return (
     <figure className="chart-frame">
       {measures.length > 1 && (
-        <label className="chart-measure">
-          <span>{t(language, "chart.measure")}</span>
-          <select value={selected} onChange={(event) => setSelected(Number(event.target.value))}>
+        <div className="chart-measure">
+          <Select
+            id="chart-measure"
+            labelText={t(language, "chart.measure")}
+            size="sm"
+            value={selected}
+            onChange={(event) => setSelected(Number(event.target.value))}
+          >
             {measures.map((item, index) => (
-              <option key={item.key} value={index}>{item.label}</option>
+              <SelectItem key={item.key} value={index} text={measureLabel(item.label)} />
             ))}
-          </select>
-        </label>
+          </Select>
+        </div>
       )}
-      <svg viewBox="0 0 720 470" role="img" aria-labelledby="austria-map-title austria-map-desc">
+      <svg className="chart-svg" viewBox="0 0 720 470" role="img" aria-labelledby="austria-map-title austria-map-desc">
       <title id="austria-map-title">{measureLabel(measure.label)}</title>
         <desc id="austria-map-desc">
           {language === "de" ? "Karte der neun österreichischen Bundesländer." : "Map of the nine Austrian states."}
@@ -439,6 +453,9 @@ export function AustriaMap({
           const value = values.get(region) ?? "suppressed";
           const hidden = typeof value === "string";
           const centroid = path.centroid(feature);
+          const isVienna = feature.properties.iso_3166_2 === "AT-9";
+          const labelX = centroid[0] + (isVienna ? 28 : 0);
+          const labelY = centroid[1] + (isVienna ? 16 : 0);
           return (
             <g key={feature.properties.iso_3166_2}>
               <path
@@ -448,7 +465,10 @@ export function AustriaMap({
               >
                 <title>{`${region}: ${formatCell(value, language, measure.type)}`}</title>
               </path>
-              <text x={centroid[0]} y={centroid[1]} className="map-label">
+              {isVienna && (
+                <line x1={centroid[0]} y1={centroid[1]} x2={labelX - 4} y2={labelY - 4} className="map-leader" />
+              )}
+              <text x={labelX} y={labelY} className="map-label">
                 {formatCell(value, language, measure.type)}
               </text>
             </g>
@@ -456,6 +476,20 @@ export function AustriaMap({
         })}
       </svg>
       <figcaption className="chart-frame__legend">
+        <span className="map-color-legend" aria-label={language === "de" ? "Farbskala" : "Colour scale"}>
+          {[
+            [0, thresholds[0]],
+            [thresholds[0], thresholds[1]],
+            [thresholds[1], thresholds[2]],
+            [thresholds[2], thresholds[3]],
+            [thresholds[3], max],
+          ].map(([from, to], index) => (
+            <span className="map-color-bin" key={index}>
+              <span className={`map-color-swatch map-color-swatch--${index + 1}`} aria-hidden="true" />
+              {`${formatNumber(from, language, 0)}–${formatNumber(to, language, 0)}`}
+            </span>
+          ))}
+        </span>
         <span className="hatch-legend">
           <span className="hatch-swatch" aria-hidden="true" />
           {t(language, "chart.legend")}
@@ -500,9 +534,9 @@ export function PageState({
           subtitle={error}
         />
         {onRetry && (
-          <button className="text-link" type="button" onClick={onRetry}>
+          <Button kind="tertiary" size="sm" onClick={onRetry}>
             {t(language, "error.retry")}
-          </button>
+          </Button>
         )}
       </>
     );

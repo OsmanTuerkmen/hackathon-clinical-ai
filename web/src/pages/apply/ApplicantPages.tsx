@@ -1,10 +1,10 @@
-import { Button, Tag } from "@carbon/react";
+import { Button, Tag, Toggletip, ToggletipButton, ToggletipContent } from "@carbon/react";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../api/client";
 import type { CaseSummary } from "../../api/types";
-import { DecisionTag, Funnel, PageState, ResultChart, ResultTable, StatusTag } from "../../components/DataComponents";
+import { DecisionTag, Funnel, PageState, ResultChart, ResultTable, StatusTag, measureLabel } from "../../components/DataComponents";
 import { useAppState } from "../../state/AppContext";
-import { formatDateTime, t } from "../../i18n";
+import { formatDateTime, formatNumber, t } from "../../i18n";
 
 type ApplicantResult = Awaited<ReturnType<typeof api.applicantCase>>;
 
@@ -81,8 +81,10 @@ export function ApplicantCasesPage() {
 }
 
 export function ApplicantCasePage({ caseId }: { caseId: string }) {
-  const { language, identity, navigate } = useAppState();
+  const { language, identity, navigate, ai } = useAppState();
   const [result, setResult] = useState<ApplicantResult | null>(null);
+  const [explanation, setExplanation] = useState<{ explanation_de: string; explanation_en: string } | null>(null);
+  const [explaining, setExplaining] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -102,6 +104,18 @@ export function ApplicantCasePage({ caseId }: { caseId: string }) {
       setLoading(false);
     }
   }, [caseId, identity, language]);
+
+  const explain = async () => {
+    setExplaining(true);
+    setError("");
+    try {
+      setExplanation(await api.aiExplain(caseId, identity));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setExplaining(false);
+    }
+  };
 
   useEffect(() => {
     void load();
@@ -157,6 +171,17 @@ export function ApplicantCasePage({ caseId }: { caseId: string }) {
                   </div>
                 </div>
               )}
+              {(result.released?.differencing?.suppressed ?? []).length > 0 && (
+                <ol className="differencing-notes">
+                  {result.released?.differencing?.suppressed.map((item, index) => (
+                    <li key={`${item.measure}-${item.part}-${index}`}>
+                      {language === "de"
+                        ? `Unterscheidet sich um ${formatNumber(item.difference, language, 0)} Personen von Ihrer früheren Antwort ${item.against.request_id} (${item.against.group.join(" · ")} · ${measureLabel(item.against.measure)}). Sonst ließe sich eine Gruppe unter 10 Personen errechnen.`
+                        : `This differs by ${formatNumber(item.difference, language, 0)} people from your earlier answer ${item.against.request_id} (${item.against.group.join(" · ")} · ${measureLabel(item.against.measure)}). Otherwise, a group of fewer than 10 people could be calculated.`}
+                    </li>
+                  ))}
+                </ol>
+              )}
               {result.funnel && (
                 <section className="applicant-cohort">
                   <h2 className="section-heading">{t(language, "case.cohort")}</h2>
@@ -164,6 +189,24 @@ export function ApplicantCasePage({ caseId }: { caseId: string }) {
                   <p className="secondary-text">{t(language, "case.rounded")}</p>
                 </section>
               )}
+              <div className="applicant-explanation">
+                <Button kind="ghost" disabled={!ai.enabled || explaining} onClick={() => void explain()}>
+                  {language === "de" ? "Erklärung in einfacher Sprache" : "Explain in plain language"}
+                </Button>
+                {!ai.enabled && <span className="secondary-text">{language === "de" ? "KI ist nicht aktiv (kein API-Schlüssel)." : "AI is not active (no API key)."}</span>}
+                {explanation && (
+                  <div>
+                    <Tag type="blue">KI</Tag>
+                    <Toggletip>
+                      <ToggletipButton label={language === "de" ? "KI-Hinweis" : "AI note"} />
+                      <ToggletipContent><p>{language === "de"
+                        ? "Diese Erklärung ändert die Entscheidung nicht."
+                        : "This explanation does not change the decision."}</p></ToggletipContent>
+                    </Toggletip>
+                    <p>{language === "de" ? explanation.explanation_de : explanation.explanation_en}</p>
+                  </div>
+                )}
+              </div>
               <div className="applicant-result-actions">
                 <Button kind="tertiary" onClick={() => navigate(`/letter/${caseId}`)}>
                   {t(language, "applicant.openLetter")}

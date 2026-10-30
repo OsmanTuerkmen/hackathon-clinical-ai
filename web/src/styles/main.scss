@@ -432,7 +432,7 @@ textarea:focus-visible,
   background: var(--cds-layer-01);
 }
 
-.chart-frame svg {
+.chart-frame > .chart-svg {
   display: block;
   width: 100%;
   height: auto;
@@ -462,7 +462,7 @@ textarea:focus-visible,
 
 .map-label {
   fill: var(--cds-text-primary);
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--accessdesk-font-sans);
   text-anchor: middle;
   paint-order: stroke;
@@ -470,6 +470,35 @@ textarea:focus-visible,
   stroke-width: 3px;
   stroke-linejoin: round;
 }
+
+.map-leader {
+  stroke: var(--cds-text-primary);
+  stroke-width: 1;
+}
+
+.map-color-legend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--cds-spacing-03);
+}
+
+.map-color-bin {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cds-spacing-02);
+  white-space: nowrap;
+}
+
+.map-color-swatch {
+  width: var(--cds-spacing-05);
+  height: var(--cds-spacing-05);
+}
+
+.map-color-swatch--1 { background: var(--accessdesk-map-bin-1); }
+.map-color-swatch--2 { background: var(--accessdesk-map-bin-2); }
+.map-color-swatch--3 { background: var(--accessdesk-map-bin-3); }
+.map-color-swatch--4 { background: var(--accessdesk-map-bin-4); }
+.map-color-swatch--5 { background: var(--accessdesk-map-bin-5); }
 
 .funnel-list {
   display: grid;
@@ -541,6 +570,14 @@ textarea:focus-visible,
   max-width: 80ch;
   margin-bottom: var(--cds-spacing-06);
   color: var(--cds-text-secondary);
+}
+
+.public-register__intro {
+  max-width: 80ch;
+}
+
+.register-reference {
+  white-space: nowrap;
 }
 
 .letter-page {

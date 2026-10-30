@@ -96,11 +96,15 @@ def create(request, plan, store, root, persons):
 
     os.replace(temporary_path, workspace_path)
     now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+    try:
+        issue_date = dt.date.fromisoformat(str(request.get("submitted", ""))[:10])
+    except ValueError:
+        issue_date = now.date()
     manifest = {
         "permit_id": permit_id,
         "request_id": request_id,
         "created": now.isoformat(),
-        "expires": (now + dt.timedelta(days=365)).date().isoformat(),
+        "expires": (issue_date + dt.timedelta(days=365)).isoformat(),
         "cohort_size": cohort_size,
         "persons_with_access": persons,
         "tables_copied": copied,

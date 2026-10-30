@@ -33,8 +33,11 @@ export function RegisterPage() {
   return (
     <section aria-labelledby="page-title">
       <h1 className="page-heading" id="page-title" tabIndex={-1}>{t(language, "title.register")}</h1>
+      <p className="public-register__intro">{t(language, "register.intro")}</p>
       <p className="public-register__basis">
-        {t(language, "register.basis")}: {basis}
+        {t(language, "register.basis")}: {language === "de"
+          ? "Art. 57 Abs. 1 lit. j Ziffer ii–iii und Art. 58 Abs. 1 lit. f VO (EU) 2025/327"
+          : basis}
       </p>
       {loading || error ? (
         <PageState loading={loading} error={error} language={language} onRetry={load} />
@@ -57,7 +60,7 @@ export function RegisterPage() {
               {entries.map((entry) => (
                 <tr key={entry.id}>
                   <td>{formatDate(entry.received, language)}</td>
-                  <td className="mono">{entry.reference}</td>
+                  <td className="mono register-reference">{entry.reference}</td>
                   <td>{entry.organisation}</td>
                   <td>{t(language, `kind.${entry.kind}`)}</td>
                   <td>

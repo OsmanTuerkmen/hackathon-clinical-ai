@@ -122,16 +122,123 @@ test("letter and transparency register expose only their permitted content", asy
   await expect(external).toEqual([]);
 });
 
-test("F1 screenshot routes have no serious or critical accessibility violations in both themes", async ({ page }) => {
+test("D05 shows the differencing explanation; audit and evaluation run", async ({ page }) => {
+  const external = trackExternalRequests(page);
+  await page.goto("/#/apply/case/D05");
+  await page.locator("#identity-switch").selectOption({ label: "Dr. Sophie Lechner" });
+  await expect(page.locator(".differencing-notes")).toContainText("Vorarlberg");
+  await expect(page.locator(".differencing-notes")).toContainText("R01");
+
+  await page.goto("/#/staff/audit");
+  await page.getByRole("button", { name: "Kette prüfen" }).click();
+  await expect(page.getByRole("status")).toContainText("Kette intakt");
+
+  await page.goto("/#/staff/eval");
+  await page.getByRole("button", { name: "Auswertung starten" }).click();
+  await expect(page.locator(".evaluation-results")).toContainText("10 / 10");
+  await expect(page.locator(".evaluation-results")).toContainText("29 / 29");
+  await expect(external).toEqual([]);
+});
+
+test("builder templates, Art. 54 pre-check, and submission use the selected applicant", async ({ page }) => {
+  const external = trackExternalRequests(page);
+  await page.goto("/#/apply/new");
+  await page.locator("#identity-switch").selectOption({ label: "Dr. Sophie Lechner" });
+  await page.locator("#template-select").selectOption("prevalence-region");
+  await expect(page.locator(".precheck-panel")).toContainText("COPD");
+  await expect(page.locator(".precheck-panel")).toContainText("Kohortengröße");
+
+  await page.locator("#builder-purpose").fill(
+    "We are launching an advertising campaign to promote a new product based on the results.",
+  );
+  await page.locator("#builder-question").fill(
+    "Which regions have the most prescriptions so that our campaign can focus there?",
+  );
+  await expect(page.locator(".precheck-panel")).toContainText("Art. 54");
+  await expect(page.locator(".precheck-panel")).toContainText("advertising campaign");
+
+  await page.locator("#builder-purpose").fill("Scientific research on diabetes prevention in adults.");
+  await page.getByRole("button", { name: "Antrag einreichen" }).click();
+  await expect(page).toHaveURL(/#\/apply\/case\/U\d+/);
+  await expect(external).toEqual([]);
+});
+
+test("SPE workspace blocks raw download and permits reviewed aggregate CSV only", async ({ page }) => {
+  const external = trackExternalRequests(page);
+  await page.goto("/#/apply/case/R05");
+  await page.locator("#identity-switch").selectOption({ label: "Dr. Amir Hadžić" });
+  await page.getByRole("button", { name: "Zum SPE-Arbeitsbereich" }).click();
+  await expect(page).toHaveURL(/#\/apply\/spe\/DP-R05-/);
+  await page.waitForLoadState("networkidle");
+  const workspaceUrl = page.url();
+
+  await page.getByRole("button", { name: "Rohdaten herunterladen" }).click();
+  await expect(page.getByText(/Download blocked/)).toBeVisible();
+  await page.locator("#spe-sql").fill("SELECT patient_id FROM cohort LIMIT 10");
+  await page.getByRole("button", { name: "Abfrage ausführen" }).click();
+  await expect(page.locator(".spe-query-result")).toContainText("patient_id");
+  await page.getByRole("button", { name: "Export zur Prüfung einreichen" }).click();
+  await page.locator("#export-title").fill("Patient rows");
+  await page.locator("#export-note").fill("Testing the automatic identifier block.");
+  await page.getByRole("button", { name: "Einreichen", exact: true }).click();
+  await expect(page.locator(".spe-exports")).toContainText("rejected_auto");
+  await page.goto("/#/staff/exports");
+  const failedExport = page.locator("tbody tr").filter({ hasText: "Patient rows" });
+  await failedExport.getByRole("button", { name: "Details" }).click();
+  await expect(page.getByRole("button", { name: "Freigeben" })).toBeDisabled();
+  await page.goto(workspaceUrl);
+
+  await page.locator("#spe-sql").fill("SELECT COUNT(*) AS n FROM cohort");
+  await page.getByRole("button", { name: "Abfrage ausführen" }).click();
+  await page.getByRole("button", { name: "Export zur Prüfung einreichen" }).click();
+  await page.locator("#export-title").fill("Aggregate cohort count");
+  await page.locator("#export-note").fill("One aggregate cohort count for review.");
+  await page.getByRole("button", { name: "Einreichen", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".spe-exports")).toContainText("pending_review");
+
+  await page.goto("/#/staff/exports");
+  const exportRow = page.locator("tbody tr").filter({ hasText: "Aggregate cohort count" });
+  await exportRow.getByRole("button", { name: "Details" }).click();
+  await page.getByRole("button", { name: "Freigeben" }).click();
+  await page.locator("#export-review-reason").fill("Aggregate reviewed; it contains no identifiers or small cells.");
+  await page.locator("#export-reviewer").fill("Staff reviewer");
+  await page.getByRole("button", { name: "Prüfung speichern" }).click();
+
+  await page.goto(workspaceUrl);
+  await expect(page.locator(".spe-exports")).toContainText("approved");
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: /CSV laden|Download CSV/ }).click();
+  expect((await downloadPromise).suggestedFilename()).toMatch(/^export_X\d+\.csv$/);
+  await expect(external).toEqual([]);
+});
+
+test("F1 and F2 screenshot routes have no serious or critical accessibility violations in both themes", async ({ page }) => {
+  const r05Response = await page.request.get("http://127.0.0.1:8090/api/cases/R05");
+  const permit = (await r05Response.json()).result.spe.permit_id;
   const routes = [
     { path: "/#/staff/inbox" },
     { path: "/#/staff/case/R05" },
+    { path: "/#/staff/case/R05", tab: "Daten" },
+    { path: "/#/staff/case/R05", tab: "Personen" },
     { path: "/#/staff/case/R02" },
+    { path: "/#/staff/case/R02", tab: "Entscheidung" },
     { path: "/#/apply/case/R01", identity: "Dr. Sophie Lechner" },
     { path: "/#/apply/case/R03", identity: "Mag. Petra Wimmer" },
     { path: "/#/apply/case/R08", identity: "Prof. Elena Rossi" },
+    { path: "/#/apply/case/D05", identity: "Dr. Sophie Lechner" },
+    { path: "/#/apply/case/R05", identity: "Dr. Amir Hadžić" },
+    { path: "/#/apply/case/D05", identity: "Dr. Sophie Lechner" },
+    { path: "/#/apply/new", identity: "Dr. Sophie Lechner" },
+    { path: "/#/apply/new", identity: "Dr. Sophie Lechner", template: "prevalence-region" },
+    { path: "/#/apply/new", identity: "Dr. Sophie Lechner", art54: true },
+    { path: `/#/apply/spe/${permit}`, identity: "Dr. Amir Hadžić" },
+    { path: `/#/apply/spe/${permit}`, identity: "Dr. Amir Hadžić", blocked: true },
     { path: "/#/letter/R05" },
     { path: "/#/register" },
+    { path: "/#/staff/exports" },
+    { path: "/#/staff/audit", verifyAudit: true },
+    { path: "/#/staff/eval", runEvaluation: true },
   ];
   const external = trackExternalRequests(page);
   await page.goto("/");
@@ -142,6 +249,20 @@ test("F1 screenshot routes have no serious or critical accessibility violations 
       await page.goto(route.path);
       if (route.identity) {
         await page.locator("#identity-switch").selectOption({ label: route.identity });
+      }
+      if (route.tab) await page.getByRole("tab", { name: route.tab }).click();
+      if (route.template) await page.locator("#template-select").selectOption(route.template);
+      if (route.art54) {
+        await page.locator("#builder-purpose").fill("We are launching an advertising campaign for a new product.");
+        await page.locator("#builder-question").fill("Where are prescriptions highest to focus the campaign?");
+      }
+      if (route.verifyAudit) await page.getByRole("button", { name: "Kette prüfen" }).click();
+      if (route.runEvaluation) {
+        await page.getByRole("button", { name: "Auswertung starten" }).click();
+        await page.locator(".evaluation-results").waitFor();
+      }
+      if (route.blocked) {
+        await page.getByRole("button", { name: "Rohdaten herunterladen" }).click();
       }
       await expect(page.locator("#page-title")).toBeVisible();
       await page.waitForLoadState("networkidle");

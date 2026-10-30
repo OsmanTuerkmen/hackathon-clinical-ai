@@ -137,6 +137,7 @@ export interface Mapping {
   name: string;
   kind: string;
   source: string;
+  ai?: boolean;
   codes: MappingCode[];
 }
 
@@ -155,6 +156,22 @@ export interface ReleasedTable {
     counts_hidden: number;
     pct_suppressed: number;
     means_suppressed: number;
+  };
+  differencing?: {
+    checked_cells: number;
+    compared_entries: number;
+    suppressed: Array<{
+      group: string[];
+      measure: string;
+      part: string;
+      difference: number;
+      against: {
+        request_id: string;
+        group: string[];
+        measure: string;
+        part: string;
+      };
+    }>;
   };
 }
 

@@ -48,6 +48,12 @@ export const api = {
     identities: Array<Pick<Identity, "name" | "organisation" | "country">>;
   }>("/api/info"),
   identities: () => json<Identity[]>("/api/identities"),
+  templates: () => json<Array<{
+    id: string;
+    title_de: string;
+    title_en: string;
+    request: Record<string, unknown>;
+  }>>("/api/templates"),
   cases: (filters: { status?: string; decision?: string; q?: string; group?: string } = {}) => {
     const query = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
@@ -88,5 +94,64 @@ export const api = {
     "/api/precheck",
     { request, ...(login ? { login } : {}) },
   ),
+  submit: (request: Record<string, unknown>, login?: string) => post<{
+    id: string;
+    summary: CaseSummary;
+  }>("/api/submit", { request, login }),
+  aiDraft: (body: { text: string; lang: Language; purpose?: string; login?: string }) =>
+    post<{
+      draft: Record<string, unknown>;
+      precheck: PrecheckResult;
+      model: string;
+      cached: boolean;
+    }>("/api/ai/draft", body),
+  aiExplain: (id: string, login: string) => json<{
+    explanation_de: string;
+    explanation_en: string;
+    model: string;
+    cached: boolean;
+  }>(`/api/ai/explain/${encodeURIComponent(id)}?login=${encodeURIComponent(login)}`),
+  spe: (permit: string, login: string) => json<{
+    manifest: Record<string, unknown>;
+    tables: Record<string, { columns: string[]; rows: unknown[][] }>;
+  }>(`/api/spe/${encodeURIComponent(permit)}?login=${encodeURIComponent(login)}`),
+  speQuery: (permit: string, login: string, sql: string) =>
+    post<Record<string, unknown>>(`/api/spe/${encodeURIComponent(permit)}/query`, { login, sql }),
+  speExports: (permit: string, login: string) =>
+    json<Array<Record<string, unknown>>>(
+      `/api/spe/${encodeURIComponent(permit)}/exports?login=${encodeURIComponent(login)}`,
+    ),
+  createExport: (permit: string, body: { login: string; sql: string; title: string; note: string }) =>
+    post<Record<string, unknown>>(`/api/spe/${encodeURIComponent(permit)}/exports`, body),
+  exports: (status?: string) => json<Array<Record<string, unknown>>>(
+    `/api/exports${status ? `?status=${encodeURIComponent(status)}` : ""}`,
+  ),
+  export: (id: string) => json<Record<string, unknown>>(`/api/exports/${encodeURIComponent(id)}`),
+  reviewExport: (id: string, body: { action: "approve" | "reject"; reason: string; reviewer: string }) =>
+    post<Record<string, unknown>>(`/api/exports/${encodeURIComponent(id)}/review`, body),
+  exportCsv: async (id: string, login: string) => {
+    const response = await fetch(
+      `/api/exports/${encodeURIComponent(id)}/download?login=${encodeURIComponent(login)}`,
+    );
+    if (!response.ok) {
+      const body = await response.json();
+      throw new Error(body?.detail?.en ?? body?.detail ?? response.statusText);
+    }
+    return response.blob();
+  },
+  speCsv: async (permit: string, login: string) => {
+    const response = await fetch(
+      `/api/spe/${encodeURIComponent(permit)}/download?login=${encodeURIComponent(login)}`,
+    );
+    if (!response.ok) {
+      const body = await response.json();
+      throw new Error(body?.detail?.en ?? body?.detail ?? response.statusText);
+    }
+    return response.blob();
+  },
+  auditEntries: (limit = 300) => json<AuditEntry[]>(`/api/audit?limit=${limit}`),
+  verifyAudit: () => json<Record<string, unknown>>("/api/audit/verify"),
+  evaluation: (suite: "official" | "all" = "all") =>
+    json<Record<string, unknown>>(`/api/eval?suite=${suite}`),
   register: () => json<{ legal_basis: string; entries: RegisterEntry[] }>("/api/register"),
 };

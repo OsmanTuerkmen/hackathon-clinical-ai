@@ -5,10 +5,12 @@ import type { Identity, Language } from "./api/types";
 import { Shell } from "./components/Shell";
 import { t } from "./i18n";
 import { ApplicantCasePage, ApplicantCasesPage, F2PlaceholderPage } from "./pages/apply/ApplicantPages";
+import { BuilderPage, SPEChooserPage, SPEWorkspacePage } from "./pages/F2Pages";
 import { CasePage } from "./pages/staff/CasePage";
 import { InboxPage } from "./pages/staff/InboxPage";
 import { LetterPage } from "./pages/letter/LetterPage";
 import { RegisterPage } from "./pages/public/RegisterPage";
+import { AuditPage, EvaluationPage, ExportsPage } from "./pages/staff/OperationsPages";
 import { AppStateProvider, type Role, type ThemeName } from "./state/AppContext";
 
 function readTheme(): ThemeName {
@@ -127,17 +129,21 @@ function RouteView({ route }: { route: string }) {
   if (route === "/staff/inbox" || route === "/") return <InboxPage />;
   if (route.startsWith("/staff/case/")) return <CasePage caseId={route.split("/")[3] ?? ""} />;
   if (route === "/apply/cases") return <ApplicantCasesPage />;
+  if (route === "/apply/new") return <BuilderPage />;
   if (route.startsWith("/apply/case/")) {
     return <ApplicantCasePage caseId={route.split("/")[3] ?? ""} />;
   }
+  if (route.startsWith("/apply/spe/") && route.split("/")[3] !== "workspace") {
+    return <SPEWorkspacePage permitId={route.split("/")[3] ?? ""} />;
+  }
+  if (route === "/apply/spe") return <SPEChooserPage />;
+  if (route === "/staff/exports") return <ExportsPage />;
+  if (route === "/staff/audit") return <AuditPage />;
+  if (route === "/staff/eval") return <EvaluationPage />;
   if (route.startsWith("/letter/")) return <LetterPage caseId={route.split("/")[2] ?? ""} />;
   if (route === "/register") return <RegisterPage />;
   if (
-    route === "/apply/new"
-    || route.startsWith("/apply/spe/")
-    || route === "/staff/exports"
-    || route === "/staff/audit"
-    || route === "/staff/eval"
+    route.startsWith("/apply/spe/workspace")
   ) {
     return <F2PlaceholderPage route={route} />;
   }
