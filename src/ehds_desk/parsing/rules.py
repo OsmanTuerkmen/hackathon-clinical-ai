@@ -319,10 +319,13 @@ def _default_bands(width: int) -> list[AgeBand]:
     return bands
 
 
-def _check_reference_date(text: str, ctx: Context, what: str) -> None:
+def _check_reference_date(text: str, ctx: Context, what: str) -> bool:
+    """True if the sentence names a date other than the data's reference date."""
     m = re.search(r"\bon\s+(\d{1,2}\s+\w+\s+\d{4}|\d{4}-\d{2}-\d{2})", text, re.I)
     if m and m.group(1).lower() not in ("31 december 2025", "2025-12-31"):
         ctx.note(f"{what} refer to {m.group(1)}; the data's reference date 31 December 2025 is used.")
+        return True
+    return False
 
 
 def _measurement(name: str, code: str | None, ctx: Context) -> tuple[str, CodeSet] | None:
@@ -376,8 +379,11 @@ def _other_sentence(text: str, ctx: Context, st: _State) -> bool:
         _check_reference_date(m.group("head"), ctx, "Age bands")
         return st.bands is not None
     if _ACTIVE_RULE.search(text):
+        if _check_reference_date(text, ctx, "Active medications"):
+            # Another date changes which prescriptions count; refuse (manual review) rather than silently
+            # answering for 31 December 2025.
+            return False
         ctx.active_rule = True
-        _check_reference_date(text, ctx, "Active medications")
         return True
     if m := _LATEST.search(text):
         found = _measurement(m.group("name"), m.group("code"), ctx)

@@ -92,7 +92,7 @@ PROHIBITED_RULES: tuple[_Rule, ...] = (
     _Rule(
         "54(c)",  # advertising / marketing
         _rx(
-            r"advertis|marketing|promotional|brand awareness|lead generation"
+            r"advertis|marketing|promotional|brand awareness|brand campaign|lead generation"
             r"|sales (rep|representative|force|visit|campaign|target)"
             r"|target\w* (our )?(ads|customers|prescribers|physicians)",
         ),
@@ -101,7 +101,8 @@ PROHIBITED_RULES: tuple[_Rule, ...] = (
     _Rule(
         "54(d)",  # harmful products
         _rx(
-            r"nicotine|tobacco|cigarette|\bvap(e|ing)\b|alcoholic|\bspirits\b|liquor|gambling|betting|weapon"
+            r"nicotine|tobacco|cigarette|\bvap(e|ing)\b|alcoholic|\balcohol\b|\bbeer\b|brewer|\bwine\b|\bspirits\b|liquor"
+            r"|gambling|betting|weapon"
             r"|firearm|illicit drug",
             r"product|flavou?r|brand|launch|position|sell|sales|consumer (product|market|brand)s?|portfolio",
         ),
@@ -109,6 +110,12 @@ PROHIBITED_RULES: tuple[_Rule, ...] = (
             r"cessation|quit(ting)?\b|stop(ping)? smoking|withdrawal|replacement therapy|harms? (of|caused by)"
             r"|non-?alcoholic"
         ),
+    ),
+)
+PROHIBITED_RULES = PROHIBITED_RULES + (
+    _Rule(
+        "54(e)",  # passing data on: reselling or brokering results breaches the permit's purpose limitation
+        _rx(r"\bresell|\bre-sell|sell (the |our |these )?(data|tables|statistics|results)|data broker"),
     ),
 )
 PROHIBITED_RULES = tuple(replace(rule, negatable=True) for rule in PROHIBITED_RULES)
