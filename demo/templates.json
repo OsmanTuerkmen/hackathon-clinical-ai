@@ -1,0 +1,90 @@
+[
+  {
+    "id": "prevalence-region",
+    "title_de": "Prävalenz nach Bundesland",
+    "title_en": "Prevalence by region",
+    "request": {
+      "requested_as": "health data request",
+      "requested_format": "anonymised statistics",
+      "purpose": "We study regional differences in COPD among adults to plan respiratory care services with the regional health authorities.",
+      "question": "How many adults have COPD in each region and what is the prevalence?",
+      "definitions": [
+        "Adult = aged 18 or older on 31 December 2025.",
+        "COPD = any condition with an ICD-10 code starting with J44.",
+        "Prevalence = adults with COPD / all adults in the region × 100, one decimal.",
+        "Report per region: adults, adults with COPD and the prevalence."
+      ]
+    }
+  },
+  {
+    "id": "mean-hospital",
+    "title_de": "Mittelwert nach Klinikum",
+    "title_en": "Mean by hospital",
+    "request": {
+      "requested_as": "health data request",
+      "requested_format": "anonymised statistics",
+      "purpose": "Research on blood sugar control in type 2 diabetes, to compare care between hospitals.",
+      "question": "What is the mean HbA1c of adults with type 2 diabetes, by hospital?",
+      "definitions": [
+        "Adult = aged 18 or older on 31 December 2025.",
+        "Type 2 diabetes = any condition with an ICD-10 code starting with E11.",
+        "Use the latest HbA1c (LOINC 4548-4) per patient; patients without an HbA1c are left out.",
+        "Report per hospital: adults with type 2 diabetes who have an HbA1c value and their mean HbA1c, one decimal."
+      ]
+    }
+  },
+  {
+    "id": "stays-main-diagnosis",
+    "title_de": "Stationäre Aufenthalte nach Hauptdiagnose",
+    "title_en": "Inpatient stays by main diagnosis",
+    "request": {
+      "requested_as": "health data request",
+      "requested_format": "anonymised statistics",
+      "purpose": "Health services research on hip fractures, to compare hospital workload and length of stay.",
+      "question": "How many inpatient stays with a main diagnosis of hip fracture started in 2025, and how long did they last, by hospital?",
+      "definitions": [
+        "Inpatient stay = encounter with type 'inpatient'.",
+        "Hip fracture stay = inpatient stay whose main diagnosis (primary_icd10) starts with S72.",
+        "Count stays (not patients) whose start_date is in 2025.",
+        "Length of stay = end_date minus start_date in days.",
+        "Report per hospital: hip fracture stays and mean length of stay, one decimal."
+      ]
+    }
+  },
+  {
+    "id": "treatment-gap-age",
+    "title_de": "Behandlungslücke nach Altersgruppe",
+    "title_en": "Treatment gap by age band",
+    "request": {
+      "requested_as": "health data request",
+      "requested_format": "anonymised statistics",
+      "purpose": "Guidelines recommend statins for most adults with type 2 diabetes. We want to know how large the treatment gap is, to plan a quality programme.",
+      "question": "Among adults with type 2 diabetes, how many have no active statin, by age band?",
+      "definitions": [
+        "Adult = aged 18 or older on 31 December 2025.",
+        "Type 2 diabetes = any condition with an ICD-10 code starting with E11.",
+        "Statin = ATC code starting with C10AA.",
+        "A medication is active on 31 December 2025 if start_date is on or before that day and end_date is empty or on or after that day.",
+        "Age bands on 31 December 2025: 18-49, 50-64, 65-79, 80+.",
+        "Report per age band: adults with type 2 diabetes, how many of them have no active statin and that share in %, one decimal."
+      ]
+    }
+  },
+  {
+    "id": "records-spe",
+    "title_de": "Einzeldaten in der SPE",
+    "title_en": "Records in the secure environment",
+    "request": {
+      "requested_as": "health data access application",
+      "requested_format": "pseudonymised records",
+      "purpose": "We develop and validate a model that predicts the decline of kidney function in chronic kidney disease. The model needs individual-level histories; aggregated statistics are not sufficient.",
+      "question": "Provide pseudonymised conditions, medications and eGFR values for adults with chronic kidney disease who have at least one eGFR value.",
+      "definitions": [
+        "Adult = aged 18 or older on 31 December 2025.",
+        "Chronic kidney disease = any condition with an ICD-10 code starting with N18.",
+        "Cohort = adults with chronic kidney disease who have at least one eGFR value (LOINC 62238-1).",
+        "Report the size of the cohort you would make available."
+      ]
+    }
+  }
+]

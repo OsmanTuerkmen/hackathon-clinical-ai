@@ -15,6 +15,8 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
+if "--ai" not in sys.argv:
+    os.environ["ACCESSDESK_AI"] = "off"   # the metrics come from the rules alone; the AI never decides
 from accessdesk import evaluation                       # noqa: E402
 from accessdesk.config import build_desk, find_data_dir  # noqa: E402
 
@@ -35,6 +37,7 @@ def main():
     ap.add_argument("--runs", type=int, default=3)
     ap.add_argument("--suite", choices=["official", "all"], default="official")
     ap.add_argument("--json", action="store_true", help="print the full result as JSON")
+    ap.add_argument("--ai", action="store_true", help="keep the optional AI helper on (off by default)")
     args = ap.parse_args()
 
     data_dir = find_data_dir(args.data)
