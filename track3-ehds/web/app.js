@@ -87,6 +87,7 @@ function showTab(name) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
   document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === `view-${name}`));
   if (name === "staff") loadCases();
+  if (name === "applicant") growAll();
 }
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => showTab(t.dataset.tab)));
 
@@ -141,10 +142,14 @@ const form = { id: null, edited: false, keepRawJson: false };
 const jsonBox = $("#request-json");
 const advanced = $("#json-advanced");
 
+// Grow a text field with its content up to 320 px; beyond that it scrolls (CSS max-height + overflow-y: auto).
 function autoGrow(t) {
+  if (!t.offsetParent) return;  // hidden (other tab): measured again when it becomes visible
   t.style.height = "auto";
-  t.style.height = `${Math.max(38, t.scrollHeight + 2)}px`;
+  t.style.height = `${Math.min(320, Math.max(38, t.scrollHeight + 2))}px`;
 }
+const growAll = () => requestAnimationFrame(() => document.querySelectorAll("#request-form textarea").forEach(autoGrow));
+window.addEventListener("resize", growAll);
 
 function addDefRow(value = "", focus = false) {
   const t = el("textarea", { class: "def-input", rows: "1", spellcheck: "false",
@@ -238,6 +243,15 @@ $("#request-form").addEventListener("input", (ev) => {
 });
 $("#request-form").addEventListener("change", markEdited);
 $("#add-def").addEventListener("click", () => addDefRow("", true));
+$("#template-def").addEventListener("click", () => {
+  [...document.querySelectorAll("#f-defs .def-row")].filter(r => !r.querySelector("textarea").value.trim()).forEach(r => r.remove());
+  ["Type 2 diabetes = any condition with an ICD-10 code starting with E11.",
+    "Adult = aged 18 or older on 31 December 2025.",
+    "Report per region: adults, adults with type 2 diabetes and the share of adults with type 2 diabetes (%)."]
+    .forEach(d => addDefRow(d));
+  markEdited();
+  $("#editor-hint").textContent = "Template inserted: replace the term, code and groups with what you need.";
+});
 document.querySelectorAll('input[name="f-type"]').forEach(i => i.addEventListener("change", () => {
   // sensible default: records only make sense for an access application
   if (i.checked && i.value === "health data request") $("#f-format").value = "anonymised statistics";

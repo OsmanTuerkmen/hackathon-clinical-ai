@@ -22,7 +22,7 @@
   {
     "name": "R10 nicotine pouches -> REJECT, Art. 54, no data queried",
     "ok": true,
-    "detail": "answered in 104 ms; stepper stops at the purpose check"
+    "detail": "answered in 118 ms; stepper stops at the purpose check"
   },
   {
     "name": "R08 statistics -> APPROVE_STATISTICAL with <10 and suppressed cells",
@@ -58,6 +58,16 @@
     "name": "Applicant fills in the form (no JSON visible) and gets an answer",
     "ok": true,
     "detail": "JSON hidden; Klinikum Nord:114, Klinikum Süd:116, Klinikum West:64"
+  },
+  {
+    "name": "Long purpose text is fully visible or scrollable",
+    "ok": true,
+    "detail": "overflow-y auto, 117px high, 0px to scroll"
+  },
+  {
+    "name": "Template button inserts definitions that work",
+    "ok": true,
+    "detail": "Wien 3 247 / 263 / 8.1"
   },
   {
     "name": "Pasted custom request (edited JSON) is processed",

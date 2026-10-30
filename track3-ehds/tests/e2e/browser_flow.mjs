@@ -217,6 +217,30 @@ try {
     await shot("08-form-request");
     return `JSON hidden; ${rows.join(", ")}`;
   });
+  await step("Long purpose text is fully visible or scrollable", async () => {
+    await evaluate(`document.querySelector('[data-id="R05"]').click()`);
+    await waitFor(`document.querySelector('#f-purpose').value.includes('Training needs')`, 5000, "R05 in the form");
+    await sleep(100);
+    const m = await evaluate(`(() => { const f = document.querySelector('#f-purpose');
+      return { overflow: getComputedStyle(f).overflowY, hidden: f.scrollHeight - f.clientHeight, height: f.clientHeight }; })()`);
+    if (m.overflow === "hidden" || (m.hidden > 2 && m.overflow !== "auto")) throw new Error(JSON.stringify(m));
+    return `overflow-y ${m.overflow}, ${m.height}px high, ${Math.max(0, m.hidden)}px to scroll`;
+  });
+  await step("Template button inserts definitions that work", async () => {
+    await evaluate(`(() => {
+      document.querySelector('#clear-btn').click();
+      const set = (sel, v) => { const e = document.querySelector(sel); e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); };
+      set('#f-purpose', 'Research on type 2 diabetes to plan prevention programmes.');
+      set('#f-question', 'How many adults have type 2 diabetes in each region?');
+      document.querySelector('#template-def').click();
+      window.__prevCase = ${text("#meta")};
+      document.querySelector('#submit-btn').click();
+    })()`);
+    await waitFor(`${text("#meta")} !== window.__prevCase && ${text("#meta")}.includes("Request WEB-")`, 30000, "template answer");
+    const wien = await evaluate(`[...document.querySelectorAll('#stat-table tbody tr')].map(tr => [...tr.cells].map(c => c.innerText.trim())).find(r => r[0] === 'Wien')`);
+    if (!wien || wien.slice(1).join("|") !== "3 247|263|8.1") throw new Error(JSON.stringify(wien));
+    return `Wien ${wien.slice(1).join(" / ")}`;
+  });
   await step("Pasted custom request (edited JSON) is processed", async () => {
     await evaluate(`document.querySelector('#json-advanced').open = true`);
     await sleep(200);

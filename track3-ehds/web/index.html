@@ -71,15 +71,27 @@
             </fieldset>
             <fieldset>
               <legend>Purpose and question</legend>
-              <label>Purpose<textarea id="f-purpose" rows="3"
+              <label>Purpose <span class="req">required</span><textarea id="f-purpose" rows="3"
                 placeholder="What will the data be used for? If anonymised statistics are not enough, explain why."></textarea></label>
-              <label>Question<textarea id="f-question" rows="2"
+              <label>Question <span class="req">required</span><textarea id="f-question" rows="2"
                 placeholder="e.g. How many adults have type 2 diabetes in each region?"></textarea></label>
             </fieldset>
             <fieldset>
-              <legend>Definitions <small>one per field: terms with codes, age bands, value rules and a “Report per …” line</small></legend>
+              <legend>Definitions <span class="req">required</span></legend>
+              <p class="help">The desk computes <b>exactly</b> what you define here, so this decides the answer:</p>
+              <ul class="help">
+                <li>one term per field, e.g. <i>Type 2 diabetes = any condition with an ICD-10 code starting with E11.</i>
+                  Common names such as “statin” or “COPD” are mapped to codes automatically;</li>
+                <li>optional groups or rules, e.g. <i>Adult = aged 18 or older on 31 December 2025</i>;</li>
+                <li>a final <b>“Report per …”</b> line naming the numbers per group, e.g.
+                  <i>Report per region: adults, adults with type 2 diabetes and the share (%).</i></li>
+              </ul>
+              <p class="help">For records in a secure environment, define <b>“Cohort = …”</b> instead of a report line.</p>
               <div id="f-defs" class="defs"></div>
-              <button type="button" class="link-btn" id="add-def">+ Add definition</button>
+              <div class="def-actions">
+                <button type="button" class="link-btn" id="add-def">+ Add definition</button>
+                <button type="button" class="link-btn" id="template-def">Insert a template</button>
+              </div>
             </fieldset>
           </form>
 

@@ -33,7 +33,7 @@ Then open **http://127.0.0.1:8000**. Use `python3 -m desk serve --port 8080` to 
 | Evaluate R01–R10 three times against `expected.json` | `python3 -m desk evaluate` (add `--save` to write `reports/`) |
 | Same evaluation through the running web server | `python3 -m desk evaluate --url http://127.0.0.1:8000` |
 | Unit and integration tests (90) | `python3 -m unittest discover -s tests -t .` |
-| Browser end-to-end test (23 checks, needs Node ≥ 22 and Chrome) | `node tests/e2e/browser_flow.mjs http://127.0.0.1:8000` |
+| Browser end-to-end test (25 checks, needs Node ≥ 22 and Chrome) | `node tests/e2e/browser_flow.mjs http://127.0.0.1:8000` |
 | Process one file on the command line | `python3 -m desk run new_requests/N01.json [--staff]` |
 
 ### Running it online
@@ -313,7 +313,7 @@ CSV files directly. That calculation shares no code with the desk.
   - a period named only in the question is refused;
   - the case register and SPE access log survive a restart;
   - SPE analyses need the permit token and mask small cells.
-- `tests/e2e/browser_flow.mjs`: headless Chrome through the DevTools protocol (no npm packages), 23 checks:
+- `tests/e2e/browser_flow.mjs`: headless Chrome through the DevTools protocol (no npm packages), 25 checks:
   - the demo flow: R10 rejection, R08/R01 statistics, R05 SPE with blocked download, access log and an
     aggregate analysis inside the SPE, N01,
   - the processing steps and the CSV export,
