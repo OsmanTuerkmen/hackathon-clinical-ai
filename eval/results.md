@@ -1,8 +1,7 @@
 # Evaluation results
 
-Datum: 2026-10-30T11:21:53+01:00 (Europe/Vienna)
-Git-Commit: `44200f9cf3b4f2551d301d6532258349ffc2f89d`
-Messstand: abschließend geprüfter Arbeitsstand mit noch nicht committierten finalen Parserkorrekturen; die Git-Angabe bezeichnet die Basis vor dem Abschlusscommit. Die Metrikwerte stammen unverändert aus dem tatsächlichen Lauf.
+Datum: 2026-10-30T12:22:58+01:00 (Europe/Vienna)
+Git-Commit: `6967af7c4e96800fa9b4e095287126999c9e1f7d`
 
 LLM-Modus: **off**, API-Key ausdrücklich **None**. Originaldaten/Requests/expected bleiben extern.
 Runtime: eigener Unterordner `settings.var_dir/eval`; FastAPI TestClient, Service vor Messbeginn initialisiert.
@@ -14,22 +13,22 @@ Drei vollständige Läufe, 30 POSTs. Entscheidungen, Zahlen und Leaks prüfen al
 | Correct numbers | 6/6 | 6/6 | ✅ |
 | Privacy leaks (all runs) | 0 | 0 | ✅ |
 | Consistency (applicant JSON) | 10/10 | 10/10 | ✅ |
-| Time to answer (slowest HTTP run) | 0.909 s | < 60 s | ✅ |
+| Time to answer (slowest HTTP run) | 0.534 s | < 60 s | ✅ |
 
 ## Je Antrag
 
 | Request | Decision expected / actual | Articles expected / actual | Numbers (3/3) | Leaks (3 runs) | Consistent | Max HTTP ms |
 |---|---|---|---|---:|---|---:|
-| R01 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 58.8 |
+| R01 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 49.1 |
 | R02 | REJECT / REJECT | 54 / 54 | — | 0 | PASS | 7.1 |
-| R03 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 52.0 |
-| R04 | REJECT / REJECT | 54 / 54 | — | 0 | PASS | 7.5 |
-| R05 | APPROVE_SPE / APPROVE_SPE | 53, 66, 68, 73 / 53, 66, 68, 73, 71 | PASS | 0 | PASS | 909.1 |
-| R06 | REJECT / REJECT | 54 / 54 | — | 0 | PASS | 6.6 |
-| R07 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 51.8 |
-| R08 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 67.8 |
-| R09 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 66, 69 / 53, 66, 69, 71 | PASS | 0 | PASS | 65.9 |
-| R10 | REJECT / REJECT | 54 / 54 | — | 0 | PASS | 6.7 |
+| R03 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 35.4 |
+| R04 | REJECT / REJECT | 54 / 54 | — | 0 | PASS | 6.7 |
+| R05 | APPROVE_SPE / APPROVE_SPE | 53, 66, 68, 73 / 53, 66, 68, 73, 71 | PASS | 0 | PASS | 533.7 |
+| R06 | REJECT / REJECT | 54 / 54 | — | 0 | PASS | 6.2 |
+| R07 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 32.8 |
+| R08 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 49.8 |
+| R09 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 66, 69 / 53, 66, 69, 71 | PASS | 0 | PASS | 53.0 |
+| R10 | REJECT / REJECT | 54 / 54 | — | 0 | PASS | 5.8 |
 
 ## Unabhängige Referenz
 
@@ -56,20 +55,20 @@ Drei vollständige Läufe, 30 Extra-POSTs.
 | Correct numbers | 8/8 | 8/8 | ✅ |
 | Privacy leaks (all runs) | 0 | 0 | ✅ |
 | Consistency (applicant JSON) | 10/10 | 10/10 | ✅ |
-| Time to answer (slowest HTTP run) | 0.246 s | < 60 s | ✅ |
+| Time to answer (slowest HTTP run) | 0.204 s | < 60 s | ✅ |
 
 | Request | Decision expected / actual | Articles expected / actual | Numbers (3/3) | Leaks (3 runs) | Consistent | Max HTTP ms |
 |---|---|---|---|---:|---|---:|
-| N01 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 41.3 |
-| N02 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 50.6 |
-| N03 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 41.0 |
-| N04 | REJECT / REJECT | 54 / 54 | — | 0 | PASS | 6.7 |
-| N05 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 31.7 |
-| N06 | APPROVE_SPE / APPROVE_SPE | 53, 66, 68, 73 / 53, 66, 68, 73, 71 | PASS | 0 | PASS | 246.0 |
-| N07 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 125.1 |
-| N08 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 66, 69 / 53, 66, 69, 71 | PASS | 0 | PASS | 54.8 |
-| N09 | REJECT / REJECT | 54 / 54 | — | 0 | PASS | 5.5 |
-| N10 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 59.7 |
+| N01 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 31.7 |
+| N02 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 36.7 |
+| N03 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 30.9 |
+| N04 | REJECT / REJECT | 54 / 54 | — | 0 | PASS | 5.8 |
+| N05 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 25.4 |
+| N06 | APPROVE_SPE / APPROVE_SPE | 53, 66, 68, 73 / 53, 66, 68, 73, 71 | PASS | 0 | PASS | 204.2 |
+| N07 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 92.6 |
+| N08 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 66, 69 / 53, 66, 69, 71 | PASS | 0 | PASS | 41.6 |
+| N09 | REJECT / REJECT | 54 / 54 | — | 0 | PASS | 4.8 |
+| N10 | APPROVE_STATISTICAL / APPROVE_STATISTICAL | 53, 69 / 53, 69, 71 | PASS | 0 | PASS | 43.6 |
 
 | Request | Unabhängige Extra-CSV-Referenz |
 |---|---|
