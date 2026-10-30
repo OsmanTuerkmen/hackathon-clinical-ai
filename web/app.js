@@ -1,7 +1,8 @@
 /* Doccess: local, dependency-free access desk. All untrusted values enter the DOM as text. */
 'use strict';
 const app = document.getElementById('app');
-const state = { requests: [], law: {}, selected: null, request: null, result: null, tab: 'applicant', epoch: 0, controller: null };
+const state = { requests: [], law: {}, dataset: null, selected: null, request: null, result: null, tab: 'applicant', epoch: 0, controller: null, played: new Set() };
+const { chartModel, defaultMetric, exportName, formatValue, fullyShown, protectedCells, summary, toCsv } = window.DoccessDashboard;
 const number = new Intl.NumberFormat('en-GB');
 const $ = id => document.getElementById(id);
 const SVG = 'http://www.w3.org/2000/svg';
@@ -14,7 +15,8 @@ const ICONS = {
   lock: 'M6 11h12v9H6zM9 11V8a3 3 0 0 1 6 0v3',
   back: 'M19 12H5M11 6l-6 6 6 6',
   refresh: 'M19 9a7.5 7.5 0 0 0-13.5-1.5L4 9M4 4.5V9h4.5M5 15a7.5 7.5 0 0 0 13.5 1.5L20 15M20 19.5V15h-4.5',
-  blocked: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM5.7 5.7l12.6 12.6'
+  blocked: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM5.7 5.7l12.6 12.6',
+  dash: 'M7 12h10'
 };
 const STATUS_ICON = { approved: 'check', rejected: 'cross', review: 'alert' };
 const STATUS_TEXT = { approved: 'Approved', rejected: 'Rejected', review: 'Manual review required' };
@@ -40,6 +42,19 @@ function list(parent, items) { const ul = el('ul'); items.forEach(item => ul.app
 function section(parent, title) { const node = el('section', null, 'section'); heading(node, title); parent.append(node); return node; }
 function code(parent, value) { parent.append(el('pre', typeof value === 'string' ? value : JSON.stringify(value, null, 2))); }
 function details(parent, title, value) { const node = el('details'); append(node, el('summary', title)); code(node, value); parent.append(node); }
+function motionAllowed() { return matchMedia('(prefers-reduced-motion: no-preference)').matches; }
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+function restart(node, className) { node.classList.remove(className); void node.offsetWidth; node.classList.add(className); }
+function protect(cell, value) {
+  cell.classList.add('suppressed');
+  cell.title = value === '<10' ? 'Fewer than 10 patients. Exact number hidden to prevent re-identification.' : 'Based on fewer than 10 patients, so not reliable or safe to show.';
+  cell.replaceChildren(append(el('span', null, 'protected'), icon('lock'), el('span', value)));
+}
+function toast(text) {
+  document.querySelector('.toast')?.remove();
+  const node = el('p', text, 'toast'); node.setAttribute('role', 'status'); node.prepend(icon('alert')); document.body.append(node);
+  setTimeout(() => node.remove(), 4200);
+}
 function facts(parent, rows) { const dl = el('dl', null, 'facts'); rows.forEach(([key, value]) => dl.append(append(el('div'), el('dt', key), el('dd', value)))); parent.append(dl); }
 function sentenceCase(text) { const value = String(text).replaceAll('_', ' '); return value.charAt(0).toUpperCase() + value.slice(1); }
 function table(parent, caption, columns, rows, wrapClass = '') {
@@ -47,13 +62,13 @@ function table(parent, caption, columns, rows, wrapClass = '') {
   const node = el('table'); node.append(el('caption', caption));
   const head = el('tr'); columns.forEach(col => { const th = el('th', col.label, col.numeric ? 'num' : null); th.scope = 'col'; head.append(th); });
   append(node, append(el('thead'), head)); const body = el('tbody');
-  rows.forEach(row => {
-    const tr = el('tr'); columns.forEach((col, index) => {
+  rows.forEach((row, position) => {
+    const tr = el('tr'); tr.style.setProperty('--row', Math.min(position, 12)); columns.forEach((col, index) => {
       const value = col.get(row); const cell = el(index === 0 ? 'th' : 'td');
       if (index === 0) cell.scope = 'row';
       if (col.numeric) cell.classList.add('num');
       if (value instanceof Node) cell.append(value); else cell.textContent = value === null || value === undefined ? '—' : String(value);
-      if (value === '<10' || value === 'suppressed') cell.classList.add('suppressed');
+      if (value === '<10' || value === 'suppressed') protect(cell, value);
       tr.append(cell);
     }); body.append(tr);
   }); node.append(body); wrap.append(node); parent.append(wrap); return node;
@@ -108,9 +123,8 @@ function desk() {
   const label = el('label', 'Request JSON'); label.htmlFor = 'request-json'; const textarea = el('textarea'); textarea.id = 'request-json'; textarea.spellcheck = false; textarea.rows = 15;
   append(editor, label, textarea, button('Assess request', submitRequest, 'button primary')); main.append(editor);
   const head = el('header', null, 'case-head'); const summary = el('div'); summary.id = 'request-summary'; para(summary, 'Loading requests…', 'muted');
-  const decision = el('div'); decision.id = 'decision-slot';
   const live = el('p', 'Select a request to begin.', 'notice'); live.id = 'processing-status'; live.setAttribute('role', 'status'); live.setAttribute('aria-live', 'polite');
-  append(head, summary, decision, live); main.append(head);
+  append(head, summary, live); main.append(head);
   const tabs = el('div', null, 'tabs'); tabs.id = 'assessment-tabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Assessment views');
   ['applicant', 'staff'].forEach(name => {
     const tab = button(name === 'applicant' ? 'Applicant' : 'Staff', () => activateTab(name), 'tab'); tab.id = `${name}-tab`; tab.setAttribute('role', 'tab'); tab.setAttribute('aria-controls', `${name}-panel`);
@@ -150,7 +164,7 @@ function filterInbox(query) {
 async function loadInbox() {
   const initialEpoch = state.epoch;
   try {
-    const [requests, law] = await Promise.all([api('/api/requests'), api('/api/law')]); state.requests = requests; state.law = law;
+    const [requests, law, dataset] = await Promise.all([api('/api/requests'), api('/api/law'), api('/api/health').catch(() => null)]); state.requests = requests; state.law = law; state.dataset = dataset;
     renderInbox(requests);
     if (state.epoch !== initialEpoch) return;
     if (requests.length) await selectRequest(requests[0].id); else { $('request-summary').replaceChildren(el('p', 'The inbox is empty.', 'muted')); status('No stored requests. Create a new request to begin.'); }
@@ -162,7 +176,8 @@ function selection(id) {
     if (item.dataset.requestId === id) { item.setAttribute('aria-current', 'true'); item.scrollIntoView({ block: 'nearest', inline: 'center' }); } else item.removeAttribute('aria-current');
   });
 }
-function clearResult() { $('applicant-panel').replaceChildren(); $('staff-panel').replaceChildren(); $('decision-slot').replaceChildren(); }
+function resetStage(root) { root.classList.remove('staged', 'revealed'); delete root.dataset.stage; }
+function clearResult() { const root = $('applicant-panel'); root.replaceChildren(); resetStage(root); $('staff-panel').replaceChildren(); }
 function showLoading() {
   const root = $('applicant-panel'); root.replaceChildren(); ['', '', 'short'].forEach(size => { const line = el('span', null, `skeleton ${size}`.trim()); line.setAttribute('aria-hidden', 'true'); root.append(line); });
 }
@@ -193,7 +208,7 @@ async function submitRequest() {
   const task = invalidate(); clearResult(); status('Assessing your request…');
   try {
     const result = await api('/api/process', { method: 'POST', signal: task.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) });
-    if (task.epoch !== state.epoch) return; state.request = request; requestSummary(request); $('request-editor').hidden = true; $('request-summary').hidden = false; $('assessment-tabs').hidden = false; showResult(result); $('main').focus({ preventScroll: true });
+    if (task.epoch !== state.epoch) return; state.request = request; state.played.delete(result.applicant.request_id); requestSummary(request); $('request-editor').hidden = true; $('request-summary').hidden = false; $('assessment-tabs').hidden = false; showResult(result); $('main').focus({ preventScroll: true });
   } catch (error) { if (task.epoch === state.epoch && error.name !== 'AbortError') status(error.message, true); }
 }
 function outcomeOf(result) {
@@ -203,51 +218,147 @@ function outcomeOf(result) {
 }
 function showResult(result) {
   state.result = result; const outcome = outcomeOf(result);
-  renderDecision(result.applicant, outcome); renderApplicant(result.applicant, result.staff, outcome); renderStaff(result.staff);
+  const animate = motionAllowed() && !state.played.has(result.applicant.request_id); state.played.add(result.applicant.request_id);
+  renderApplicant(result.applicant, result.staff, outcome, animate); renderStaff(result.staff, result.applicant, outcome);
   const row = state.selected === result.applicant.request_id ? document.querySelector(`.request-item[data-request-id="${CSS.escape(state.selected)}"] .request-state`) : null;
   if (row) { row.className = `request-state ${outcome}`; row.replaceChildren(icon(STATUS_ICON[outcome]), el('span', STATUS_TEXT[outcome], 'sr-only')); }
   status(outcome === 'review' ? `${result.applicant.request_id} · Manual review required. No data released.` : `${result.applicant.request_id} · Assessment complete.`, false, true);
 }
-function renderDecision(answer, outcome) {
-  const release = outcome === 'approved' ? (answer.decision === 'APPROVE_SPE' ? 'Secure processing environment' : 'Anonymised statistics') : 'No data released';
-  const banner = el('div', null, `decision-banner fade-in ${outcome}`); banner.dataset.decision = answer.decision;
-  append(banner, icon(STATUS_ICON[outcome]), append(el('div'), el('strong', STATUS_TEXT[outcome]), el('span', release)));
-  $('decision-slot').replaceChildren(banner);
+function releaseOf(answer, outcome) {
+  if (outcome !== 'approved') return 'No data released';
+  return answer.decision === 'APPROVE_SPE' ? 'Secure processing environment' : 'Anonymised statistics';
 }
 function ladder(parent, trace, outcome) {
-  const rail = el('div', null, 'case-rail'); rail.append(el('h2', 'How this was decided', 'rail-title')); const steps = el('ol', null, 'ladder'); steps.setAttribute('role', 'list');
-  const decided = { approved: ['decided', 'Decided here'], rejected: ['stopped', 'Stopped here'], review: ['held', 'Held for staff review'] }[outcome];
+  const band = el('section', null, 'ladder-band'); band.append(el('h2', 'How this was decided', 'sr-only'));
+  const steps = el('ol', null, 'ladder'); steps.setAttribute('role', 'list');
+  const decided = { approved: ['decided', 'Decided here', 'check'], rejected: ['stopped', 'Stopped here', 'cross'], review: ['held', 'Held for staff review', 'alert'] }[outcome];
   trace.forEach((step, index) => {
-    const [kind, note] = step.status === 'matched' ? decided : step.status === 'not_matched' ? ['passed', 'Checked, no match'] : ['skipped', 'Not needed'];
-    const mark = el('span', kind === 'passed' ? null : index + 1, 'step-mark');
-    if (kind === 'passed') mark.append(icon('check'));
+    const [kind, note, glyph] = step.status === 'matched' ? decided : step.status === 'not_matched' ? ['passed', 'Checked, no match', 'check'] : ['skipped', 'Not needed', 'dash'];
+    const mark = el('span', null, 'step-mark'); mark.dataset.step = index + 1; mark.append(icon(glyph));
     steps.append(append(el('li', null, kind), mark, el('span', step.title, 'step-title'), el('span', note, 'step-note')));
   });
-  rail.append(steps); parent.append(rail);
+  band.append(steps);
+  if (outcome !== 'approved') band.append(el('p', outcome === 'rejected' ? 'Rejected before any data was touched' : 'Held for staff review before any data was released', 'ladder-chip'));
+  parent.append(band); return [...steps.children];
 }
-function renderApplicant(answer, staff, outcome) {
-  const root = $('applicant-panel'); root.replaceChildren();
-  const grid = el('div', null, 'case-grid fade-in'); const body = el('div', null, 'case-body'); ladder(grid, staff.trace, outcome); grid.append(body); root.append(grid);
-  if (outcome === 'review') { const next = section(body, 'Next step'); para(next, 'Staff will review the parts of your request that could not be interpreted. No statistics or secure workspace have been released.'); }
-  else {
-    if (answer.statistics) {
-      const stats = answer.statistics; const results = section(body, 'Anonymised results');
-      para(results, `All ${number.format(stats.rows.length)} requested groups are shown, including groups with no matching records.`, 'muted');
-      const columns = [...stats.dimensions.map(key => ({ label: sentenceCase(key), get: row => row.group[key] })), ...stats.metrics.map(metric => ({ numeric: true, label: metric.kind === 'percent' ? `${metric.label} (%)` : metric.label, get: row => { const value = row.values[metric.name]; if (typeof value !== 'number') return value; return metric.kind === 'count' ? number.format(value) : value.toFixed(1); } }))];
-      table(results, 'Results by requested group', columns, stats.rows);
-      para(results, 'Privacy safeguard: counts below 10 (including zero) appear as <10. Percentages with a numerator or denominator below 10, and means based on fewer than 10 patients, are suppressed. Values are rounded to one decimal place where applicable.', 'footnote');
-    }
-    if (answer.spe) {
-      const workspace = section(body, 'Your secure workspace'); const lead = el('div', null, 'spe-lead');
-      const count = el('div', null, 'metric'); append(count, el('strong', number.format(answer.spe.patient_count)), el('span', 'patients in the permitted cohort'));
-      const link = el('a', 'Open secure workspace →', 'button primary'); link.href = `/spe/${encodeURIComponent(answer.spe.permit_id)}`; workspace.append(append(lead, count, link));
-      para(workspace, 'Access is limited to the permitted records. Patients who opted out are excluded. Pseudonymised records must stay inside the secure workspace.', 'muted');
-      table(workspace, 'Permitted tables', [{ label: 'Table', get: row => row[0] }, { label: 'Rows', numeric: true, get: row => number.format(row[1]) }], Object.entries(answer.spe.tables));
-    }
+function tile(parent, title, className = '') {
+  const node = el('section', null, `tile ${className}`.trim()); if (title) node.append(el('h2', title, 'tile-label')); parent.append(node); return node;
+}
+function bigNumber(parent, value, display = number.format(value)) {
+  const node = el('p', display, 'tile-number'); if (typeof value === 'number') node.dataset.count = value; parent.append(node); return node;
+}
+function downloadStatistics(answer) {
+  const url = URL.createObjectURL(new Blob(['﻿', toCsv(answer.statistics)], { type: 'text/csv;charset=utf-8' }));
+  const link = el('a'); link.href = url; link.download = exportName(answer.request_id); document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function decisionTile(parent, answer, outcome) {
+  const node = tile(parent, null, `tile-decision decision-banner ${outcome}`); node.dataset.decision = answer.decision;
+  append(node, el('h2', `Decision · ${answer.request_id}`, 'tile-label'), append(el('div', null, 'decision-title'), icon(STATUS_ICON[outcome]), append(el('div'), el('strong', STATUS_TEXT[outcome]), el('span', releaseOf(answer, outcome)))));
+  para(node, outcome === 'review' ? 'This request needs a staff check before any data can be released.' : answer.headline, 'decision-lead');
+  if (outcome === 'approved' && answer.statistics) {
+    const action = el('div', null, 'decision-action'); append(action, button('Download anonymised statistics (CSV)', () => downloadStatistics(answer), 'button primary'), el('span', 'Aggregated table only, no patient records.', 'action-hint')); node.append(action);
   }
-  const rationale = section(body, 'Why this decision');
-  para(rationale, outcome === 'review' ? 'This request needs a staff check before any data can be released.' : answer.headline, 'decision-lead');
+}
+function privacyTile(parent, stats) {
+  const { shown, total } = fullyShown(stats); const node = tile(parent, 'Privacy', 'tile-privacy');
+  const ring = el('div', null, 'ring'); ring.style.setProperty('--p', total ? Math.round((shown / total) * 100) : 0); ring.setAttribute('role', 'img'); ring.setAttribute('aria-label', `${shown} of ${total} groups fully shown`);
+  ring.append(el('span', `${shown}/${total}`)); append(node, ring, el('p', 'groups fully shown', 'tile-note'));
+}
+function patientsTile(parent) {
+  const node = tile(parent, 'Consented patients'); const count = state.dataset?.patients;
+  if (typeof count === 'number') bigNumber(node, count); else bigNumber(node, null, '—');
+  para(node, 'Patients who opted out are excluded.', 'tile-note');
+}
+function timeTile(parent, staff) {
+  const node = tile(parent, 'Answer time', 'tile-dark'); const ms = staff.timings_ms.total; bigNumber(node, null, ms < 1000 ? `${number.format(ms)} ms` : `${(ms / 1000).toFixed(2)} s`);
+}
+function legalTile(parent, answer) {
+  const node = tile(parent, 'Legal basis'); const label = el('p', `Art. ${answer.articles.join(' · ')}`, 'tile-number tile-small');
+  label.title = answer.articles.map(article => `Art. ${article}: ${answer.article_titles[article] || 'EHDS Regulation'}`).join('\n'); append(node, label, el('p', 'EHDS Regulation', 'tile-note'));
+}
+function recordsTile(parent, answer) {
+  const node = tile(parent, 'Records released'); bigNumber(node, null, '0');
+  if (answer.spe) para(node, 'No downloads. Records stay in the secure workspace.', 'tile-note');
+}
+function drawChart(canvas, model) {
+  canvas.className = `chart ${model.horizontal ? 'horizontal' : 'vertical'}`; canvas.replaceChildren();
+  canvas.setAttribute('aria-label', `${model.metric.label}: ${model.bars.map(bar => `${bar.label} ${bar.display}`).join(', ')}`);
+  model.bars.forEach((bar, index) => {
+    const item = el('div', null, `bar ${bar.masked ? 'masked' : ''}`.trim()); item.title = `${bar.label}: ${bar.display}`; item.style.setProperty('--h', `${bar.heightPct}%`); item.style.setProperty('--i', Math.min(index, 16));
+    const value = el('span', bar.display, 'bar-value'); const track = el('span', null, 'bar-track'); const fill = el('span', null, 'bar-fill'); if (bar.masked) fill.append(icon('lock')); track.append(value, fill);
+    canvas.append(append(item, track, el('span', model.horizontal ? bar.label : bar.shortLabel, 'bar-label')));
+  });
+}
+function chartTile(parent, stats) {
+  const node = tile(parent, null, 'tile-chart'); const title = el('h2', null, 'tile-label'); const controls = el('div', null, 'chart-controls'); const sentence = el('p', null, 'chart-summary');
+  const canvas = el('div'); canvas.setAttribute('role', 'img'); sentence.setAttribute('aria-live', 'polite'); append(node, title, controls, sentence, canvas);
+  const view = { metric: defaultMetric(stats), selection: {} };
+  const render = () => {
+    const model = chartModel(stats, view.metric, view.selection);
+    title.textContent = model.axis ? `${model.metric.label} · per ${model.axis.replaceAll('_', ' ')}` : model.metric.label;
+    controls.querySelectorAll('.chip-button').forEach(choice => choice.setAttribute('aria-pressed', String(choice.dataset.metric === view.metric)));
+    sentence.textContent = summary(model); drawChart(canvas, model);
+  };
+  if (stats.metrics.length > 1) stats.metrics.forEach(metric => { const choice = button(metric.label, () => { view.metric = metric.name; render(); }, 'chip-button'); choice.dataset.metric = metric.name; controls.append(choice); });
+  chartModel(stats, view.metric).filters.forEach(filter => {
+    const select = el('select'); select.setAttribute('aria-label', sentenceCase(filter.dimension)); filter.options.forEach(option => { const entry = el('option', option); entry.value = option; select.append(entry); }); select.value = filter.selected;
+    select.addEventListener('change', () => { view.selection[filter.dimension] = select.value; render(); }); controls.append(select);
+  });
+  render();
+}
+function secureTile(parent, spe) {
+  const node = tile(parent, 'Your secure workspace', 'tile-full'); const lead = el('div', null, 'spe-lead');
+  const count = el('div', null, 'metric'); const figure = el('strong', number.format(spe.patient_count)); figure.dataset.count = spe.patient_count; append(count, figure, el('span', 'patients in the permitted cohort'));
+  const link = el('a', 'Open secure workspace →', 'button primary'); link.href = `/spe/${encodeURIComponent(spe.permit_id)}`; node.append(append(lead, count, link));
+  para(node, 'Access is limited to the permitted records. Patients who opted out are excluded. Pseudonymised records must stay inside the secure workspace.', 'muted');
+  table(node, 'Permitted tables', [{ label: 'Table', get: row => row[0] }, { label: 'Rows', numeric: true, get: row => number.format(row[1]) }], Object.entries(spe.tables));
+  node.append(append(el('p', null, 'badge blocked'), document.createTextNode('Downloads blocked (HTTP 403)')));
+}
+function emptyTile(parent, title, text, className = '') { para(tile(parent, title, className), text); }
+function countUp(node, alive) {
+  const target = Number(node.dataset.count); const started = performance.now();
+  return new Promise(resolve => {
+    const tick = now => {
+      if (!alive()) { resolve(); return; }
+      const progress = Math.min(1, (now - started) / 600); node.textContent = number.format(Math.round(target * (1 - (1 - progress) ** 3)));
+      if (progress < 1) requestAnimationFrame(tick); else resolve();
+    };
+    requestAnimationFrame(tick);
+  });
+}
+async function playStage(root, steps) {
+  const epoch = state.epoch; const alive = () => epoch === state.epoch;
+  root.dataset.stage = 'running'; root.classList.add('staged');
+  for (const step of steps) {
+    step.classList.add('is-active');
+    await wait(step.classList.contains('skipped') ? 160 : 340);
+    if (!alive()) return;
+    step.classList.replace('is-active', 'is-shown');
+  }
+  root.classList.add('revealed');
+  await Promise.race([wait(2500), Promise.all([wait(1300), ...[...root.querySelectorAll('[data-count]')].map(node => countUp(node, alive))])]);
+  if (!alive()) return;
+  resetStage(root); root.dataset.stage = 'done';
+}
+function renderApplicant(answer, staff, outcome, animate) {
+  const root = $('applicant-panel'); root.replaceChildren(); resetStage(root);
+  const steps = ladder(root, staff.trace, outcome); const bento = el('div', null, 'bento'); root.append(bento);
+  decisionTile(bento, answer, outcome);
+  if (outcome === 'approved' && answer.statistics) { privacyTile(bento, answer.statistics); patientsTile(bento); timeTile(bento, staff); if (answer.statistics.rows.length && answer.statistics.metrics.length) chartTile(bento, answer.statistics); legalTile(bento, answer); recordsTile(bento, answer); }
+  else if (outcome === 'approved' && answer.spe) { patientsTile(bento); timeTile(bento, staff); legalTile(bento, answer); recordsTile(bento, answer); secureTile(bento, answer.spe); }
+  else { legalTile(bento, answer); recordsTile(bento, answer); timeTile(bento, staff); if (outcome === 'rejected') emptyTile(bento, 'Patient data', 'No patient data was queried.'); else emptyTile(bento, 'Next step', 'Staff will review the parts of your request that could not be interpreted. No statistics or secure workspace have been released.', 'tile-full'); }
+  if (outcome === 'approved' && answer.statistics) {
+    const stats = answer.statistics; const results = section(root, 'Anonymised results'); const hidden = protectedCells(stats);
+    para(results, `All ${number.format(stats.rows.length)} requested groups are shown, including groups with no matching records.`, 'muted');
+    if (hidden) results.append(append(el('p', null, 'protected-legend'), append(el('span', null, 'protected'), icon('lock')), document.createTextNode(`${number.format(hidden)} ${hidden === 1 ? 'cell' : 'cells'} protected by the small-cell rule`)));
+    const columns = [...stats.dimensions.map(key => ({ label: sentenceCase(key), get: row => row.group[key] })), ...stats.metrics.map(metric => ({ numeric: true, label: metric.kind === 'percent' ? `${metric.label} (%)` : metric.label, get: row => { const value = row.values[metric.name]; return typeof value === 'number' ? formatValue(value, metric.kind) : value; } }))];
+    table(results, 'Results by requested group', columns, stats.rows);
+    para(results, 'Privacy safeguard: counts below 10 (including zero) appear as <10. Percentages with a numerator or denominator below 10, and means based on fewer than 10 patients, are suppressed. Values are rounded to one decimal place where applicable.', 'footnote');
+  }
+  const rationale = section(root, 'Why this decision');
   articleChips(rationale, answer.articles); list(rationale, answer.reasons); answer.notes.forEach(note => para(rationale, note, 'notice warning'));
+  if (animate) playStage(root, steps); else root.dataset.stage = 'done';
 }
 function evidence(parent, items) {
   if (!items.length) { para(parent, 'No matching evidence.', 'muted'); return; }
@@ -255,7 +366,7 @@ function evidence(parent, items) {
   items.forEach(item => { const key = `${item.source}\n${item.quote}`; if (!grouped.has(key)) grouped.set(key, { ...item, categories: new Set() }); grouped.get(key).categories.add(item.category); });
   grouped.forEach(item => { const quote = el('blockquote', item.quote); append(quote, el('cite', `${[...item.categories].join(', ')} · source: ${item.source}`)); parent.append(quote); });
 }
-function renderStaff(staff) {
+function renderStaff(staff, answer, outcome) {
   const root = $('staff-panel'); root.replaceChildren();
   const grid = el('div', null, 'case-grid fade-in'); const body = el('div', null, 'case-body'); const rail = el('div', null, 'case-rail staff-rail'); const nav = el('nav', null, 'staff-nav'); nav.setAttribute('aria-label', 'Staff sections');
   rail.append(el('h2', 'On this page', 'rail-title'), nav); grid.append(rail, body); root.append(grid);
@@ -264,7 +375,7 @@ function renderStaff(staff) {
     const link = el('a', title); link.href = `#${node.id}`; nav.append(link); return node;
   };
   const overview = staffSection('Assessment overview');
-  facts(overview, [['Request type', sentenceCase(staff.request_kind)], ['Parser source', staff.parser_source], ['Interpretation', staff.parse_report.complete ? 'Complete' : 'Needs manual review'], ['Opt-out exclusions · Art. 71', staff.opt_out_excluded === null ? 'Not computed' : typeof staff.opt_out_excluded === 'number' ? number.format(staff.opt_out_excluded) : staff.opt_out_excluded]]);
+  facts(overview, [['Decision', `${STATUS_TEXT[outcome]} · ${releaseOf(answer, outcome)}`], ['Request type', sentenceCase(staff.request_kind)], ['Parser source', staff.parser_source], ['Interpretation', staff.parse_report.complete ? 'Complete' : 'Needs manual review'], ['Opt-out exclusions · Art. 71', staff.opt_out_excluded === null ? 'Not computed' : typeof staff.opt_out_excluded === 'number' ? number.format(staff.opt_out_excluded) : staff.opt_out_excluded]]);
   staff.warnings.forEach(warning => para(overview, warning, 'notice warning'));
   const trace = staffSection('Decision ladder'); const steps = el('ol', null, 'trace');
   staff.trace.forEach(step => { const item = el('li'); const label = { matched: 'Matched', not_matched: 'Not matched', not_evaluated: 'Not evaluated' }[step.status] || step.status; append(item, el('h3', step.title), el('span', label, `badge ${step.status}`), el('p', step.condition)); if (step.evidence.length) evidence(item, step.evidence); steps.append(item); }); trace.append(steps);
@@ -294,7 +405,7 @@ async function workspace(permit) {
   const back = el('a', null, 'back-link'); back.href = '/'; append(back, icon('back'), document.createTextNode('Back to inbox'));
   const note = el('div', null, 'secure-note'); append(note, append(el('strong'), icon('lock'), document.createTextNode('Controlled access')), el('p', 'Every preview and download attempt is recorded.'));
   append(inner, brand(), back, note, sidebarNote()); aside.append(inner);
-  const main = el('main', null, 'case'); main.id = 'main'; append(layout, aside, main); app.append(layout);
+  const main = el('main', null, 'case'); main.id = 'main'; main.tabIndex = -1; append(layout, aside, main); app.append(layout);
   const band = el('header', null, 'secure-band'); append(band, icon('lock'), append(el('div'), el('p', 'Controlled access · Art. 73', 'kicker'), el('h1', 'Secure processing environment'), el('p', 'Permitted records stay inside this workspace.'))); main.append(band);
   const alert = el('div'); alert.id = 'workspace-message'; alert.setAttribute('role', 'status'); alert.setAttribute('aria-live', 'polite'); main.append(alert);
   try {
@@ -303,7 +414,7 @@ async function workspace(permit) {
     const tableSection = section(main, 'Permitted tables');
     const preview = section(main, 'Record preview'); preview.id = 'preview-section'; para(preview, 'Select a table to preview up to 20 rows. Pseudonymised records remain within this secure workspace.', 'muted');
     const audit = section(main, 'Workspace audit'); const auditContent = el('div'); auditContent.id = 'audit-log';
-    let auditEpoch = 0; let previewEpoch = 0;
+    let auditEpoch = 0; let previewEpoch = 0; let auditSeen = null; let blockedAttempts = 0; let downloading = false;
     async function refreshAudit() {
       const current = ++auditEpoch;
       try {
@@ -311,6 +422,8 @@ async function workspace(permit) {
         const when = value => el('span', String(value).replace('T', ' ').replace('+00:00', ''), 'mono nowrap');
         const action = value => el('span', value, `badge ${value === 'download_blocked' ? 'blocked' : ''}`.trim());
         table(auditContent, 'Recorded workspace events', [{ label: 'Time (UTC)', get: event => when(event.timestamp) }, { label: 'Action', get: event => action(event.action) }, { label: 'Table', get: event => event.table }, { label: 'Actor / detail', get: event => `${event.actor} · ${event.detail}` }], [...events].reverse(), 'scroll');
+        blockedAttempts = events.filter(event => event.action === 'download_blocked').length;
+        if (auditSeen !== null && events.length > auditSeen) auditContent.querySelector('tbody tr').classList.add('row-in'); auditSeen = events.length;
       } catch (error) { if (current === auditEpoch) { auditContent.replaceChildren(); para(auditContent, error.message, 'notice error'); } }
     }
     async function previewTable(name) {
@@ -321,13 +434,23 @@ async function workspace(permit) {
         await refreshAudit();
       } catch (error) { if (current === previewEpoch) { preview.replaceChildren(el('h2', 'Record preview')); para(preview, error.message, 'notice error'); } }
     }
+    function blockedMoment(reason) {
+      const dismiss = button('', () => { alert.className = ''; alert.replaceChildren(); tableSection.classList.remove('is-blocked'); main.focus({ preventScroll: true }); }, 'banner-dismiss'); dismiss.setAttribute('aria-label', 'Dismiss'); dismiss.append(icon('cross'));
+      const counter = el('div', null, 'blocked-counter'); append(counter, el('strong', number.format(blockedAttempts)), el('span', blockedAttempts === 1 ? 'blocked attempt' : 'blocked attempts'));
+      alert.replaceChildren(icon('blocked'), append(el('div'), el('strong', 'Download blocked · HTTP 403 · Art. 73'), el('p', `${reason} This attempt has been logged.`)), counter, dismiss);
+      restart(alert, 'blocked-banner'); restart(tableSection, 'is-blocked'); toast('Incident logged to the audit trail');
+    }
     async function downloadTable(name) {
+      if (downloading) return;
+      downloading = true;
       try {
-        const response = await fetch(`/api/spe/${encodeURIComponent(permit)}/download/${encodeURIComponent(name)}`); const data = await response.json();
-        alert.className = 'notice error'; alert.replaceChildren(el('strong', response.status === 403 && data.blocked ? 'Download blocked · HTTP 403' : 'Download unavailable'));
-        para(alert, typeof data.reason === 'string' ? data.reason : 'Records cannot be downloaded from this secure workspace.');
-      } catch { alert.className = 'notice error'; alert.textContent = 'Download unavailable. Check the connection and try again.'; }
-      await refreshAudit();
+        const [response] = await Promise.all([fetch(`/api/spe/${encodeURIComponent(permit)}/download/${encodeURIComponent(name)}`), wait(motionAllowed() ? 400 : 0)]); const data = await response.json().catch(() => ({}));
+        const reason = typeof data.reason === 'string' ? data.reason : 'Records cannot be downloaded from this secure workspace.';
+        await refreshAudit();
+        if (response.status === 403 && data.blocked) { blockedMoment(reason); return; }
+        tableSection.classList.remove('is-blocked'); alert.className = 'notice error'; alert.replaceChildren(el('strong', 'Download unavailable')); para(alert, reason);
+      } catch { tableSection.classList.remove('is-blocked'); alert.className = 'notice error'; alert.textContent = 'Download unavailable. Check the connection and try again.'; await refreshAudit(); }
+      finally { downloading = false; }
     }
     table(tableSection, 'Tables in this permit', [{ label: 'Table', get: row => row[0] }, { label: 'Rows', numeric: true, get: row => number.format(row[1]) }, { label: 'Actions', get: row => { const actions = el('div', null, 'actions'); append(actions, button('Preview', () => previewTable(row[0])), button('Download', () => downloadTable(row[0]))); return actions; } }], Object.entries(manifest.tables), 'align-middle');
     const reload = button('Reload audit', refreshAudit); reload.prepend(icon('refresh')); append(audit, reload, auditContent); await refreshAudit();

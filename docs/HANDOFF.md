@@ -6,6 +6,10 @@ Stand: 2026-10-30. Tasks 1–15 und die finalen Korrekturen sind abgeschlossen u
 
 Die UI heißt jetzt Doccess (ADR-014, Richtung J Compliance). Geändert wurden `web/` und `tests/test_web.py`; Fachlogik, API und Tests dazu blieben unverändert. Das QA-Skript `.superpowers/sdd/2026-10-29-ehds-access-desk/final-browser.py` prüft weiterhin 133 Punkte; angepasst wurden nur die Position des Entscheidungs-Badges (jetzt im Kopf statt im Applicant-Panel) und der neue Rotton. Aktuell 714 Python-Tests.
 
+## Dashboard und Animationen
+
+Applicant enthält Leiter-Animation, Bento-Dashboard und CSV-Export (ADR-015). `web/dashboard.js` ist reine Logik mit Node-Tests in `tests/test_dashboard_model.py`; ohne Node werden diese übersprungen. Das QA-Skript wartet nun zusätzlich auf `data-stage="done"` und prüft das rote Banner über die Hintergrundfarbe. Aktuell 739 Python-Tests. Die Branches `hackathon-melih` und `handoff/bento-dashboard` wurden nicht gemergt, nur gelesen.
+
 ## Arbeitsort und Daten
 
 - Worktree: C:/Users/BüsraTürkmen/Documents/Hackathon/hackathon-clinical-ai/.claude/worktrees/track3-app; Branch track3-app.

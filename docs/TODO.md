@@ -20,6 +20,8 @@ Stand: 2026-10-30. Implementierung und Verifikation abgeschlossen; kein Push/Mer
 - [x] Trackingprüfung: keineCSV, var/, .env oderDuckDB-Dateien versioniert
 - [x] Doccess-Redesign (Richtung J Compliance): Marke, Sidebar, Entscheidungsleiter, Applicant/Staff/SPE, lokale OFL-Schriften, neue Screenshots
 
+- [x] Animationen aus `hackathon-melih`, Bento-Dashboard aus `handoff/bento-dashboard`, CSV-Export freigegebener Statistik, Review-Bugfixes
+
 ## Nutzer / Abgabe
 
 - [ ] Bis2Minuten Demo-Video aufnehmen (Ablauf im README)
@@ -28,6 +30,8 @@ Stand: 2026-10-30. Implementierung und Verifikation abgeschlossen; kein Push/Mer
 ## Optional
 
 - [ ] Paketmetadaten, FastAPI-Titel und CLI-Beschreibung von „EHDS Access Desk“ auf Doccess umstellen (Backend, daher nicht Teil des UI-Auftrags)
+
+- [ ] Bei Bedarf weitere Punkte aus `HACKATHON_MELIH.md` und `SUGGESTIONS.md` prüfen (Entscheidungsbrief, Sicherheitsschicht, Zusatzsuiten, geführter Assistent); nicht beauftragt
 
 ## Bewusste Grenzen für spätere Weiterentwicklung
 

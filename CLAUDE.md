@@ -53,7 +53,7 @@ Vollständige Regeln lösen keinen LLM-Aufruf aus. Der reale Evaluationsnachweis
 | `decision.py`, `pipeline.py` | Zweckbelege, feste Leiter, Freigabegate und Applicant-/Staff-Antwort |
 | `data.py`, `compiler.py`, `engine.py` | In-Memory-DuckDB, CSV-Import, Opt-out-Views, SQL mit Parametern, Rohzellen |
 | `disclosure.py`, `spe.py` | Unterdrückung/Rundung/Leak-Guard bzw. ausgewählte SPE-Kopie, Preview, Audit |
-| `api.py`, `__main__.py`, `web/` | FastAPI/Uvicorn, JSON-CLI, HTML/CSS/Vanilla-JS ohne Build-Schritt; `web/assets/` enthält Favicon und selbst gehostete OFL-Schriften |
+| `api.py`, `__main__.py`, `web/` | FastAPI/Uvicorn, JSON-CLI, HTML/CSS/Vanilla-JS ohne Build-Schritt; `web/dashboard.js` enthält die reine Diagramm-/CSV-Logik, `web/assets/` Favicon und selbst gehostete OFL-Schriften |
 | `eval/reference.py`, `eval/run_eval.py` | Unabhängige stdlib-CSV-Rechnung; HTTP-Eval mit Schema-/Multiplizitätskontrolle der SPE |
 
 `AccessRequest` beschreibt den Antrag; `QuerySpec` Kohorte, Einheiten, Gruppen, Metriken und Record-Typen; `PurposeAssessment` hält Zweckbelege und `Decision` die Leiter/Artikel. `RawCount`, `RawPercent` und `RawMean` bewahren Zähler, Nenner und n bis zur Disclosure-Prüfung. `ProcessResult` enthält Applicant und Staff. Das Mermaid-Diagramm im README zeigt den vollständigen Datenfluss.
@@ -66,8 +66,9 @@ Views `pat`, `cond`, `med`, `obs`, `enc` enthalten ausschließlich Patienten ohn
 2. **Statistik:** jede angefragte Gruppe inklusive leerer Gruppen anzeigen. Count < 10 einschließlich 0 → `<10`; Prozent bei Zähler oder Nenner < 10 und Mittelwert bei n < 10 → `suppressed`. `Decimal.quantize(Decimal("0.1"), ROUND_HALF_UP)` für eine Dezimale; kein Float vor der Rundung.
 3. **Stichtag 2025-12-31:** Alter = 2025 − Geburtsjahr. Medikament aktiv bei Start <= Stichtag und leerem Ende oder Ende >= Stichtag. Letzter Messwert pro Patient; Aufenthalte als Aufenthalte zählen. Hauptdiagnose/`primary_icd10` nur filtern, wenn ausdrücklich angefragt.
 4. **SPE:** nur ausgewählte consented Kohorte und genannte Record-Typen kopieren; Patienten-IDs unverändert im lokalen SPE-DB-File, ausschließlich im expliziten Preview-Response sichtbar, höchstens 20 Zeilen pro Aufruf. Exakte SPE-Patienten-/Tabellengrößen sind laut Challenge erlaubt. Download am bestehenden Permit → 403 plus Audit.
-5. **Nur synthetische Daten:** keine Patientenzeilen an externe Dienste; statistische Applicant-/Staff-Antworten durch zentrale Disclosure und Kennungsprüfung absichern. Kein absoluter Anonymitäts- oder Rechtskonformitätsanspruch.
-6. **Demo-Grenzen ehrlich benennen:** keine echte Authentifizierung/Rollentrennung oder gehärtete SPE; Browserpreview und lokale Dateien sind kopierbar. Keine sekundäre Unterdrückung/Differenzsicherung. Konservativer englischer Parser führt bei nicht verstandenen Teilen zur manuellen Prüfung. Art.-54-Regex-Verneinungsfälle wie „No, we will use the data for advertising.“ können ohne gesonderte Staff-Prüfung durchrutschen. Kein Modelltraining/Resultatexport, keine Föderation, OMOP/FHIR, Gebühren oder Fristen implementiert.
+5. **Export:** Nur freigegebene anonymisierte Statistik darf als CSV heraus, clientseitig und exakt wie angezeigt, einschließlich `<10` und `suppressed`. Kein Export bei Reject oder manueller Prüfung; SPE-Datensätze bleiben gesperrt (Art. 73(2)).
+6. **Nur synthetische Daten:** keine Patientenzeilen an externe Dienste; statistische Applicant-/Staff-Antworten durch zentrale Disclosure und Kennungsprüfung absichern. Kein absoluter Anonymitäts- oder Rechtskonformitätsanspruch.
+7. **Demo-Grenzen ehrlich benennen:** keine echte Authentifizierung/Rollentrennung oder gehärtete SPE; Browserpreview und lokale Dateien sind kopierbar. Keine sekundäre Unterdrückung/Differenzsicherung. Konservativer englischer Parser führt bei nicht verstandenen Teilen zur manuellen Prüfung. Art.-54-Regex-Verneinungsfälle wie „No, we will use the data for advertising.“ können ohne gesonderte Staff-Prüfung durchrutschen. Kein Modelltraining/Resultatexport, keine Föderation, OMOP/FHIR, Gebühren oder Fristen implementiert.
 
 ## Konventionen und Workflow
 
