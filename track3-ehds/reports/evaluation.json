@@ -1,0 +1,187 @@
+{
+  "metrics": {
+    "correct_decisions": 10,
+    "decisions_total": 10,
+    "correct_numbers": 6,
+    "numbers_total": 6,
+    "correct_statistical_numbers": 5,
+    "statistical_total": 5,
+    "privacy_leaks": 0,
+    "consistent": 10,
+    "runs": 3,
+    "slowest_ms": 214.4,
+    "slowest_request": "R09",
+    "mode": "in-process (fresh data load per run)"
+  },
+  "requests": {
+    "R01": {
+      "decision": "APPROVE_STATISTICAL",
+      "articles": [
+        "53",
+        "69"
+      ],
+      "decision_ok": true,
+      "numbers_ok": true,
+      "problems": [],
+      "leaks": [],
+      "ms": 181.5,
+      "fingerprint": "e4efb1357fcce6f3",
+      "download_status": null,
+      "fulfilment": "RELEASED",
+      "consistent": true,
+      "ms_max": 181.5
+    },
+    "R02": {
+      "decision": "REJECT",
+      "articles": [
+        "54"
+      ],
+      "decision_ok": true,
+      "numbers_ok": null,
+      "problems": [],
+      "leaks": [],
+      "ms": 1.2,
+      "fingerprint": "e09447eedc4c7d7d",
+      "download_status": null,
+      "fulfilment": "NONE",
+      "consistent": true,
+      "ms_max": 1.2
+    },
+    "R03": {
+      "decision": "APPROVE_STATISTICAL",
+      "articles": [
+        "53",
+        "69"
+      ],
+      "decision_ok": true,
+      "numbers_ok": true,
+      "problems": [],
+      "leaks": [],
+      "ms": 124.8,
+      "fingerprint": "07472fdb4560d6d0",
+      "download_status": null,
+      "fulfilment": "RELEASED",
+      "consistent": true,
+      "ms_max": 124.8
+    },
+    "R04": {
+      "decision": "REJECT",
+      "articles": [
+        "54"
+      ],
+      "decision_ok": true,
+      "numbers_ok": null,
+      "problems": [],
+      "leaks": [],
+      "ms": 0.9,
+      "fingerprint": "e09447eedc4c7d7d",
+      "download_status": null,
+      "fulfilment": "NONE",
+      "consistent": true,
+      "ms_max": 1.1
+    },
+    "R05": {
+      "decision": "APPROVE_SPE",
+      "articles": [
+        "53",
+        "66",
+        "68",
+        "73"
+      ],
+      "decision_ok": true,
+      "numbers_ok": true,
+      "problems": [],
+      "leaks": [],
+      "ms": 148.6,
+      "fingerprint": "c54418091e915554",
+      "download_status": 403,
+      "fulfilment": "SPE_READY",
+      "consistent": true,
+      "ms_max": 149.1
+    },
+    "R06": {
+      "decision": "REJECT",
+      "articles": [
+        "54"
+      ],
+      "decision_ok": true,
+      "numbers_ok": null,
+      "problems": [],
+      "leaks": [],
+      "ms": 0.9,
+      "fingerprint": "e09447eedc4c7d7d",
+      "download_status": null,
+      "fulfilment": "NONE",
+      "consistent": true,
+      "ms_max": 1.0
+    },
+    "R07": {
+      "decision": "APPROVE_STATISTICAL",
+      "articles": [
+        "53",
+        "69"
+      ],
+      "decision_ok": true,
+      "numbers_ok": true,
+      "problems": [],
+      "leaks": [],
+      "ms": 92.5,
+      "fingerprint": "d87efef79b40a5ac",
+      "download_status": null,
+      "fulfilment": "RELEASED",
+      "consistent": true,
+      "ms_max": 95.8
+    },
+    "R08": {
+      "decision": "APPROVE_STATISTICAL",
+      "articles": [
+        "53",
+        "69"
+      ],
+      "decision_ok": true,
+      "numbers_ok": true,
+      "problems": [],
+      "leaks": [],
+      "ms": 144.2,
+      "fingerprint": "0b7bf9886d4379f5",
+      "download_status": null,
+      "fulfilment": "RELEASED",
+      "consistent": true,
+      "ms_max": 150.3
+    },
+    "R09": {
+      "decision": "APPROVE_STATISTICAL",
+      "articles": [
+        "53",
+        "66",
+        "69"
+      ],
+      "decision_ok": true,
+      "numbers_ok": true,
+      "problems": [],
+      "leaks": [],
+      "ms": 193.1,
+      "fingerprint": "3f5475573b2cda9f",
+      "download_status": null,
+      "fulfilment": "RELEASED",
+      "consistent": true,
+      "ms_max": 214.4
+    },
+    "R10": {
+      "decision": "REJECT",
+      "articles": [
+        "54"
+      ],
+      "decision_ok": true,
+      "numbers_ok": null,
+      "problems": [],
+      "leaks": [],
+      "ms": 1.5,
+      "fingerprint": "e09447eedc4c7d7d",
+      "download_status": null,
+      "fulfilment": "NONE",
+      "consistent": true,
+      "ms_max": 1.5
+    }
+  }
+}

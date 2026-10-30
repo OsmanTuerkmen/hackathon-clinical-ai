@@ -1,0 +1,22 @@
+Health Data Access Desk - evaluation on the 10 supplied requests
+mode: in-process (fresh data load per run), runs: 3
+
+req  decision             articles       dec  numbers  leaks  consistent   max ms
+----------------------------------------------------------------------------------
+R01  APPROVE_STATISTICAL  53,69          OK   OK       0      yes           181.5
+R02  REJECT               54             OK   -        0      yes             1.2
+R03  APPROVE_STATISTICAL  53,69          OK   OK       0      yes           124.8
+R04  REJECT               54             OK   -        0      yes             1.1
+R05  APPROVE_SPE          53,66,68,73    OK   OK       0      yes           149.1
+R06  REJECT               54             OK   -        0      yes             1.0
+R07  APPROVE_STATISTICAL  53,69          OK   OK       0      yes            95.8
+R08  APPROVE_STATISTICAL  53,69          OK   OK       0      yes           150.3
+R09  APPROVE_STATISTICAL  53,66,69       OK   OK       0      yes           214.4
+R10  REJECT               54             OK   -        0      yes             1.5
+
+Metrics
+  Correct decisions : 10/10
+  Correct numbers   : 6/6 approved requests (5/5 statistical + SPE cohort size)
+  Privacy leaks     : 0
+  Consistency       : 10/10 identical across 3 runs
+  Slowest answer    : 214.4 ms (R09)

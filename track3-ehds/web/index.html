@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Health Data Access Desk · EHDS hackathon simulation</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img class="logo" src="/static/favicon.svg" alt="" width="46" height="46">
+      <div>
+        <h1>Health Data Access Desk</h1>
+        <p>European Health Data Space · secondary use · Regulation (EU) 2025/327, Chapter IV</p>
+        <div class="pills">
+          <span class="sim-badge" id="sim-banner" role="note"
+                title="Decisions are generated automatically by rules for demonstration">Hackathon simulation · synthetic
+            data · not a real government approval system</span>
+          <span class="data-pill" id="data-pill" title="Synthetic dataset loaded into the desk">Loading synthetic data…</span>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="applicant" role="tab" id="tab-applicant">Applicant portal</button>
+        <button class="tab" data-tab="staff" role="tab" id="tab-staff">Access body staff</button>
+        <button class="tab" data-tab="evaluation" role="tab" id="tab-evaluation">Evaluation</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============================== APPLICANT ============================== -->
+    <section class="view active" id="view-applicant">
+      <div class="grid">
+        <div class="panel" id="request-panel">
+          <h2><span class="step">1</span> Your request</h2>
+          <details class="examples" id="examples">
+            <summary>Load an example request (R01–R10, N01–N08)</summary>
+            <input type="search" id="request-filter" class="search" placeholder="Filter examples (ID, organisation, question)…"
+                   aria-label="Filter requests">
+            <div class="request-list" id="request-list" aria-label="Example requests"></div>
+          </details>
+
+          <form id="request-form" class="form" autocomplete="off">
+            <fieldset>
+              <legend>Applicant</legend>
+              <div class="row3">
+                <label>Name<input id="f-name" placeholder="Dr. Jane Doe"></label>
+                <label>Organisation<input id="f-org" placeholder="University, authority or company"></label>
+                <label class="narrow">Country<input id="f-country" maxlength="2" placeholder="AT"></label>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>What are you applying for?</legend>
+              <div class="choice">
+                <label class="opt"><input type="radio" name="f-type" value="health data request" checked>
+                  <span><b>Health data request</b><small>Answered with anonymised statistics only (Art. 69)</small></span></label>
+                <label class="opt"><input type="radio" name="f-type" value="health data access application">
+                  <span><b>Health data access application</b><small>Data permit, e.g. records in a secure environment (Art. 67)</small></span></label>
+              </div>
+              <label>Requested format
+                <select id="f-format">
+                  <option value="anonymised statistics">Anonymised statistics</option>
+                  <option value="pseudonymised records">Pseudonymised records (secure processing environment)</option>
+                </select>
+              </label>
+            </fieldset>
+            <fieldset>
+              <legend>Purpose and question</legend>
+              <label>Purpose<textarea id="f-purpose" rows="3"
+                placeholder="What will the data be used for? If anonymised statistics are not enough, explain why."></textarea></label>
+              <label>Question<textarea id="f-question" rows="2"
+                placeholder="e.g. How many adults have type 2 diabetes in each region?"></textarea></label>
+            </fieldset>
+            <fieldset>
+              <legend>Definitions <small>one per field: terms with codes, age bands, value rules and a “Report per …” line</small></legend>
+              <div id="f-defs" class="defs"></div>
+              <button type="button" class="link-btn" id="add-def">+ Add definition</button>
+            </fieldset>
+          </form>
+
+          <div class="actions">
+            <label class="btn secondary file-btn">Upload request file…<input type="file" id="file-input" accept=".json,application/json"></label>
+            <button class="btn primary" id="submit-btn">Submit request</button>
+          </div>
+          <p class="hint" id="editor-hint">Ctrl/⌘ + Enter submits. Only the request text is processed; patient-level data never leaves the desk.</p>
+
+          <details class="advanced" id="json-advanced">
+            <summary>Advanced: view or paste the request as JSON</summary>
+            <div class="editor-head">
+              <span class="label">Same format as requests/R01.json. While this panel is open, this JSON is what gets submitted.</span>
+              <div class="editor-tools">
+                <button class="link-btn" id="format-btn" type="button">Format</button>
+                <button class="link-btn" id="clear-btn" type="button">Clear</button>
+              </div>
+            </div>
+            <textarea id="request-json" spellcheck="false" placeholder="Paste a request in JSON format"></textarea>
+          </details>
+        </div>
+
+        <div class="panel answer-panel" id="answer-panel" aria-live="polite">
+          <h2><span class="step">2</span> Decision of the health data access body</h2>
+          <div id="answer-empty" class="intro">
+            <p class="intro-lead">Submit a request to see the decision, the legal basis and the answer. The desk decides in
+              the order of the challenge rules:</p>
+            <div class="intro-cards">
+              <div class="intro-card c-REJECT"><b>Rejected</b><span>Prohibited purpose, e.g. insurance pricing,
+                marketing or nicotine products. Art. 54. No data is touched.</span></div>
+              <div class="intro-card c-APPROVE_STATISTICAL"><b>Anonymised statistics</b><span>Health data requests, and
+                access applications without a reason for records. Art. 53, 69 (66).</span></div>
+              <div class="intro-card c-APPROVE_SPE"><b>Secure processing environment</b><span>Access applications that
+                explain why statistics are not enough. Art. 53, 66, 68, 73. No downloads.</span></div>
+            </div>
+          </div>
+          <div id="busy" class="busy hidden"><span class="spinner"></span> Checking purpose, building the query plan and
+            running privacy checks…</div>
+          <div id="answer" class="hidden">
+            <div class="decision" id="decision">
+              <div class="decision-main">
+                <span class="decision-icon" id="decision-icon"></span>
+                <div>
+                  <div class="decision-label" id="decision-label"></div>
+                  <div class="articles" id="articles"></div>
+                </div>
+              </div>
+              <div class="decision-code" id="decision-code"></div>
+            </div>
+            <p class="reason" id="reason"></p>
+            <ul class="notes" id="decision-notes"></ul>
+            <ol class="stepper" id="stepper" aria-label="Processing steps"></ol>
+            <div class="meta" id="meta"></div>
+            <h2 class="result-title"><span class="step">3</span> <span id="result-title">Answer</span></h2>
+            <div id="result"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== STAFF ============================== -->
+    <section class="view" id="view-staff">
+      <div class="grid staff-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Case register</h2>
+            <button class="btn secondary small" id="refresh-cases">Refresh</button>
+          </div>
+          <div class="cases-wrap">
+            <table class="cases" id="cases-table">
+              <thead><tr><th>Case</th><th>Request</th><th>Decision · articles</th><th class="num">Privacy · ms</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="hint">Cases submitted in this session (in memory). Click a case for the full audit trail.</p>
+        </div>
+        <div class="panel" id="case-detail">
+          <div class="empty">Select a case to see the request, the decision trace, the interpreted query plan, the
+            generated SQL and the privacy checks.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== EVALUATION ============================== -->
+    <section class="view" id="view-evaluation">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Metrics on the 10 supplied requests</h2>
+          <button class="btn primary" id="run-eval">Run evaluation (R01–R10 × 3 runs)</button>
+        </div>
+        <p class="hint">The harness submits every request three times (fresh data load per run) and only afterwards
+          compares decisions, articles and numbers with <code>requests/expected.json</code>. The expected file is never
+          used to produce an answer.</p>
+        <div id="eval-cards" class="cards"></div>
+        <div id="eval-table"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    AIM Austria Hackathon · Track 3 European Health Data Space · Prototype for demonstration only. All patients are
+    synthetic. The decision engine is deterministic and rule-based; it cites the articles it applied.
+  </footer>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "id": "N08",
+  "submitted": "2026-10-29T22:10:00+01:00",
+  "applicant": {
+    "name": "Dr. Sabine Pichler",
+    "organisation": "Health economics institute (university)",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Research on hospital efficiency: we want to know the longest inpatient stays per hospital.",
+  "question": "What is the maximum length of an inpatient stay that started in 2025, by hospital?",
+  "definitions": [
+    "Inpatient stay = encounter with type 'inpatient'.",
+    "Length of stay = end_date minus start_date in days.",
+    "Count stays whose start_date is in 2025.",
+    "Report per hospital: inpatient stays and maximum length of stay."
+  ]
+}

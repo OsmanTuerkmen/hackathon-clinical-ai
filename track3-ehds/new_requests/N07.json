@@ -1,0 +1,19 @@
+{
+  "id": "N07",
+  "submitted": "2026-10-29T22:00:00+01:00",
+  "applicant": {
+    "name": "Dr. Sabine Pichler",
+    "organisation": "Health economics institute (university)",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Research on hospital efficiency: we compare how long inpatient stays last in different hospitals.",
+  "question": "What is the mean length of inpatient stays that started in 2025, by hospital?",
+  "definitions": [
+    "Inpatient stay = encounter with type 'inpatient'.",
+    "Length of stay = end_date minus start_date in days.",
+    "Count stays whose start_date is in 2025.",
+    "Report per hospital: inpatient stays, mean length of stay and median length of stay, one decimal."
+  ]
+}

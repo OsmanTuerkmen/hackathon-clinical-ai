@@ -1,0 +1,4 @@
+__pycache__/
+spe_workspaces/
+state/
+.DS_Store
