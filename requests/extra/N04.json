@@ -1,0 +1,16 @@
+{
+  "id": "N04",
+  "submitted": "2026-10-30T12:00:00+01:00",
+  "applicant": {
+    "name": "Extra request applicant",
+    "organisation": "Pharmaceutical commercial team",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Our pharmaceutical sales representatives will plan physician visits using regional prescription density to prioritise doctors for commercial outreach.",
+  "question": "Which regions have the highest prescription density for organising sales representative visits?",
+  "definitions": [
+    "Report per region: patients."
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "N09",
+  "submitted": "2026-10-30T12:00:00+01:00",
+  "applicant": {
+    "name": "Extra request applicant",
+    "organisation": "Bank lending department",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Our bank will use health histories to set loan conditions and decide credit eligibility for individual borrowers.",
+  "question": "Which applicants should receive less favourable credit terms based on their chronic diagnoses?",
+  "definitions": [
+    "Report per region: patients."
+  ]
+}

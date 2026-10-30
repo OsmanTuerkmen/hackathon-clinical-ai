@@ -150,11 +150,114 @@ def r09(data: ReferenceData | None = None) -> dict:
     return result
 
 
+def _holder_domain(data: ReferenceData, *, encounters: bool = False) -> list[str]:
+    holders = {p["data_holder"] for p in data.tables["patients"]}
+    if encounters:
+        holders.update(r["data_holder"] for r in data.tables["encounters"])
+    return sorted(holders)
+
+
+def n01(data: ReferenceData | None = None) -> dict:
+    """Inpatient J18 stays starting in 2024-2025, grouped by the stay's hospital."""
+    data = _data(data)
+    totals = dict.fromkeys(_holder_domain(data, encounters=True), 0)
+    for row in data.tables["encounters"]:
+        if (row["patient_id"] in data.patients and row["type"] == "inpatient"
+                and "2024-01-01" <= row["start_date"] <= REFERENCE_DATE
+                and row["primary_icd10"].startswith("J18")):
+            totals[row["data_holder"]] += 1
+    return {holder: count(n) for holder, n in totals.items()}
+
+
+def _egfr_groups(data: ReferenceData, diagnosis: str, dimension: str) -> dict:
+    cohort = data.diagnosed(diagnosis)
+    latest = data.latest("62238-1")
+    domain = _holder_domain(data) if dimension == "data_holder" else data.regions
+    result = {}
+    for group in domain:
+        values = [latest[pid] for pid in cohort & latest.keys()
+                  if data.patients[pid][dimension] == group]
+        result[group] = {
+            "patients_with_egfr": count(len(values)),
+            "mean_egfr": "suppressed" if len(values) < 10 else rounded(sum(values, Decimal(0)) / len(values)),
+        }
+    return result
+
+
+def n02(data: ReferenceData | None = None) -> dict:
+    """Distinct heart-failure patients with latest eGFR, by the patient's hospital."""
+    return _egfr_groups(_data(data), "I50", "data_holder")
+
+
+def n03(data: ReferenceData | None = None) -> dict:
+    data = _data(data)
+    asthma = data.diagnosed("J45")
+    combination = data.active("R03AK06")
+    result = {}
+    for region in data.regions:
+        cohort = {pid for pid in asthma if data.patients[pid]["region"] == region}
+        result[region] = {"asthma_patients": count(len(cohort)),
+                          "active_combination_pct": percent(len(cohort & combination), len(cohort))}
+    return result
+
+
+def n05(data: ReferenceData | None = None) -> dict:
+    data = _data(data)
+    copd = data.diagnosed("J44")
+    return {region: count(sum(data.patients[pid]["region"] == region for pid in copd))
+            for region in data.regions}
+
+
+def n06_patient_ids(data: ReferenceData) -> set[str]:
+    """Heart-failure cohort; encounters are the only requested SPE record type."""
+    return data.diagnosed("I50")
+
+
+def n06(data: ReferenceData | None = None) -> dict:
+    return {"cohort_size": len(n06_patient_ids(_data(data)))}
+
+
+def n07(data: ReferenceData | None = None) -> dict:
+    data = _data(data)
+    stroke = data.diagnosed("I63")
+    bands = [(f"{low}-{low + 4}", low, low + 4) for low in range(0, 90, 5)] + [("90+", 90, 999)]
+    result = {}
+    for region in data.regions:
+        for sex in sorted({p["sex"] for p in data.tables["patients"]}):
+            for label, low, high in bands:
+                n = sum(data.patients[pid]["region"] == region and data.patients[pid]["sex"] == sex
+                        and low <= data.age(pid) <= high for pid in stroke)
+                result[f"{region} / {sex} / {label}"] = count(n)
+    return result
+
+
+def n08(data: ReferenceData | None = None) -> dict:
+    return _egfr_groups(_data(data), "N18", "region")
+
+
+def n10(data: ReferenceData | None = None) -> dict:
+    """Count stays (including repeated stays), never condition rows or unique people."""
+    data = _data(data)
+    bands = [("0-49", 0, 49), ("50-64", 50, 64), ("65-79", 65, 79), ("80+", 80, 999)]
+    sexes = sorted({p["sex"] for p in data.tables["patients"]})
+    totals = {f"{sex} / {label}": 0 for sex in sexes for label, _low, _high in bands}
+    for row in data.tables["encounters"]:
+        pid = row["patient_id"]
+        if pid not in data.patients or row["type"] != "inpatient" or not row["primary_icd10"].startswith("S72"):
+            continue
+        for label, low, high in bands:
+            if low <= data.age(pid) <= high:
+                totals[f"{data.patients[pid]['sex']} / {label}"] += 1
+    return {group: count(n) for group, n in totals.items()}
+
+
 REFERENCES: dict[str, Callable[[ReferenceData], dict]] = {
     "R01": r01, "R03": r03, "R05": r05, "R07": r07, "R08": r08, "R09": r09,
 }
 # Task 14 extension point: independent functions, never application-generated values.
-EXTRA_REFERENCES: dict[str, Callable[[ReferenceData], dict]] = {}
+EXTRA_REFERENCES: dict[str, Callable[[ReferenceData], dict]] = {
+    "N01": n01, "N02": n02, "N03": n03, "N05": n05, "N06": n06, "N07": n07, "N08": n08, "N10": n10,
+}
 
 
 def compare_references(data: ReferenceData, expected: dict, references: dict | None = None) -> dict[str, bool]:

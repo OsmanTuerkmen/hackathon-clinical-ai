@@ -1,0 +1,17 @@
+{
+  "id": "N01",
+  "submitted": "2026-10-30T12:00:00+01:00",
+  "applicant": {
+    "name": "Extra request applicant",
+    "organisation": "University clinical research group",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "We study hospital-level pneumonia admission burden to improve public health planning.",
+  "question": "How many inpatient stays with primary_icd10 starting with J18 began during 2024-2025, by data holder?",
+  "definitions": [
+    "Count inpatient stays with primary_icd10 starting with J18 whose start_date is between 2024-01-01 and 2025-12-31.",
+    "Report per data_holder: inpatient stays."
+  ]
+}

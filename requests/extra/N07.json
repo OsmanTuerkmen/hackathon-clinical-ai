@@ -1,0 +1,18 @@
+{
+  "id": "N07",
+  "submitted": "2026-10-30T12:00:00+01:00",
+  "applicant": {
+    "name": "Extra request applicant",
+    "organisation": "University clinical research group",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "We research the age and sex distribution of stroke across regions for public health surveillance.",
+  "question": "How many patients with stroke are in each region, sex and five-year age band?",
+  "definitions": [
+    "Stroke = any condition with an ICD-10 code starting with I63.",
+    "Age bands on 31 December 2025: 0-4, 5-9, 10-14, 15-19, 20-24, 25-29, 30-34, 35-39, 40-44, 45-49, 50-54, 55-59, 60-64, 65-69, 70-74, 75-79, 80-84, 85-89, 90+.",
+    "Report per region and sex and age band: patients with stroke."
+  ]
+}

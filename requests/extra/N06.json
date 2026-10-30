@@ -1,0 +1,18 @@
+{
+  "id": "N06",
+  "submitted": "2026-10-30T12:00:00+01:00",
+  "applicant": {
+    "name": "Extra request applicant",
+    "organisation": "University clinical research group",
+    "country": "AT"
+  },
+  "requested_as": "health data access application",
+  "requested_format": "pseudonymised records",
+  "purpose": "We train and validate a heart failure readmission prediction model. Training needs patient-level encounter histories; anonymised statistics are not sufficient.",
+  "question": "Provide pseudonymised encounters for patients with heart failure. We will only export checked model performance metrics.",
+  "definitions": [
+    "Heart failure = any condition with an ICD-10 code starting with I50.",
+    "Cohort = patients with heart failure.",
+    "Report the size of the cohort you would make available."
+  ]
+}

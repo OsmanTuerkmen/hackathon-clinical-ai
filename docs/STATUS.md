@@ -18,8 +18,9 @@ Stand: 2026-10-30 · Branch `track3-app` (Worktree `.claude/worktrees/track3-app
 | M3 – Task 11: FastAPI | fertig, 52 HTTP-Tests, separat reviewt |
 | M3 – Task 12: Web-UI | fertig, Applicant/Staff/SPE, 57 echte Browserchecks (Desktop/375 px), Taskreview und M3-Review Approved; Initialladungs-Race behoben |
 | M4 – Task 13: Referenz und Eval | fertig, unabhängige CSV-Kontrolle, Prüfer separat reviewt und korrigiert |
-| M4 – Tasks 14–15: eigene Anträge und Abschluss | offen |
+| M4 – Task 14: zehn eigene Anträge | fertig, unabhängige Referenzen, Extra-Eval und separater Review |
+| M4 – Task 15: README und Abschluss | offen; statischer Sicherheitsreview ohne qualifizierte High/Medium-Befunde abgeschlossen |
 
-Tests: `.venv/Scripts/python -m pytest -q` → 594 passed in 46.53s (2026-10-30, nach Task 13 und Reviewkorrektur); UI zusätzlich 57 Browserchecks.
+Tests: `.venv/Scripts/python -m pytest -q` → 616 passed in 50.36s (2026-10-30, nach Task 14); UI zusätzlich 57 Browserchecks.
 Übergabe für die Weiterarbeit: `docs/HANDOFF.md`.
-Verifizierter Kernlauf (Task 13): Entscheidungen 10/10, Zahlen 6/6, Privacy 0 über 30 Antworten, Konsistenz 10/10, langsamster POST 0.506 s; unabhängige CSV-Referenz 6/6. SPE-Spaltenvertrag und Zeilenmultiplizität sind unabhängig geprüft; Nachreview ohne Restbefund. Eigene Anträge sind noch offen.
+Verifizierter Lauf nach Task 14: Kern 10/10 Entscheidungen, 6/6 Zahlen, Privacy 0, Konsistenz 10/10, maximal 0.537 s. Zehn Extras: 10/10 Entscheidungen, 8/8 Zahlen, Privacy 0, Konsistenz 10/10, maximal 0.194 s. Je drei Läufe, insgesamt 60 POSTs; unabhängige CSV-Referenzen 14/14. N06 kopiert 294 Patienten ausschließlich als encounters+cohort; N07 zeigt alle 342 Gruppen unterdrückt. Eval-Prüfer und Extra-Fälle separat reviewt.

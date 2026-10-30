@@ -1,0 +1,18 @@
+{
+  "id": "N08",
+  "submitted": "2026-10-30T12:00:00+01:00",
+  "applicant": {
+    "name": "Extra request applicant",
+    "organisation": "University clinical research group",
+    "country": "AT"
+  },
+  "requested_as": "health data access application",
+  "requested_format": "pseudonymised records",
+  "purpose": "Our university teaching project explores chronic kidney disease and eGFR for a clinical epidemiology curriculum.",
+  "question": "Provide pseudonymised observations for patients with CKD; report cohort counts and mean eGFR by region.",
+  "definitions": [
+    "CKD = any condition with an ICD-10 code starting with N18.",
+    "Use the latest eGFR per patient; patients without an eGFR are left out.",
+    "Report per region: patients with CKD who have an eGFR value and mean eGFR with one decimal."
+  ]
+}

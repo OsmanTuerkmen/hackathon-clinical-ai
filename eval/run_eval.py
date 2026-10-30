@@ -21,7 +21,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from eval.reference import (EXTRA_REFERENCES, ReferenceData, compare_references, find_data_dir, r05_patient_ids)
+from eval.reference import (EXTRA_REFERENCES, ReferenceData, compare_references, find_data_dir, n06_patient_ids, r05_patient_ids)
 
 ID_PATTERN = re.compile(r"p-[0-9a-f]{8}", re.IGNORECASE)
 
@@ -190,7 +190,10 @@ def summarise_runs(runs: list[dict]) -> dict:
 
 # Independent SPE extensions belong alongside Task 14's independent CSV functions.
 # Each entry is (cohort function, requested record types, observation code prefixes).
-SPE_REFERENCES = {"R05": (r05_patient_ids, {"conditions", "medications", "observations"}, ("4548-4",))}
+SPE_REFERENCES = {
+    "R05": (r05_patient_ids, {"conditions", "medications", "observations"}, ("4548-4",)),
+    "N06": (n06_patient_ids, {"encounters"}, ()),
+}
 
 
 def _normalise_record(row: dict, columns: list[str]) -> tuple:
@@ -349,6 +352,18 @@ def _request_table(summaries: dict, expected: dict) -> list[str]:
     return lines
 
 
+def extra_report(summaries: dict, expected: dict, references: dict) -> list[str]:
+    """Render all five extra gates and every independent reference, without record data."""
+    lines = [f"Drei vollständige Läufe, {3 * len(expected)} Extra-POSTs.", "",
+             "| Metrik | Ergebnis | Ziel | Status |", "|---|---|---|---|"]
+    lines += [f"| {name} | {value} | {target} | {'✅' if passed else '❌'} |"
+              for name, value, target, passed in _metrics(summaries, expected)]
+    lines += ["", *_request_table(summaries, expected), "",
+              "| Request | Unabhängige Extra-CSV-Referenz |", "|---|---|"]
+    lines += [f"| {key} | {'PASS' if passed else 'FAIL'} |" for key, passed in references.items()]
+    return lines
+
+
 def vienna_stamp(instant: datetime | None = None) -> str:
     instant = instant or datetime.now(timezone.utc)
     try:
@@ -365,6 +380,7 @@ def vienna_stamp(instant: datetime | None = None) -> str:
         end = october - timedelta(days=(october.weekday() + 1) % 7)
         zone = timezone(timedelta(hours=2 if start <= utc < end else 1))
     return instant.astimezone(zone).isoformat(timespec="seconds")
+
 
 def main() -> int:
     from fastapi.testclient import TestClient
@@ -419,8 +435,9 @@ def main() -> int:
               "einschließlich Multiplizität verglichen. Dabei werden keine Patientenzeilen oder IDs ausgegeben.", "",
               "## Eigene Anträge (Task 14)", ""]
     if extra_expected:
-        lines += _request_table(extra_summaries, extra_expected)
-        lines += ["", "Unabhängige Extra-Referenzen: " + ("PASS" if all(extra_references.values()) else "FAIL (fehlend oder abweichend)")]
+        lines += extra_report(extra_summaries, extra_expected, extra_references)
+        for name, value, target, _passed in _metrics(extra_summaries, extra_expected):
+            print(f"Extra {name}: {value} (target {target})")
     else:
         lines += ["Noch nicht vorhanden; keine erfundenen Ergebnisse. Hooks: `EXTRA_REFERENCES`, `SPE_REFERENCES` und "
                   "automatisches Laden von `requests/extra/expected.json` samt Requests. Fehlende Referenzen genehmigter "

@@ -1,0 +1,17 @@
+{
+  "id": "N05",
+  "submitted": "2026-10-30T12:00:00+01:00",
+  "applicant": {
+    "name": "Extra request applicant",
+    "organisation": "University clinical research group",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Our university research group evaluates nicotine replacement therapy for smoking cessation in patients with COPD. We study the regional baseline cohort for a cessation programme.",
+  "question": "How many patients with COPD are in each region for the nicotine replacement cessation study?",
+  "definitions": [
+    "COPD = any diagnosis of chronic obstructive pulmonary disease.",
+    "Report per region: patients with COPD."
+  ]
+}

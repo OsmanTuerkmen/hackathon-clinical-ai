@@ -18,7 +18,7 @@ Stand: 2026-10-30. Details zur Weiterarbeit: `docs/HANDOFF.md`. Reihenfolge laut
 - [x] Meilenstein-Review M3 (Approved, keine Critical/Important)
 - [x] UI-Korrektur: verspätete Inbox-Initialladung darf eigenen Antrag nicht verdecken (57 Browserchecks, Nachreview)
 - [x] Task 13: Referenzskript und Eval (alle Kernziele, unabhängige SPE-Schemaprüfung, Nachreview)
-- [ ] Task 14: eigene Anträge in `requests/extra/`
+- [x] Task 14: zehn eigene Anträge in `requests/extra/` (alle Extra-Ziele erreicht, Referenzen und Review)
 - [ ] Task 15: README (Englisch), Sicherheitsprüfung, Abschluss
 - [ ] Demo-Video (Nutzer)
 

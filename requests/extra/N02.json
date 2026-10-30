@@ -1,0 +1,18 @@
+{
+  "id": "N02",
+  "submitted": "2026-10-30T12:00:00+01:00",
+  "applicant": {
+    "name": "Extra request applicant",
+    "organisation": "University clinical research group",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "We research kidney function among patients with heart failure to improve treatment.",
+  "question": "How many patients with heart failure have an eGFR value and what is their mean latest eGFR, by hospital?",
+  "definitions": [
+    "Heart failure = any condition with an ICD-10 code starting with I50.",
+    "Use the latest eGFR per patient; patients without an eGFR are left out.",
+    "Report per hospital: patients with heart failure who have an eGFR value and mean eGFR with one decimal."
+  ]
+}
