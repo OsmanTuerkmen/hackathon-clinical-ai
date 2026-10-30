@@ -37,6 +37,7 @@ from .phrases import (
     age_sex_criteria,
     coded_criterion,
     mask,
+    negated_mention,
     normalise,
     phrase_criteria,
     primary_clause,
@@ -82,7 +83,7 @@ _BARE_CODES = re.compile(
     r"(?P<codes>[a-z]\d{2}[a-z0-9.]*(?:\.?\*)?(?:\s*(?:,|or)\s*[a-z]\d{2}[a-z0-9.]*(?:\.?\*)?)*)"
 )
 _ICD_SHAPE = re.compile(r"[A-Z]\d{2}(?:\.\d+)?")
-_ATC_SHAPE = re.compile(r"[A-Z]\d{2}[A-Z]{0,2}\d{0,2}")
+_ATC_SHAPE = re.compile(r"[ABCDGHJLMNPRSV]\d{2}[A-Z]{0,2}\d{0,2}")  # ATC anatomical main groups
 _LOINC_DEF = re.compile(r"\(?\s*\bloinc\s*(?:code\s*)?(\d+-\d)\b\s*\)?")
 _ENC_TYPES_DEF = re.compile(
     r"\b(?:encounters?|stays?|visits?|admissions?)\s+(?:with|of)\s+type\s+'?(?:inpatient|outpatient|emergency)'?"
@@ -560,6 +561,12 @@ def _build_spec(
                 continue
             if any(term.pattern().search(f) for f in failed):
                 continue  # meant for an item we did not understand: do not guess where it belongs
+            negated_in = [t for t in (request.question, request.purpose) if negated_mention(term, normalise(t).lower())]
+            if negated_in:  # the applicant excludes it: adding it positively would invert the meaning
+                for i, t in enumerate(negated_in):
+                    st.record(10_000 + i, t, False)
+                ctx.note(f"'{term.display}' is only mentioned as an exclusion outside the report items.")
+                continue
             add_unique(population, [ConditionCriterion(kind="condition", codes=term.codes)])
             ctx.note(
                 f"'{term.display}' is defined but not used in a report item; it was added to the population "

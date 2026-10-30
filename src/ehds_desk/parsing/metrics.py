@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from ..models import CodeSet, CountMetric, MeanMetric, PercentMetric
+from ..models import CodeSet, ConditionCriterion, CountMetric, MeanMetric, PercentMetric
 from .phrases import REGION_NAMES, Context, Term, normalise, phrase_criteria, same_criteria, snake_case, strip_end
 
 _FORMAT_ONLY = re.compile(r"^(?:(?:with|rounded to|to|in)\s+)?(?P<n>one|two|three|\d)\s+decimals?(?:\s+places?)?$")
@@ -183,7 +183,12 @@ def parse_item(raw: str, ctx: Context, b: Metrics, entry: list[Any]) -> bool:
     if phrase.encounter_subject and not b.encounter_subject(phrase.enc_types, phrase.enc_primary):
         return False
     name = b.count(label, phrase.criteria, relative=relative)
-    if name is not None and phrase.person_subject and not phrase.encounter_subject:
+    # Invalid if the request counts stays: people ("patients") or a diagnosis attached to the
+    # stays ("how many of them with diabetes", "those with diabetes"); only the main diagnosis is.
+    on_stays_invalid = not phrase.encounter_subject and (
+        phrase.person_subject or any(isinstance(c, ConditionCriterion) for c in phrase.criteria)
+    )
+    if name is not None and on_stays_invalid:
         b.person_items.append((entry, [name]))
     return name is not None
 

@@ -616,6 +616,45 @@ def test_region_list_with_and(term):
     assert [c.values for c in spec.population if c.kind == "region"] == [["Wien", "Tirol"]]
 
 
+# --- Fix round 3 --------------------------------------------------------------------------------
+
+CNT = "Count stays (not patients) whose start_date is in 2024."
+
+
+@pytest.mark.parametrize("defs", [[CNT], []])
+def test_parenthetical_not_patients_in_item(term, defs):
+    spec, report = parse(term, [*defs, "Report per hospital: inpatient stays (not patients) with main diagnosis S72."])
+    assert report.complete, report.not_understood
+    assert spec.unit == "encounter"
+    assert spec.encounter_scope.types == ["inpatient"]
+    assert spec.encounter_scope.primary_icd10.prefixes == ["S72"]
+
+
+@pytest.mark.parametrize("defs", [[CNT, "Report per hospital: inpatient stays per patient."], ["Report per region: inpatient stays per patient."]])
+def test_per_patient_ratio_is_not_understood(term, defs):
+    _spec, report = parse(term, defs)
+    assert not report.complete
+
+
+def test_negated_question_term_does_not_join_population(term):
+    question = "How many patients without hypertension with diabetes are there?"
+    spec, report = parse(term, [D, H, "Report per region: patients with diabetes."], question)
+    assert not report.complete
+    assert question in report.not_understood
+    assert ("condition", ("I10",), False) not in coded(spec.population if spec else [])
+
+
+@pytest.mark.parametrize("item", ["how many of them with diabetes", "those with diabetes"])
+def test_relative_condition_on_stays_is_not_understood(term, item):
+    _spec, report = parse(term, [CNT, D, f"Report per hospital: inpatient stays, {item}."])
+    assert not report.complete
+
+
+def test_atc_code_must_have_an_atc_main_group(term):
+    _spec, report = parse(term, ["Diabetes = ATC E11.", "Report per region: patients with diabetes."])
+    assert "Diabetes = ATC E11." in report.not_understood
+
+
 def test_unused_term_mentioned_in_failed_item_does_not_join_population(term):
     spec, report = parse(term, [D, "Report per region: patients, patients with diabetes treated at LKH Graz."])
     assert not report.complete

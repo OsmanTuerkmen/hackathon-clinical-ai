@@ -78,7 +78,13 @@ FILLER: frozenset[str] = frozenset(
     }
 )  # fmt: skip
 # "one" alone is not filler ("patients with one stay" means exactly one); these phrases are.
-_FILLER_PHRASES = re.compile(r"\(\s*not\s+patients?\s*\)|\bper\s+patient\b|\bat\s+least\s+one\b|\bone\s+or\s+more\b")
+# "per patient" is not: in a report item it asks for a ratio ("stays per patient"); the
+# "Use the latest X per patient" sentence consumes it with its own pattern.
+_FILLER_PHRASES = re.compile(r"\(\s*not\s+patients?\s*\)|\bat\s+least\s+one\b|\bone\s+or\s+more\b")
+
+
+def mask_filler_phrases(text: str) -> str:
+    return _FILLER_PHRASES.sub(lambda m: MASK * len(m.group(0)), text)
 
 
 def residual(masked: str, extra: frozenset[str] = frozenset()) -> list[str]:
@@ -160,6 +166,15 @@ def same_criteria(a: list[Any], b: list[Any]) -> bool:
 
 _NEG = re.compile(r"\b(?:no|not|without|never|excluding|except|lacks?|lacking|free\s+of|other\s+than)\b")
 _ACTIVE_WORD = re.compile(r"\b(?:active|current|currently)\b")
+
+
+def negated_mention(term: Term, text: str) -> bool:
+    """Whether ``text`` (lowercase) mentions ``term`` negated ("without X", "non-X", "X-free")."""
+    for m in term.pattern().finditer(text):
+        before = " ".join(text[: m.start()].split()[-_NEG_DISTANCE:])
+        if _NEG.search(before) or text[m.end() : m.end() + 5] == "-free" or text[max(0, m.start() - 4) : m.start()] == "non-":
+            return True
+    return False
 
 
 def _window_start(masked: str, start: int, size: int = 4) -> int:
@@ -399,7 +414,7 @@ def _bind_negators(original: str, items: list[_Item]) -> tuple[set[int], list[tu
     """
     bound: set[int] = set()
     spans: list[tuple[int, int]] = []
-    for n in _NEG.finditer(original):
+    for n in _NEG.finditer(mask_filler_phrases(original)):  # not the "not" in "(not patients)"
         if any(it.pos <= n.start() < it.end for it in items):
             continue
         nxt = next((i for i, it in enumerate(items) if it.pos >= n.end()), None)
