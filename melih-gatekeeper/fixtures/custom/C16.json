@@ -1,0 +1,18 @@
+{
+  "id": "C16",
+  "submitted": "2026-10-30T09:00:00+01:00",
+  "applicant": {
+    "name": "Dr. Test Applicant",
+    "organisation": "City of Vienna public health department",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Diabetes prevention planning in Vienna.",
+  "question": "How many patients with type 2 diabetes live in Wien, by age band?",
+  "definitions": [
+    "Type 2 diabetes = any condition with an ICD-10 code starting with E11.",
+    "Age bands on 31 December 2025: 0-39, 40-64, 65+.",
+    "Report per band in Wien: patients with type 2 diabetes."
+  ]
+}

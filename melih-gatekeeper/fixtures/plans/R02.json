@@ -1,0 +1,46 @@
+{
+  "population": {
+    "age_min": 18,
+    "criteria": [
+      {
+        "source": "condition",
+        "codes": [
+          "E11"
+        ],
+        "label": "Type 2 diabetes"
+      },
+      {
+        "source": "observation",
+        "codes": [
+          "4548-4"
+        ],
+        "label": "has HbA1c"
+      }
+    ]
+  },
+  "group_by": [
+    {
+      "dim": "age_band",
+      "bands": [
+        "18-29",
+        "30-39",
+        "40-49",
+        "50-59",
+        "60-69",
+        "70-79",
+        "80+"
+      ]
+    }
+  ],
+  "measures": [
+    {
+      "name": "patients_with_hba1c",
+      "kind": "count"
+    },
+    {
+      "name": "mean_hba1c",
+      "kind": "mean",
+      "loinc": "4548-4"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+    "53",
+    "69"
+  ],
+  "answer": {
+    "Klinikum Nord": {
+      "n": 466,
+      "poor": 97,
+      "pct": 20.8
+    },
+    "Klinikum Süd": {
+      "n": 405,
+      "poor": 100,
+      "pct": 24.7
+    },
+    "Klinikum West": {
+      "n": 281,
+      "poor": 54,
+      "pct": 19.2
+    }
+  },
+  "needs_review": false
+}

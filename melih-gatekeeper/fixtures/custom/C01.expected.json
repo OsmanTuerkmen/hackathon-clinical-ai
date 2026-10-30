@@ -1,0 +1,13 @@
+{
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+    "53",
+    "69"
+  ],
+  "answer": {
+    "Klinikum Nord": 421,
+    "Klinikum Süd": 382,
+    "Klinikum West": 276
+  },
+  "needs_review": false
+}

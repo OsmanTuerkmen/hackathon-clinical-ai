@@ -1,0 +1,18 @@
+{
+  "id": "C10",
+  "submitted": "2026-10-30T09:00:00+01:00",
+  "applicant": {
+    "name": "Dr. Test Applicant",
+    "organisation": "Medical University of Vienna, Department of Epidemiology",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Research on blood pressure control in hypertension.",
+  "question": "What is the mean systolic blood pressure of patients with hypertension, by region?",
+  "definitions": [
+    "Hypertension = any condition with an ICD-10 code starting with I10.",
+    "Use the latest systolic blood pressure (LOINC 8480-6) per patient; patients without a value are left out.",
+    "Report per region: patients with hypertension who have a systolic blood pressure value and their mean systolic blood pressure, one decimal."
+  ]
+}

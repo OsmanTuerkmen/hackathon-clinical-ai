@@ -1,0 +1,11 @@
+{
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+    "53",
+    "69"
+  ],
+  "answer": {
+    "inpatient_stays": 1106
+  },
+  "needs_review": false
+}

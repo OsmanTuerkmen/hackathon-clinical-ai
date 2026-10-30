@@ -1,0 +1,83 @@
+{
+  "population": {
+    "age_min": 18,
+    "criteria": [
+      {
+        "source": "condition",
+        "codes": [
+          "I10"
+        ],
+        "label": "Hypertension"
+      }
+    ]
+  },
+  "group_by": [
+    {
+      "dim": "age_band",
+      "bands": [
+        "18-49",
+        "50-64",
+        "65+"
+      ]
+    }
+  ],
+  "measures": [
+    {
+      "name": "adults_with_hypertension",
+      "kind": "count"
+    },
+    {
+      "name": "ace",
+      "kind": "count",
+      "criteria": [
+        {
+          "source": "medication",
+          "codes": [
+            "C09AA"
+          ],
+          "active_on": "2025-12-31",
+          "label": "active ACE inhibitor"
+        }
+      ],
+      "hidden": true
+    },
+    {
+      "name": "arb",
+      "kind": "count",
+      "criteria": [
+        {
+          "source": "medication",
+          "codes": [
+            "C09CA"
+          ],
+          "active_on": "2025-12-31",
+          "label": "active ARB"
+        }
+      ],
+      "hidden": true
+    },
+    {
+      "name": "ace_inhibitor_pct",
+      "kind": "pct",
+      "numerator": "ace",
+      "denominator": "adults_with_hypertension"
+    },
+    {
+      "name": "arb_pct",
+      "kind": "pct",
+      "numerator": "arb",
+      "denominator": "adults_with_hypertension"
+    }
+  ],
+  "spe_records": [
+    {
+      "table": "patients"
+    },
+    {
+      "table": "conditions"
+    },
+    {
+      "table": "medications"
+    }
+  ]
+}

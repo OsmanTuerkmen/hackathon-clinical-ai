@@ -1,0 +1,17 @@
+{
+  "id": "A05",
+  "submitted": "2026-10-30T09:00:00+01:00",
+  "applicant": {
+    "name": "Dr. Test Applicant",
+    "organisation": "PharmaNova Austria GmbH, medical affairs",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Awareness research: we want to help our sales force target the physicians in regions with untreated atrial fibrillation.",
+  "question": "How many patients have atrial fibrillation, by region?",
+  "definitions": [
+    "Atrial fibrillation = any condition with an ICD-10 code starting with I48.",
+    "Report per region: patients with atrial fibrillation."
+  ]
+}

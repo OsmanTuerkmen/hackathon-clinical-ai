@@ -1,0 +1,18 @@
+{
+  "id": "C04",
+  "submitted": "2026-10-30T09:00:00+01:00",
+  "applicant": {
+    "name": "Dr. Test Applicant",
+    "organisation": "Medical University of Vienna, Department of Epidemiology",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Research on stroke care pathways.",
+  "question": "How many stroke stays started in 2025, by hospital?",
+  "definitions": [
+    "Stroke stay = inpatient stay whose primary_icd10 starts with I63.",
+    "Count stays (not patients) whose start_date is in 2025.",
+    "Report per hospital: stroke stays."
+  ]
+}

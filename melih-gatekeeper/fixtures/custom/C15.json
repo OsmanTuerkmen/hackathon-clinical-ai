@@ -1,0 +1,17 @@
+{
+  "id": "C15",
+  "submitted": "2026-10-30T09:00:00+01:00",
+  "applicant": {
+    "name": "Dr. Test Applicant",
+    "organisation": "Medical University of Vienna, Department of Epidemiology",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Research on the transition from paediatric to adult care.",
+  "question": "How many young adults are there, by region?",
+  "definitions": [
+    "Young adult = aged 18 to 19 on 31 December 2025.",
+    "Report per region: young adults."
+  ]
+}

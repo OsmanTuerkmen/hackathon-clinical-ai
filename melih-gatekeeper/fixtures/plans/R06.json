@@ -1,0 +1,34 @@
+{
+  "population": {
+    "age_min": 18,
+    "regions": [
+      "Oberösterreich"
+    ],
+    "criteria": [
+      {
+        "source": "condition",
+        "codes": [
+          "F32"
+        ],
+        "label": "Depression"
+      }
+    ]
+  },
+  "measures": [
+    {
+      "name": "patients",
+      "kind": "count"
+    }
+  ],
+  "spe_records": [
+    {
+      "table": "patients"
+    },
+    {
+      "table": "conditions",
+      "codes": [
+        "F32"
+      ]
+    }
+  ]
+}

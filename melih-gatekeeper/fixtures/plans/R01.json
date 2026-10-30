@@ -1,0 +1,35 @@
+{
+  "population": {
+    "age_min": 18
+  },
+  "group_by": [
+    {
+      "dim": "region"
+    }
+  ],
+  "measures": [
+    {
+      "name": "adults",
+      "kind": "count"
+    },
+    {
+      "name": "type2_diabetes",
+      "kind": "count",
+      "criteria": [
+        {
+          "source": "condition",
+          "codes": [
+            "E11"
+          ],
+          "label": "Type 2 diabetes"
+        }
+      ]
+    },
+    {
+      "name": "prevalence_pct",
+      "kind": "pct",
+      "numerator": "type2_diabetes",
+      "denominator": "adults"
+    }
+  ]
+}

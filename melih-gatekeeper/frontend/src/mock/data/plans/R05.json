@@ -1,0 +1,44 @@
+{
+  "population": {
+    "age_min": 18,
+    "criteria": [
+      {
+        "source": "condition",
+        "codes": [
+          "E11"
+        ],
+        "label": "Type 2 diabetes"
+      },
+      {
+        "source": "observation",
+        "codes": [
+          "4548-4"
+        ],
+        "label": "has HbA1c"
+      }
+    ]
+  },
+  "measures": [
+    {
+      "name": "cohort_size",
+      "kind": "count"
+    }
+  ],
+  "spe_records": [
+    {
+      "table": "patients"
+    },
+    {
+      "table": "conditions"
+    },
+    {
+      "table": "medications"
+    },
+    {
+      "table": "observations",
+      "codes": [
+        "4548-4"
+      ]
+    }
+  ]
+}

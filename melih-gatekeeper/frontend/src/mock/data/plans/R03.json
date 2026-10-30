@@ -1,0 +1,52 @@
+{
+  "population": {
+    "age_min": 65,
+    "criteria": [
+      {
+        "source": "condition",
+        "codes": [
+          "I48"
+        ],
+        "label": "Atrial fibrillation"
+      }
+    ]
+  },
+  "group_by": [
+    {
+      "dim": "age_band",
+      "bands": [
+        "65-74",
+        "75-84",
+        "85+"
+      ]
+    }
+  ],
+  "measures": [
+    {
+      "name": "af_patients",
+      "kind": "count"
+    },
+    {
+      "name": "without_oac",
+      "kind": "count",
+      "criteria": [
+        {
+          "source": "medication",
+          "codes": [
+            "B01AA",
+            "B01AF"
+          ],
+          "active_on": "2025-12-31",
+          "label": "active oral anticoagulant",
+          "negate": true
+        }
+      ]
+    },
+    {
+      "name": "share_without_oac_pct",
+      "kind": "pct",
+      "numerator": "without_oac",
+      "denominator": "af_patients"
+    }
+  ]
+}

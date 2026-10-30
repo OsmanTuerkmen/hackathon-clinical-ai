@@ -1,0 +1,25 @@
+{
+  "population": {
+    "criteria": [
+      {
+        "source": "medication",
+        "codes": [
+          "A10BK"
+        ],
+        "active_on": "2025-12-31",
+        "label": "active SGLT2 inhibitor"
+      }
+    ]
+  },
+  "group_by": [
+    {
+      "dim": "region"
+    }
+  ],
+  "measures": [
+    {
+      "name": "patients_active_sglt2",
+      "kind": "count"
+    }
+  ]
+}

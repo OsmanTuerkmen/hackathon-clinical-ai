@@ -1,0 +1,17 @@
+{
+  "id": "C12",
+  "submitted": "2026-10-30T09:00:00+01:00",
+  "applicant": {
+    "name": "Dr. Test Applicant",
+    "organisation": "Medical University of Vienna, Department of Epidemiology",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Research on regional stroke incidence.",
+  "question": "How many patients had a stroke, by region?",
+  "definitions": [
+    "Stroke = any condition with an ICD-10 code starting with I63.",
+    "Report per region: patients with stroke."
+  ]
+}

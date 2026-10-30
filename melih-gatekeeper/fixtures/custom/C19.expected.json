@@ -1,0 +1,25 @@
+{
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+    "53",
+    "69"
+  ],
+  "answer": {
+    "65-74": {
+      "af_patients": 81,
+      "without_oac": 30,
+      "share_without_oac_pct": 37.0
+    },
+    "75-84": {
+      "af_patients": 154,
+      "without_oac": 37,
+      "share_without_oac_pct": 24.0
+    },
+    "85+": {
+      "af_patients": 78,
+      "without_oac": 22,
+      "share_without_oac_pct": 28.2
+    }
+  },
+  "needs_review": false
+}

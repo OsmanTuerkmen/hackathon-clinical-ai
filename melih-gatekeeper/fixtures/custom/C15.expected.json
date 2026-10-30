@@ -1,0 +1,19 @@
+{
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+    "53",
+    "69"
+  ],
+  "answer": {
+    "Burgenland": 19,
+    "Kärnten": 35,
+    "Niederösterreich": 101,
+    "Oberösterreich": 79,
+    "Salzburg": 25,
+    "Steiermark": 72,
+    "Tirol": 36,
+    "Vorarlberg": 17,
+    "Wien": 96
+  },
+  "needs_review": false
+}

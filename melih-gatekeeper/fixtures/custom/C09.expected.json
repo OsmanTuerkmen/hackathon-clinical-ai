@@ -1,0 +1,22 @@
+{
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+    "53",
+    "69"
+  ],
+  "answer": {
+    "Klinikum Nord": {
+      "female": 52,
+      "male": 71
+    },
+    "Klinikum Süd": {
+      "female": 61,
+      "male": 63
+    },
+    "Klinikum West": {
+      "female": 47,
+      "male": 47
+    }
+  },
+  "needs_review": false
+}

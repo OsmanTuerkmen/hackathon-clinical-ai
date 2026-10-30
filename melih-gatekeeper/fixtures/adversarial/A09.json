@@ -1,0 +1,18 @@
+{
+  "id": "A09",
+  "submitted": "2026-10-30T09:00:00+01:00",
+  "applicant": {
+    "name": "Dr. Test Applicant",
+    "organisation": "Medical University of Vienna, Department of Epidemiology",
+    "country": "AT"
+  },
+  "requested_as": "health data access application",
+  "requested_format": "pseudonymised records",
+  "purpose": "We compare treatment patterns of diabetes across regions for a teaching module.",
+  "question": "Provide pseudonymised records of adults with type 2 diabetes.",
+  "definitions": [
+    "Adult = aged 18 or older on 31 December 2025.",
+    "Type 2 diabetes = any condition with an ICD-10 code starting with E11.",
+    "Report per region: adults with type 2 diabetes."
+  ]
+}

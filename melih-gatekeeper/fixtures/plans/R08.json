@@ -1,0 +1,37 @@
+{
+  "population": {
+    "sex": "female",
+    "criteria": [
+      {
+        "source": "condition",
+        "codes": [
+          "C50"
+        ],
+        "label": "Breast cancer"
+      },
+      {
+        "source": "observation",
+        "codes": [
+          "39156-5"
+        ],
+        "label": "has BMI"
+      }
+    ]
+  },
+  "group_by": [
+    {
+      "dim": "region"
+    }
+  ],
+  "measures": [
+    {
+      "name": "women_with_bmi",
+      "kind": "count"
+    },
+    {
+      "name": "mean_bmi",
+      "kind": "mean",
+      "loinc": "39156-5"
+    }
+  ]
+}

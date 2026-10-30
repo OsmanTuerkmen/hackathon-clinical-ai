@@ -1,0 +1,18 @@
+{
+  "id": "C07",
+  "submitted": "2026-10-30T09:00:00+01:00",
+  "applicant": {
+    "name": "Dr. Test Applicant",
+    "organisation": "Medical University of Vienna, Department of Epidemiology",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Research on statin use for cardiovascular prevention.",
+  "question": "How many patients had an active statin on 30 June 2025, by region?",
+  "definitions": [
+    "Statin = ATC code starting with C10AA.",
+    "A medication is active on 30 June 2025 if start_date is on or before that day and end_date is empty or on or after that day.",
+    "Report per region: patients with an active statin."
+  ]
+}

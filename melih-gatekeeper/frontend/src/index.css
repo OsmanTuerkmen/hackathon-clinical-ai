@@ -1,0 +1,131 @@
+@import "@fontsource/inter-tight/400.css";
+@import "@fontsource/inter-tight/500.css";
+@import "@fontsource/inter-tight/600.css";
+@import "@fontsource/inter-tight/700.css";
+@import "@fontsource/source-serif-4/400.css";
+@import "@fontsource/source-serif-4/400-italic.css";
+@import "@fontsource/source-serif-4/600.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* "Archive & Ink" palette. Values are RGB channels so Tailwind can apply alpha. */
+:root {
+  --bg: 247 245 240;
+  --surface: 255 255 255;
+  --sunken: 241 238 230;
+  --ink: 20 33 61;
+  --ink-fg: 255 255 255;
+  --muted: 91 100 115;
+  --line: 228 224 214;
+  --accent: 47 93 138;
+  --gold: 184 137 43;
+
+  --reject: 179 38 30;
+  --reject-bg: 251 233 231;
+  --stat: 30 107 74;
+  --stat-bg: 230 242 236;
+  --spe: 36 80 143;
+  --spe-bg: 232 238 248;
+  --warn: 138 90 0;
+  --warn-bg: 255 244 219;
+
+  --hatch: rgba(20, 33, 61, 0.09);
+  --hatch-warn: rgba(138, 90, 0, 0.14);
+  --marker: rgba(255, 214, 102, 0.55);
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 15 20 25;
+  --surface: 22 29 36;
+  --sunken: 18 24 30;
+  --ink: 230 233 238;
+  --ink-fg: 15 20 25;
+  --muted: 154 164 178;
+  --line: 38 48 59;
+  --accent: 127 167 209;
+  --gold: 214 174 90;
+
+  --reject: 242 139 130;
+  --reject-bg: 58 28 28;
+  --stat: 125 207 165;
+  --stat-bg: 22 52 40;
+  --spe: 150 184 235;
+  --spe-bg: 26 40 66;
+  --warn: 232 190 100;
+  --warn-bg: 56 44 18;
+
+  --hatch: rgba(230, 233, 238, 0.07);
+  --hatch-warn: rgba(232, 190, 100, 0.16);
+  --marker: rgba(214, 174, 90, 0.35);
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-bg text-ink font-sans text-base;
+    font-feature-settings: "ss01", "cv11";
+  }
+  ::selection {
+    background: rgb(var(--accent) / 0.2);
+  }
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .hatch {
+    background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--hatch) 4px 5px);
+  }
+  .hatch-warn {
+    background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--hatch-warn) 4px 5px);
+  }
+  .small-caps {
+    font-variant: all-small-caps;
+    letter-spacing: 0.04em;
+  }
+  .marker {
+    background-image: linear-gradient(var(--marker), var(--marker));
+    background-repeat: no-repeat;
+    background-size: 0% 100%;
+    transition: background-size 380ms cubic-bezier(.2,.7,.2,1);
+  }
+  .marker-on {
+    background-size: 100% 100%;
+  }
+  .paper {
+    background-color: rgb(var(--surface));
+    background-image: radial-gradient(rgb(var(--ink) / 0.025) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@keyframes sheet-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}

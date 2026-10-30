@@ -1,0 +1,18 @@
+{
+  "id": "A10",
+  "submitted": "2026-10-30T09:00:00+01:00",
+  "applicant": {
+    "name": "Dr. Test Applicant",
+    "organisation": "Graz University Hospital, AI lab",
+    "country": "AT"
+  },
+  "requested_as": "health data access application",
+  "requested_format": "pseudonymised records",
+  "purpose": "We externally validate a published heart-failure risk prediction model. The model needs individual-level histories; aggregates are not enough.",
+  "question": "Provide pseudonymised conditions and medications of adults with heart failure.",
+  "definitions": [
+    "Adult = aged 18 or older on 31 December 2025.",
+    "Heart failure = any condition with an ICD-10 code starting with I50.",
+    "Report the size of the cohort you would make available."
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+    "53",
+    "69"
+  ],
+  "answer": {
+    "Burgenland": {
+      "n": 62,
+      "mean": 146.7
+    },
+    "Kärnten": {
+      "n": 93,
+      "mean": 146.4
+    },
+    "Niederösterreich": {
+      "n": 332,
+      "mean": 144.8
+    },
+    "Oberösterreich": {
+      "n": 276,
+      "mean": 144.3
+    },
+    "Salzburg": {
+      "n": 121,
+      "mean": 145.4
+    },
+    "Steiermark": {
+      "n": 242,
+      "mean": 145.7
+    },
+    "Tirol": {
+      "n": 126,
+      "mean": 146.9
+    },
+    "Vorarlberg": {
+      "n": 67,
+      "mean": 147.9
+    },
+    "Wien": {
+      "n": 379,
+      "mean": 143.7
+    }
+  },
+  "needs_review": false
+}

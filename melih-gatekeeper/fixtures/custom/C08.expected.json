@@ -1,0 +1,12 @@
+{
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+    "53",
+    "69"
+  ],
+  "answer": {
+    "female": 570,
+    "male": 524
+  },
+  "needs_review": false
+}

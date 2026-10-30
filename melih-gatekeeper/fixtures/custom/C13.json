@@ -1,0 +1,18 @@
+{
+  "id": "C13",
+  "submitted": "2026-10-30T09:00:00+01:00",
+  "applicant": {
+    "name": "Dr. Test Applicant",
+    "organisation": "Regional health authority Lower Austria",
+    "country": "AT"
+  },
+  "requested_as": "health data request",
+  "requested_format": "anonymised statistics",
+  "purpose": "Planning emergency department capacity (public health).",
+  "question": "How many emergency visits were there in 2024, by region?",
+  "definitions": [
+    "Emergency visit = encounter with type 'emergency'.",
+    "Count visits (not patients) whose start_date is in 2024.",
+    "Report per region: emergency visits."
+  ]
+}

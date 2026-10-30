@@ -1,0 +1,12 @@
+{
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+    "53",
+    "69"
+  ],
+  "answer": {
+    "18-64": "<10",
+    "65+": 34
+  },
+  "needs_review": false
+}

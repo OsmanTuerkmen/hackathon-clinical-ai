@@ -1,0 +1,55 @@
+{
+  "decision": "APPROVE_STATISTICAL",
+  "articles": [
+    "53",
+    "69"
+  ],
+  "answer": {
+    "Burgenland": {
+      "n": 16,
+      "without": 12,
+      "pct": 75.0
+    },
+    "Kärnten": {
+      "n": 31,
+      "without": 14,
+      "pct": 45.2
+    },
+    "Niederösterreich": {
+      "n": 120,
+      "without": 72,
+      "pct": 60.0
+    },
+    "Oberösterreich": {
+      "n": 67,
+      "without": 39,
+      "pct": 58.2
+    },
+    "Salzburg": {
+      "n": 35,
+      "without": 21,
+      "pct": 60.0
+    },
+    "Steiermark": {
+      "n": 75,
+      "without": 43,
+      "pct": 57.3
+    },
+    "Tirol": {
+      "n": 46,
+      "without": 31,
+      "pct": 67.4
+    },
+    "Vorarlberg": {
+      "n": 18,
+      "without": 12,
+      "pct": 66.7
+    },
+    "Wien": {
+      "n": 109,
+      "without": 62,
+      "pct": 56.9
+    }
+  },
+  "needs_review": false
+}
