@@ -11,7 +11,7 @@ import re
 from typing import Any
 
 from ..models import CodeSet, CountMetric, MeanMetric, PercentMetric
-from .phrases import Context, Term, normalise, phrase_criteria, same_criteria, snake_case, strip_end
+from .phrases import REGION_NAMES, Context, Term, normalise, phrase_criteria, same_criteria, snake_case, strip_end
 
 _FORMAT_ONLY = re.compile(r"^(?:(?:with|rounded to|to|in)\s+)?(?P<n>one|two|three|\d)\s+decimals?(?:\s+places?)?$")
 _FORMAT_TAIL = re.compile(r"[\s,]*(?:with|rounded to|to|in)\s+(?:one|two|three|\d)\s+decimals?(?:\s+places?)?$", re.I)
@@ -46,6 +46,15 @@ class Metrics:
         self.enc_types: list[str] = []
         self.enc_primary: CodeSet | None = None
         self.pending: list[tuple[list[Any], str, Term]] = []
+        # items that count people (entry, metric names): invalid when the request counts stays
+        self.person_items: list[tuple[list[Any], list[str]]] = []
+
+    def drop(self, names: set[str]) -> None:
+        """Remove metrics and every percentage that refers to one of them."""
+        names = names | {
+            m.name for m in self.metrics if isinstance(m, PercentMetric) and {m.numerator, m.denominator} & names
+        }
+        self.metrics = [m for m in self.metrics if m.name not in names]
 
     def _name(self, label: str) -> str:
         base = snake_case(label)
@@ -139,6 +148,8 @@ def parse_item(raw: str, ctx: Context, b: Metrics, entry: list[Any]) -> bool:
         if hidden is None:
             return False
         b.percent(label, hidden, base)
+        if phrase.person_subject and not phrase.encounter_subject:
+            b.person_items.append((entry, [hidden]))
         return True
 
     if _MEAN_WORDS.search(text):
@@ -171,7 +182,10 @@ def parse_item(raw: str, ctx: Context, b: Metrics, entry: list[Any]) -> bool:
         return False  # nothing says what is counted ("the total"): never fall back to "all units"
     if phrase.encounter_subject and not b.encounter_subject(phrase.enc_types, phrase.enc_primary):
         return False
-    return b.count(label, phrase.criteria, relative=relative) is not None
+    name = b.count(label, phrase.criteria, relative=relative)
+    if name is not None and phrase.person_subject and not phrase.encounter_subject:
+        b.person_items.append((entry, [name]))
+    return name is not None
 
 
 def split_items(items: str) -> list[str]:
@@ -187,8 +201,12 @@ def split_items(items: str) -> list[str]:
             i += 2
             continue
         if depth == 0 and items.startswith(" and ", i):
-            between_numbers = re.search(r"\d\s*$", cur) and re.match(r"\d|(?:older|over|above|younger|below|under)\b", items[i + 5 :])
-            continues = between_numbers or (
+            nxt = items[i + 5 :].lower()
+            between_numbers = re.search(r"\d\s*$", cur) and re.match(r"\d|(?:older|over|above|younger|below|under)\b", nxt)
+            between_regions = any(cur.lower().endswith(r) for r in REGION_NAMES) and any(
+                nxt.startswith(r) for r in REGION_NAMES
+            )
+            continues = between_numbers or between_regions or (
                 re.search(r"\b(?:with|without|have|has)\b", cur, re.I) and not _ITEM_START.match(items[i + 5 :])
             )
             if not continues:

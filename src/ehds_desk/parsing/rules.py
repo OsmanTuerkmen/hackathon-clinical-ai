@@ -76,6 +76,11 @@ _COHORT_SIZE = re.compile(r"\breport the size of the cohort\b|\bcohort size\b", 
 _CODE_LIST = re.compile(
     r"\b(?:start(?:s|ing)?|begin(?:s|ning)?)\s+with\s+(?P<codes>[a-z]\d{2}[a-z0-9.]*(?:\s*(?:,|or|and)\s*[a-z]\d{2}[a-z0-9.]*)*)"
 )
+# "Diabetes = E11." / "Hip fracture = ICD-10 S72." / "Metformin = ATC A10BA02." / "ICD-10 E11.*"
+_BARE_CODES = re.compile(
+    r"(?:(?:icd-?10|atc)(?:\s+codes?)?\s*:?\s*)?"
+    r"(?P<codes>[a-z]\d{2}[a-z0-9.]*(?:\.?\*)?(?:\s*(?:,|or)\s*[a-z]\d{2}[a-z0-9.]*(?:\.?\*)?)*)"
+)
 _ICD_SHAPE = re.compile(r"[A-Z]\d{2}(?:\.\d+)?")
 _ATC_SHAPE = re.compile(r"[A-Z]\d{2}[A-Z]{0,2}\d{0,2}")
 _LOINC_DEF = re.compile(r"\(?\s*\bloinc\s*(?:code\s*)?(\d+-\d)\b\s*\)?")
@@ -128,6 +133,7 @@ class _State:
     start_to: date | None = None
     left_out: list[Any] = field(default_factory=list)
     cohort_size: bool = False
+    count_entry: list[Any] | None = None  # outcome of the "Count stays ..." sentence
     outcomes: list[list[Any]] = field(default_factory=list)  # [order, text, ok]
 
     def record(self, order: float, text: str, ok: bool) -> list[Any]:
@@ -213,9 +219,9 @@ def _analyse(name: str, display: str, body_l: str, ctx: Context) -> Term | None:
     if primary_found and primary is None:
         return None
     codes: list[str] = []
-    if m := _CODE_LIST.search(masked):
-        codes = [c.upper() for c in re.findall(r"[a-z]\d{2}[a-z0-9.]*", m.group("codes"))]
-        masked = mask(masked, *m.span())
+    if m := _CODE_LIST.search(masked) or _BARE_CODES.fullmatch(masked.strip(f" {MASK}")):
+        codes = [c.upper().rstrip(".") for c in re.findall(r"[a-z]\d{2}[a-z0-9.]*", m.group("codes"))]
+        masked = mask(masked, *m.span()) if m.re is _CODE_LIST else MASK * len(masked)
     loinc = None
     if m := _LOINC_DEF.search(masked):
         loinc = m.group(1)
@@ -459,7 +465,9 @@ def parse_rules(request: AccessRequest, terminology: Terminology) -> tuple[Query
     # Pass A: other sentences (active rule, bands, latest measurement ...) and simple definitions;
     # definitions that refer to other terms (or define the cohort) wait until those are known.
     for order, text, norm in others:
-        st.record(order, text, _other_sentence(norm, ctx, st))
+        entry = st.record(order, text, _other_sentence(norm, ctx, st))
+        if _ENC_COUNT.match(norm.lower()):
+            st.count_entry = entry
     names = {_term_name(m.group("term")) for _o, _t, m in definitions}
     deferred = []
     for order, text, m in definitions:
@@ -513,6 +521,12 @@ def parse_rules(request: AccessRequest, terminology: Terminology) -> tuple[Query
             entry[2] = parse_item(item, ctx, b, entry)
             ctx.note("No 'Report per ...' sentence: the item was taken from the question.")
     resolve_percent_terms(b, ctx)
+    if (st.enc_count or b.encounter) and b.person_items:
+        # stays are counted: an item about people would silently count stays, not distinct patients
+        for entry, names in b.person_items:
+            entry[2] = False
+            b.drop(set(names))
+        ctx.note("Stays are counted in this request; counting patients at the same time is not supported.")
 
     spec = _build_spec(request, ctx, st, b, group_by)
     st.outcomes.sort(key=lambda e: e[0])
@@ -558,8 +572,11 @@ def _build_spec(
     scope = None
     if unit == "encounter":
         types = b.enc_types or st.enc_types
-        if b.enc_types and st.enc_types and set(b.enc_types) != set(st.enc_types):
-            ctx.note("The count sentence and the report item name different stay types; the report item is used.")
+        types_differ = b.enc_types and st.enc_types and set(b.enc_types) != set(st.enc_types)
+        primary_differs = b.enc_primary and st.enc_primary and b.enc_primary != st.enc_primary
+        if (types_differ or primary_differs) and st.count_entry is not None:
+            st.count_entry[2] = False  # which stays are meant is ambiguous
+            ctx.note("The count sentence and the report item describe different stays.")
         scope = EncounterScope(
             types=types, start_from=st.start_from, start_to=st.start_to, primary_icd10=b.enc_primary or st.enc_primary
         )

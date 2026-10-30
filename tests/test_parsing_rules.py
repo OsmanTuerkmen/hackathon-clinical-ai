@@ -529,6 +529,93 @@ def test_active_in_definition_body(term, body, active):
     assert [m.active_only for m in meds] == [active]
 
 
+# --- Fix round 2: a negator binds to the next element only ----------------------------------------
+
+
+def coded(criteria):
+    return {(c.kind, tuple(c.codes.prefixes), c.negate) for c in criteria if hasattr(c, "codes")}
+
+
+@pytest.mark.parametrize(
+    ("defs", "where", "expected"),
+    [
+        ([D, H, "Report per region: patients without diabetes with hypertension."], "population",
+         {("condition", ("E11",), True), ("condition", ("I10",), False)}),
+        ([D, INS, "Report per region: patients not on insulin with diabetes."], "population",
+         {("medication", ("A10A",), True), ("condition", ("E11",), False)}),
+        ([D, H, INS, "Report per region: patients with diabetes, how many of them have no insulin but have hypertension."],
+         "where", {("medication", ("A10A",), True), ("condition", ("I10",), False)}),
+        ([D, INS, "Cohort = adults not on insulin with diabetes.", "Report the size of the cohort."], "population",
+         {("medication", ("A10A",), True), ("condition", ("E11",), False)}),
+        ([D, INS, "Report per region: adults, % not on insulin with diabetes."], "where",
+         {("medication", ("A10A",), True), ("condition", ("E11",), False)}),
+        (["Report per region: patients not on insulin with type 2 diabetes."], "population",
+         {("medication", ("A10A",), True), ("condition", ("E11",), False)}),
+    ],
+)
+def test_negator_binds_to_the_next_element_only(term, defs, where, expected):
+    spec, report = parse(term, defs)
+    assert report.complete, report.not_understood
+    crit = spec.population if where == "population" else [c for m in spec.metrics for c in getattr(m, "where", [])]
+    assert coded(crit) == expected
+
+
+def test_negated_region_does_not_negate_the_next_term(term):
+    spec, report = parse(term, [D, "Report per sex: patients not in Wien with diabetes."])
+    assert not report.complete
+    if spec is not None:
+        assert ("condition", ("E11",), True) not in coded(all_criteria(spec))
+        assert not any(c.kind == "region" for c in all_criteria(spec))
+
+
+def test_negated_list_is_ambiguous(term):
+    _spec, report = parse(term, [D, H, "Report per region: patients without diabetes and hypertension."])
+    assert not report.complete
+
+
+def test_person_item_in_a_stay_count_is_not_understood(term):
+    spec, report = parse(
+        term,
+        ["Count stays (not patients) whose start_date is in 2024.", "Report per hospital: inpatient stays, number of patients."],
+    )
+    assert not report.complete
+    assert "number of patients" in report.not_understood
+    assert [m.label for m in spec.metrics] == ["Inpatient stays"]
+
+
+@pytest.mark.parametrize(
+    ("definition", "item", "system", "prefixes"),
+    [
+        ("Diabetes = E11.", "patients with diabetes", "icd10", ["E11"]),
+        ("Hip fracture = ICD-10 S72.", "patients with hip fracture", "icd10", ["S72"]),
+        ("Diabetes = ICD-10 E11.*", "patients with diabetes", "icd10", ["E11"]),
+        ("Metformin = ATC A10BA02.", "patients on metformin", "atc", ["A10BA02"]),
+    ],
+)
+def test_bare_codes_in_definitions(term, definition, item, system, prefixes):
+    spec, report = parse(term, [definition, f"Report per region: {item}."])
+    assert report.complete, report.not_understood
+    assert [(c.codes.system, c.codes.prefixes) for c in spec.population] == [(system, prefixes)]
+
+
+def test_conflicting_stay_types_are_not_understood(term):
+    _spec, report = parse(
+        term, ["Count emergency visits in 2024.", "Report per hospital: inpatient stays with main diagnosis S72."]
+    )
+    assert "Count emergency visits in 2024." in report.not_understood
+
+
+def test_exactly_one_is_not_at_least_one(term):
+    _spec, report = parse(term, ["Report per region: patients with one inpatient stay."])
+    assert not report.complete
+
+
+def test_region_list_with_and(term):
+    spec, report = parse(term, [D, "Report per sex: patients in Wien and Tirol with diabetes."])
+    assert report.complete, report.not_understood
+    assert [c.values for c in spec.population if c.kind == "region"] == [["Wien", "Tirol"]]
+
+
 def test_unused_term_mentioned_in_failed_item_does_not_join_population(term):
     spec, report = parse(term, [D, "Report per region: patients, patients with diabetes treated at LKH Graz."])
     assert not report.complete
