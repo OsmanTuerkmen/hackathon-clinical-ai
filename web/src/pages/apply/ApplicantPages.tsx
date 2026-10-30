@@ -13,7 +13,7 @@ import {
   StatusTag,
 } from "../../components/DataComponents";
 import { useAppState } from "../../state/AppContext";
-import { formatDateTime, formatNumber, t } from "../../i18n";
+import { aiProviderModel, formatDateTime, formatNumber, t } from "../../i18n";
 
 type ApplicantResult = Awaited<ReturnType<typeof api.applicantCase>>;
 
@@ -92,7 +92,7 @@ export function ApplicantCasesPage() {
 export function ApplicantCasePage({ caseId }: { caseId: string }) {
   const { language, identity, navigate, ai } = useAppState();
   const [result, setResult] = useState<ApplicantResult | null>(null);
-  const [explanation, setExplanation] = useState<{ explanation_de: string; explanation_en: string } | null>(null);
+  const [explanation, setExplanation] = useState<Awaited<ReturnType<typeof api.aiExplain>> | null>(null);
   const [explaining, setExplaining] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -213,12 +213,12 @@ export function ApplicantCasePage({ caseId }: { caseId: string }) {
                 {!ai.enabled && <span className="secondary-text">{language === "de" ? "KI ist nicht aktiv (kein API-Schlüssel)." : "AI is not active (no API key)."}</span>}
                 {explanation && (
                   <div>
-                    <Tag type="blue">KI</Tag>
+                    <Tag type="blue">{`${language === "de" ? "KI" : "AI"} · ${aiProviderModel(explanation)}`}</Tag>
                     <Toggletip>
-                      <ToggletipButton label={language === "de" ? "KI-Hinweis" : "AI note"} />
+                      <ToggletipButton label={`${language === "de" ? "KI-Hinweis" : "AI note"} · ${aiProviderModel(explanation)}`} />
                       <ToggletipContent><p>{language === "de"
-                        ? "Diese Erklärung ändert die Entscheidung nicht."
-                        : "This explanation does not change the decision."}</p></ToggletipContent>
+                        ? `Erklärung von ${aiProviderModel(explanation)}. Sie ändert die Entscheidung nicht.`
+                        : `Explanation by ${aiProviderModel(explanation)}. It does not change the decision.`}</p></ToggletipContent>
                     </Toggletip>
                     <p>{language === "de" ? explanation.explanation_de : explanation.explanation_en}</p>
                   </div>

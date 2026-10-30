@@ -1,7 +1,7 @@
 import { Theme } from "@carbon/react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "./api/client";
-import type { Identity, Language } from "./api/types";
+import type { AIStatus, Identity, Language } from "./api/types";
 import { Shell } from "./components/Shell";
 import { t } from "./i18n";
 import { ApplicantCasePage, ApplicantCasesPage, F2PlaceholderPage } from "./pages/apply/ApplicantPages";
@@ -37,7 +37,7 @@ export default function App() {
   const [theme, setTheme] = useState<ThemeName>(readTheme);
   const [identities, setIdentities] = useState<Identity[]>([]);
   const [identity, setIdentity] = useState(localStorage.getItem("accessdesk.identity") ?? "");
-  const [ai, setAi] = useState<{ enabled: boolean; reason?: string; model?: string }>({
+  const [ai, setAi] = useState<AIStatus>({
     enabled: false,
     reason: "AI not configured",
   });

@@ -24,7 +24,7 @@ import { api } from "../api/client";
 import type { CaseSummary, PrecheckResult, RegisterEntry } from "../api/types";
 import { DecisionTag, PageState, ResultTable, StatusTag } from "../components/DataComponents";
 import { useAppState } from "../state/AppContext";
-import { formatDateTime, formatNumber, t } from "../i18n";
+import { aiProviderModel, formatDateTime, formatNumber, t } from "../i18n";
 
 type DraftRequest = {
   applicant: { name: string; organisation: string; country: string };
@@ -208,12 +208,12 @@ export function BuilderPage() {
             {!ai.enabled && <p className="secondary-text">{language === "de" ? "KI ist nicht aktiv (kein API-Schlüssel)." : "AI is not active (no API key)."}</p>}
             {suggested && (
               <span className="ai-suggestion">
-                <Tag type="blue">KI-Vorschlag</Tag>
+                <Tag type="blue">{language === "de" ? "KI-Vorschlag" : "AI suggestion"} · {aiProviderModel(ai)}</Tag>
                 <Toggletip>
-                  <ToggletipButton label={language === "de" ? "KI-Prüfungen" : "AI checks"} />
+                  <ToggletipButton label={`${language === "de" ? "KI-Prüfungen" : "AI checks"} · ${aiProviderModel(ai)}`} />
                   <ToggletipContent><p>{language === "de"
-                    ? "Anschließend wurden derselbe Parser und die Entscheidungsregeln verwendet; Codes wurden gegen die Daten validiert."
-                    : "The same parser and decision rules ran afterwards; codes were validated against the data."}</p></ToggletipContent>
+                    ? `Vorschlag von ${aiProviderModel(ai)}. Anschließend wurden derselbe Parser und die Entscheidungsregeln verwendet; Codes wurden gegen die Daten validiert.`
+                    : `Draft by ${aiProviderModel(ai)}. The same parser and decision rules ran afterwards; codes were validated against the data.`}</p></ToggletipContent>
                 </Toggletip>
               </span>
             )}
@@ -288,6 +288,7 @@ export function BuilderPage() {
           precheck={precheck}
           loading={loadingCheck}
           language={language}
+          ai={ai}
           hasDefinitions={request.definitions.some((definition) => definition.trim())}
         />
       </div>
@@ -299,11 +300,13 @@ function PrecheckPanel({
   precheck,
   loading,
   language,
+  ai,
   hasDefinitions,
 }: {
   precheck: PrecheckResult | null;
   loading: boolean;
   language: "de" | "en";
+  ai: ReturnType<typeof useAppState>["ai"];
   hasDefinitions: boolean;
 }) {
   return (
@@ -332,7 +335,9 @@ function PrecheckPanel({
                   <tr key={`${mapping.name}-${code.code}`}>
                     <td>{mapping.name}</td><td className="mono">{code.code}</td>
                     <td>{code.rows === null ? "—" : String(code.rows)}</td>
-                    <td>{mapping.ai ? "KI" : mapping.source.toLowerCase().includes("code list") ? "Code-Liste" : "Definition"}</td>
+                    <td>{mapping.ai
+                      ? `${language === "de" ? "KI" : "AI"} · ${aiProviderModel(ai)}`
+                      : mapping.source.toLowerCase().includes("code list") ? "Code-Liste" : "Definition"}</td>
                   </tr>
                 )))}</tbody>
               </table>

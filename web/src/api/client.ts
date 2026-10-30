@@ -1,5 +1,6 @@
 import type {
   AuditEntry,
+  AIStatus,
   CaseDetail,
   CaseSummary,
   DecisionLetter,
@@ -41,7 +42,7 @@ export const api = {
     patients: number;
     opted_out: number;
     load_seconds: number;
-    ai: { enabled: boolean; reason?: string; model?: string };
+    ai: AIStatus;
     mode: string;
     version: string;
     counts: Record<string, number>;
@@ -62,6 +63,10 @@ export const api = {
     return json<CaseSummary[]>(`/api/cases?${query.toString()}`);
   },
   case: (id: string) => json<CaseDetail>(`/api/cases/${encodeURIComponent(id)}`),
+  aiOpinion: (id: string) => json<CaseDetail>(
+    `/api/cases/${encodeURIComponent(id)}/ai-opinion`,
+    { method: "POST" },
+  ),
   review: (id: string, body: {
     action: "release" | "hold" | "reject";
     reason: string;
@@ -103,12 +108,14 @@ export const api = {
       draft: Record<string, unknown>;
       precheck: PrecheckResult;
       model: string;
+      provider: "claude" | "gemini";
       cached: boolean;
     }>("/api/ai/draft", body),
   aiExplain: (id: string, login: string) => json<{
     explanation_de: string;
     explanation_en: string;
     model: string;
+    provider: "claude" | "gemini";
     cached: boolean;
   }>(`/api/ai/explain/${encodeURIComponent(id)}?login=${encodeURIComponent(login)}`),
   spe: (permit: string, login: string) => json<{

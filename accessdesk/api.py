@@ -294,6 +294,28 @@ def create_app(data_dir, runtime_dir=None):
             raise HTTPException(status_code=404, detail="Unknown case")
         return result
 
+    @app.post("/api/cases/{case_id}/ai-opinion")
+    def request_case_ai_opinion(case_id: str):
+        if not desk.ai.status()["enabled"]:
+            _raise_ai_inactive()
+        try:
+            detail = cases.request_ai_opinion(case_id)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        if detail is None:
+            raise HTTPException(status_code=404, detail="Unknown case")
+        opinion = detail["result"]["ai"].get("opinion")
+        if opinion is None:
+            status = detail["result"]["ai"].get("status") or {}
+            raise HTTPException(
+                status_code=503,
+                detail=_ai_failure_detail({
+                    "provider": status.get("provider"),
+                    "reason": status.get("reason"),
+                }),
+            )
+        return detail
+
     @app.get("/api/cases/{case_id}/audit")
     def case_audit(case_id: str):
         find_case(case_id)
@@ -381,7 +403,12 @@ def create_app(data_dir, runtime_dir=None):
         warnings = []
         mappings, plan_summary, result_shape, protected_funnel, cohort_estimate = [], None, None, [], None
         try:
-            plan = parser.parse(request, desk.store)
+            ai_status = desk.ai.status()
+            ai_mapper = (
+                (lambda name, body: desk._map_term(name, body, cache_only=True))
+                if ai_status["enabled"] else None
+            )
+            plan = parser.parse(request, desk.store, ai_mapper=ai_mapper)
             warnings.extend(plan.warnings)
             mappings = safe_data.mappings(plan, desk.store)
             for mapping in mappings:
@@ -468,7 +495,7 @@ def create_app(data_dir, runtime_dir=None):
         if draft is None:
             raise HTTPException(
                 status_code=503,
-                detail={"de": "KI-Dienst ist nicht verfügbar.", "en": "AI service is unavailable."},
+                detail=_ai_failure_detail(answer),
             )
         identity = next(
             (
@@ -496,6 +523,7 @@ def create_app(data_dir, runtime_dir=None):
             "draft": draft,
             "precheck": precheck_response,
             "model": answer["model"],
+            "provider": answer.get("provider", status.get("provider")),
             "cached": answer["cached"],
         }
 
@@ -513,18 +541,20 @@ def create_app(data_dir, runtime_dir=None):
         )
         if not authorized or not case["visible_to_applicant"]:
             raise HTTPException(status_code=403, detail="Applicant access denied")
-        if not desk.ai.status()["enabled"]:
+        ai_status = desk.ai.status()
+        if not ai_status["enabled"]:
             _raise_ai_inactive()
         system, user = ai_spec.explain_messages(case["result"])
         answer = desk.ai.call("explain", system, user, ai_spec.explain_schema())
         if answer["value"] is None:
             raise HTTPException(
                 status_code=503,
-                detail={"de": "KI-Dienst ist nicht verfügbar.", "en": "AI service is unavailable."},
+                detail=_ai_failure_detail(answer),
             )
         return {
             **answer["value"],
             "model": answer["model"],
+            "provider": answer.get("provider", ai_status.get("provider")),
             "cached": answer["cached"],
         }
 
@@ -543,7 +573,9 @@ def create_app(data_dir, runtime_dir=None):
     @app.post("/api/decide")
     def decide(request: dict):
         try:
-            result = desk.process(request, use_cache=False, actor="jury:decide")
+            result = desk.process(
+                request, use_cache=False, actor="jury:decide", ai_live=False,
+            )
         except Exception as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         return decide_response(result)
@@ -798,6 +830,20 @@ def _raise_ai_inactive():
             "en": "AI is not active (no API key).",
         },
     )
+
+
+def _ai_failure_detail(answer):
+    if answer.get("provider") == "gemini" and answer.get("reason") == "quota_exhausted":
+        return {
+            "de": "Gemini-Kontingent erschöpft. Bitte später erneut versuchen.",
+            "en": "Gemini quota exhausted. Please try again later.",
+        }
+    if answer.get("reason") == "authentication_error":
+        return {
+            "de": "Der KI-API-Schlüssel wurde nicht akzeptiert.",
+            "en": "The AI API key was not accepted.",
+        }
+    return {"de": "KI-Dienst ist nicht verfügbar.", "en": "AI service is unavailable."}
 
 
 def _purpose_points(allowed, category_texts):

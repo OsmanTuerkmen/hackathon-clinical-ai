@@ -26,20 +26,22 @@ import {
 } from "../../components/DataComponents";
 import { ReviewDialog } from "../../components/ReviewDialog";
 import { useAppState } from "../../state/AppContext";
-import { formatDateTime, formatNumber, t } from "../../i18n";
+import { aiProviderModel, formatDateTime, formatNumber, t } from "../../i18n";
 
 type CaseTab = "request" | "decision" | "data" | "result" | "environment" | "people" | "audit";
 const TABS: CaseTab[] = ["request", "decision", "data", "result", "environment", "people", "audit"];
 const SAFE_NAMES: SafeName[] = ["people", "projects", "data", "settings", "outputs"];
 
 export function CasePage({ caseId }: { caseId: string }) {
-  const { language, navigate } = useAppState();
+  const { language, navigate, ai } = useAppState();
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<CaseTab>("request");
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [aiOpinionLoading, setAiOpinionLoading] = useState(false);
+  const [aiOpinionError, setAiOpinionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,6 +59,20 @@ export function CasePage({ caseId }: { caseId: string }) {
       setLoading(false);
     }
   }, [caseId]);
+
+  const requestAiOpinion = async () => {
+    setAiOpinionLoading(true);
+    setAiOpinionError(null);
+    try {
+      const updated = await api.aiOpinion(caseId);
+      setDetail(updated);
+      setAudit(await api.caseAudit(caseId));
+    } catch (cause) {
+      setAiOpinionError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setAiOpinionLoading(false);
+    }
+  };
 
   useEffect(() => {
     void load();
@@ -136,7 +152,16 @@ export function CasePage({ caseId }: { caseId: string }) {
             {tab === "request" && (
               <RequestPanel detail={detail} language={language} evidence={markedEvidence} />
             )}
-            {tab === "decision" && <DecisionPanel detail={detail} language={language} />}
+            {tab === "decision" && (
+              <DecisionPanel
+                detail={detail}
+                language={language}
+                ai={ai}
+                aiOpinionLoading={aiOpinionLoading}
+                aiOpinionError={aiOpinionError}
+                onAiOpinion={() => void requestAiOpinion()}
+              />
+            )}
             {tab === "data" && <DataPanel detail={detail} language={language} />}
             {tab === "result" && <ResultPanel detail={detail} language={language} />}
             {tab === "environment" && (
@@ -347,8 +372,23 @@ function EvidenceLabels({ detail, language }: { detail: CaseDetail; language: "d
   );
 }
 
-function DecisionPanel({ detail, language }: { detail: CaseDetail; language: "de" | "en" }) {
+function DecisionPanel({
+  detail,
+  language,
+  ai,
+  aiOpinionLoading,
+  aiOpinionError,
+  onAiOpinion,
+}: {
+  detail: CaseDetail;
+  language: "de" | "en";
+  ai: ReturnType<typeof useAppState>["ai"];
+  aiOpinionLoading: boolean;
+  aiOpinionError: string | null;
+  onAiOpinion: () => void;
+}) {
   const { result } = detail;
+  const providerModel = aiProviderModel(result.ai.status);
   return (
     <div className="case-section">
       <h2 className="section-heading">{t(language, "case.trace")}</h2>
@@ -372,10 +412,38 @@ function DecisionPanel({ detail, language }: { detail: CaseDetail; language: "de
           <li key={article.n}>Art. {article.n}: {language === "de" ? article.title_de : article.title_en}</li>
         ))}
       </ul>
+      <div className="case-ai-action">
+        <Button kind="tertiary" disabled={!ai.enabled || aiOpinionLoading} onClick={onAiOpinion}>
+          {aiOpinionLoading
+            ? (language === "de" ? "KI-Zweitmeinung wird eingeholt…" : "Requesting AI second opinion…")
+            : (language === "de" ? "KI-Zweitmeinung einholen" : "Get AI second opinion")}
+        </Button>
+        {!ai.enabled && (
+          <p className="secondary-text">{aiDisabledMessage(ai.reason, language)}</p>
+        )}
+        {aiOpinionError && (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            title={language === "de" ? "KI-Zweitmeinung fehlgeschlagen" : "AI second opinion failed"}
+            subtitle={aiOpinionError}
+          />
+        )}
+      </div>
+      {result.ai.status.reason === "quota_exhausted" && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          title={language === "de" ? "Gemini-Kontingent erschöpft" : "Gemini quota exhausted"}
+          subtitle={language === "de"
+            ? "Die Regelentscheidung bleibt unverändert. Bitte später erneut versuchen."
+            : "The rule-based decision is unchanged. Please try again later."}
+        />
+      )}
       {result.ai.opinion && (
         <section className="case-section">
           <h2 className="section-heading">{t(language, "case.aiOpinion")}</h2>
-          <Tag type="blue">KI</Tag>
+          <Tag type="blue">{`${language === "de" ? "KI" : "AI"} · ${providerModel}`}</Tag>
           <p>{String(result.ai.opinion[language === "de" ? "explanation_de" : "explanation_en"] ?? "")}</p>
           <p className="secondary-text">
             {language === "de" ? "Abweichung:" : "Disagreement:"}{" "}
@@ -391,10 +459,10 @@ function DecisionPanel({ detail, language }: { detail: CaseDetail; language: "de
             )}
           </p>
           <Toggletip>
-            <ToggletipButton label={language === "de" ? "KI-Hinweis" : "AI note"} />
+            <ToggletipButton label={`${language === "de" ? "KI-Hinweis" : "AI note"} · ${providerModel}`} />
             <ToggletipContent><p>{language === "de"
-              ? "Die KI gibt nur eine Zweitmeinung. Die regelbasierte Entscheidung bleibt maßgeblich."
-              : "AI provides a second opinion only. The rule-based decision remains authoritative."}</p></ToggletipContent>
+              ? `${providerModel} gibt nur eine Zweitmeinung. Die regelbasierte Entscheidung bleibt maßgeblich.`
+              : `${providerModel} provides a second opinion only. The rule-based decision remains authoritative.`}</p></ToggletipContent>
           </Toggletip>
         </section>
       )}
@@ -422,7 +490,7 @@ function DataPanel({ detail, language }: { detail: CaseDetail; language: "de" | 
             {result.mappings.flatMap((mapping) =>
               mapping.codes.map((code) => (
                 <tr key={`${mapping.name}-${code.system}-${code.code}`}>
-                  <td>{mapping.name}{mapping.ai && <Tag type="blue">KI</Tag>}</td>
+                  <td>{mapping.name}{mapping.ai && <Tag type="blue">{`KI · ${aiProviderModel(result.ai.status)}`}</Tag>}</td>
                   <td>{code.system}</td>
                   <td className="mono">{code.code}</td>
                   <td>{code.label ?? "—"}</td>
@@ -468,6 +536,18 @@ function DataPanel({ detail, language }: { detail: CaseDetail; language: "de" | 
       </p>
     </div>
   );
+}
+
+function aiDisabledMessage(reason: string | undefined, language: "de" | "en") {
+  if (reason === "disabled") {
+    return language === "de" ? "KI ist deaktiviert." : "AI is disabled.";
+  }
+  if (reason === "anthropic_not_installed") {
+    return language === "de" ? "Claude-Paket ist nicht installiert." : "Claude package is not installed.";
+  }
+  return language === "de"
+    ? "KI ist nicht aktiv (kein API-Schlüssel)."
+    : "AI is not active (no API key).";
 }
 
 function ResultPanel({ detail, language }: { detail: CaseDetail; language: "de" | "en" }) {

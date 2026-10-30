@@ -28,6 +28,7 @@ export default defineConfig({
   },
   webServer: {
     command: `"${python}" "${path.join(repoRoot, "start.py")}" --no-browser --host 127.0.0.1 --port 8090 --runtime "${runtime}"`,
+    env: { ...process.env, ACCESSDESK_AI: "off" },
     url: "http://127.0.0.1:8090/api/health",
     reuseExistingServer: false,
     timeout: 120_000,

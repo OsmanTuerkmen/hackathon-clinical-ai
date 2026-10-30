@@ -1,4 +1,5 @@
 import json
+import urllib.error
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
@@ -172,3 +173,238 @@ def test_ai_explanation_requires_the_visible_applicant_and_returns_bilingual_tex
     response = client.post("/api/ai/explain/R01?login=Dr.%20Sophie%20Lechner")
     assert response.status_code == 200
     assert response.json()["explanation_en"] == "The statistics are anonymous."
+
+
+def test_gemini_provider_selection_prefers_anthropic_unless_forced(tmp_path, monkeypatch):
+    monkeypatch.setenv("ACCESSDESK_AI", "on")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    assistant = Assistant(tmp_path)
+
+    assert assistant.status()["provider"] == "gemini"
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
+    monkeypatch.setattr(Assistant, "_anthropic_module", staticmethod(lambda: object()))
+    assert assistant.status()["provider"] == "claude"
+
+    monkeypatch.setenv("ACCESSDESK_AI_PROVIDER", "gemini")
+    assert assistant.status()["provider"] == "gemini"
+
+
+def test_gemini_rest_request_parses_structured_output_and_uses_cache(tmp_path, monkeypatch):
+    from accessdesk import ai
+
+    monkeypatch.setenv("ACCESSDESK_AI", "on")
+    monkeypatch.setenv("ACCESSDESK_AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    assistant = Assistant(tmp_path)
+    value = {"prohibited": False}
+    response_body = {
+        "candidates": [{
+            "content": {"parts": [{"text": json.dumps(value)}]},
+            "finishReason": "STOP",
+        }],
+    }
+    requests = []
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps(response_body).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        requests.append((request, timeout))
+        return FakeResponse()
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", fake_urlopen)
+    schema = {"type": "object", "properties": {"prohibited": {"type": "boolean"}}}
+
+    first = assistant.call("purpose", "system prompt", "request text", schema)
+    second = assistant.call("purpose", "system prompt", "request text", schema)
+
+    assert first["value"] == value
+    assert first["provider"] == "gemini"
+    assert first["cached"] is False
+    assert second["cached"] is True
+    assert len(requests) == 1
+    request, timeout = requests[0]
+    assert request.full_url == (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        "gemini-3.8-flash:generateContent"
+    )
+    assert request.get_header("X-goog-api-key") == "test-gemini-key"
+    assert "test-gemini-key" not in request.full_url
+    body = json.loads(request.data)
+    assert body["systemInstruction"]["parts"] == [{"text": "system prompt"}]
+    assert body["contents"] == [{"role": "user", "parts": [{"text": "request text"}]}]
+    assert body["generationConfig"]["responseJsonSchema"] == schema
+    assert timeout == 30
+
+
+def test_gemini_quota_error_returns_a_clear_reason_without_raising(tmp_path, monkeypatch):
+    from accessdesk import ai
+
+    monkeypatch.setenv("ACCESSDESK_AI", "on")
+    monkeypatch.setenv("ACCESSDESK_AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    assistant = Assistant(tmp_path)
+
+    def quota_error(request, timeout):
+        raise urllib.error.HTTPError(
+            request.full_url, 429, "quota exhausted", {}, None,
+        )
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", quota_error)
+
+    result = assistant.call("purpose", "system", "request", {"type": "object"})
+
+    assert result["value"] is None
+    assert result["provider"] == "gemini"
+    assert result["reason"] == "quota_exhausted"
+
+
+def test_gemini_draft_quota_is_a_clear_503(tmp_path, data_dir, monkeypatch):
+    from accessdesk import ai
+
+    monkeypatch.setenv("ACCESSDESK_AI", "on")
+    monkeypatch.setenv("ACCESSDESK_AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    app = create_app(data_dir, runtime_dir=tmp_path / "runtime")
+
+    def quota_error(request, timeout):
+        raise urllib.error.HTTPError(request.full_url, 429, "quota exhausted", {}, None)
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", quota_error)
+    response = TestClient(app).post(
+        "/api/ai/draft",
+        json={"text": "How common is asthma?", "lang": "en"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["de"].startswith("Gemini-Kontingent erschöpft")
+    assert response.json()["detail"]["en"].startswith("Gemini quota exhausted")
+
+
+def test_startup_with_gemini_enabled_and_empty_cache_makes_no_network_calls(
+    tmp_path, data_dir, monkeypatch,
+):
+    from accessdesk import ai
+    from accessdesk.cases import CaseRegistry
+    from accessdesk.config import build_desk
+
+    monkeypatch.setenv("ACCESSDESK_AI", "on")
+    monkeypatch.setenv("ACCESSDESK_AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    calls = []
+
+    def fail_if_called(request, timeout):
+        calls.append(request)
+        raise AssertionError("startup attempted an AI network call")
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", fail_if_called)
+    desk = build_desk(data_dir, runtime_dir=tmp_path / "runtime")
+    try:
+        registry = CaseRegistry(desk, data_dir)
+        assert len(registry.list()) == 15
+        assert calls == []
+    finally:
+        desk.store.con.close()
+
+
+def test_staff_ai_opinion_is_live_cached_and_holds_a_disagreement(
+    tmp_path, data_dir, monkeypatch,
+):
+    from accessdesk import ai
+
+    monkeypatch.setenv("ACCESSDESK_AI", "on")
+    monkeypatch.setenv("ACCESSDESK_AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    fake_response = {
+        "candidates": [{
+            "content": {"parts": [{"text": json.dumps({
+                "prohibited": True,
+                "category": "jobs_insurance_credit",
+                "allowed_purposes": [],
+                "statistics_sufficient": True,
+                "evidence_quote": "align private health insurance premiums",
+                "explanation_en": "This purpose may discriminate.",
+                "explanation_de": "Dieser Zweck kann diskriminieren.",
+            })}]},
+            "finishReason": "STOP",
+        }],
+    }
+    calls = []
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps(fake_response).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        calls.append(request)
+        return FakeResponse()
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", fake_urlopen)
+    app = create_app(data_dir, runtime_dir=tmp_path / "runtime")
+    client = TestClient(app)
+
+    response = client.post("/api/cases/R01/ai-opinion")
+
+    assert response.status_code == 200
+    detail = response.json()
+    assert detail["result"]["ai"]["opinion"]["prohibited"] is True
+    assert detail["summary"]["status"] == "review_needed"
+    assert detail["result"]["delivery"]["status"] == "on_hold_review"
+    assert len(calls) == 1
+
+
+def test_gemini_quota_returns_a_localized_503_not_a_server_error(tmp_path, data_dir, monkeypatch):
+    from accessdesk import ai
+
+    monkeypatch.setenv("ACCESSDESK_AI", "on")
+    monkeypatch.setenv("ACCESSDESK_AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    app = create_app(data_dir, runtime_dir=tmp_path / "runtime")
+
+    def quota_error(request, timeout):
+        raise urllib.error.HTTPError(request.full_url, 429, "quota exhausted", {}, None)
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", quota_error)
+    response = TestClient(app).post(
+        "/api/ai/draft",
+        json={"text": "How common is asthma?", "lang": "en"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["de"].startswith("Gemini-Kontingent erschöpft")
+    assert response.json()["detail"]["en"].startswith("Gemini quota exhausted")
+
+
+def test_info_and_settings_report_the_selected_provider_and_model(tmp_path, data_dir, monkeypatch):
+    monkeypatch.setenv("ACCESSDESK_AI", "on")
+    monkeypatch.setenv("ACCESSDESK_AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    client = TestClient(create_app(data_dir, runtime_dir=tmp_path / "runtime"))
+
+    info = client.get("/api/info").json()["ai"]
+    settings = client.get("/api/settings").json()["ai"]
+
+    assert info["provider"] == settings["provider"] == "gemini"
+    assert info["model"] == settings["model"] == "gemini-3.8-flash"

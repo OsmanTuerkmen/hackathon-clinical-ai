@@ -25,7 +25,7 @@ import {
 } from "@carbon/react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAppState, type Role } from "../state/AppContext";
-import { t } from "../i18n";
+import { aiProviderModel, t } from "../i18n";
 
 interface NavItem {
   path: string;
@@ -73,6 +73,9 @@ export function Shell({ children }: { children: ReactNode }) {
   );
   const navItems = NAV[role];
   const activePath = useMemo(() => route, [route]);
+  const aiLabel = ai.enabled
+    ? `${t(language, "ai.on")} · ${aiProviderModel(ai)}`
+    : t(language, "ai.off");
 
   useEffect(() => {
     setNavOpen(false);
@@ -152,8 +155,8 @@ export function Shell({ children }: { children: ReactNode }) {
             >
               {theme === "white" ? <Asleep aria-hidden="true" /> : <Sun aria-hidden="true" />}
             </HeaderGlobalAction>
-            <span className="app-header__ai" aria-label={ai.enabled ? t(language, "ai.on") : t(language, "ai.off")}>
-              {ai.enabled ? t(language, "ai.on") : t(language, "ai.off")}
+            <span className="app-header__ai" aria-label={aiLabel}>
+              {aiLabel}
             </span>
           </div>
         </HeaderGlobalBar>
@@ -184,7 +187,7 @@ export function Shell({ children }: { children: ReactNode }) {
               onClick={() => setTheme((current) => current === "white" ? "g100" : "white")}>
               {t(language, "theme.switch")}
             </Button>
-            <span className="app-header__ai">{ai.enabled ? t(language, "ai.on") : t(language, "ai.off")}</span>
+            <span className="app-header__ai">{aiLabel}</span>
             <nav className="mobile-header-nav" aria-label={t(language, "role.staff")}>
               {navItems.map((item) => (
                 <Button

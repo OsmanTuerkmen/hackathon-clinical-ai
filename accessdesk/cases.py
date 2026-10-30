@@ -54,6 +54,7 @@ class CaseRegistry:
             actor=f"system:case-registry",
             login=auth_login,
             differencing=True,
+            ai_live=False,
         )
         self._cases[case_id] = {
             "group": group,
@@ -110,6 +111,7 @@ class CaseRegistry:
                 actor=f"applicant:{stored_request.get('applicant', {}).get('name', '?')}",
                 login=login or "",
                 differencing=True,
+                ai_live=True,
             )
             case = {
                 "group": "custom",
@@ -125,6 +127,25 @@ class CaseRegistry:
             self._next_id += 1
             self._cases[case_id] = case
             return self._summary(case_id, case)
+
+    def request_ai_opinion(self, case_id):
+        with self._lock:
+            case = self._cases.get(case_id)
+            if case is None:
+                return None
+            result = self.desk.process(
+                case["request"],
+                use_cache=False,
+                actor="staff:ai-opinion",
+                login=(
+                    "" if case["group"] == "custom" and case["login"] is None
+                    else case["login"]
+                ),
+                differencing=True,
+                ai_live=True,
+            )
+            case["result"] = result
+            return self.get(case_id)
 
     def review(self, case_id, action, reason, reviewer):
         if action not in ("release", "hold", "reject"):

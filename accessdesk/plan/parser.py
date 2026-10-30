@@ -12,8 +12,6 @@ from . import terminology
 from ..store import REFERENCE_DATE
 from .model import QueryPlan
 
-AI_MAPPER = None   # set by the pipeline when the optional AI helper is available
-
 POPULATION_NOUNS = {
     "adults": ("age", {"min": 18}, "Adult"),
     "adult": ("age", {"min": 18}, "Adult"),
@@ -113,9 +111,10 @@ def _bands(text):
 
 
 class Parser:
-    def __init__(self, request, store):
+    def __init__(self, request, store, ai_mapper=None):
         self.req = request
         self.store = store
+        self.ai_mapper = ai_mapper
         self.concepts = {}
         self.order = []
         self.ratios = {}
@@ -229,8 +228,8 @@ class Parser:
             spec = {"loinc": h["codes"][0], "pick": "latest"} if kind == "observation" else {"prefixes": h["codes"]}
             self.add(name, kind, original + "  [codes from code list]", **spec)
             return
-        if AI_MAPPER:
-            out = AI_MAPPER(name, body)
+        if self.ai_mapper:
+            out = self.ai_mapper(name, body)
             if out:
                 kind = {"icd10": "condition", "atc": "medication", "loinc": "observation"}[out["system"]]
                 spec = {"loinc": out["codes"][0], "pick": "latest"} if kind == "observation" else {"prefixes": out["codes"]}
@@ -566,5 +565,5 @@ def _record_types(question, concepts):
     return types
 
 
-def parse(request, store):
-    return Parser(request, store).parse()
+def parse(request, store, ai_mapper=None):
+    return Parser(request, store, ai_mapper=ai_mapper).parse()

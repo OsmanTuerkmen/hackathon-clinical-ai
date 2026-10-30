@@ -8,10 +8,16 @@ def _request(data_dir, request_id):
         return json.load(stream)
 
 
-def test_pipeline_returns_five_safes_funnel_and_inbox_status(data_dir, desk):
+def test_pipeline_returns_five_safes_funnel_and_inbox_status(data_dir, desk, monkeypatch):
+    monkeypatch.setenv("ACCESSDESK_AI_PROVIDER", "claude")
     statistical = desk.process(_request(data_dir, "R01"), use_cache=False)
     assert statistical["ai"] == {
-        "status": {"enabled": False, "model": "claude-opus-5-5", "reason": "disabled"},
+        "status": {
+            "enabled": False,
+            "provider": "claude",
+            "model": "claude-opus-5-5",
+            "reason": "disabled",
+        },
         "opinion": None,
         "agrees": None,
         "model": "claude-opus-5-5",

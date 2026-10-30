@@ -33,14 +33,17 @@ class AccessDesk:
         self.cache = {}
         self.lock = threading.RLock()
 
-    def process(self, request, use_cache=True, actor=None, login=None, differencing=False):
+    def process(
+        self, request, use_cache=True, actor=None, login=None, differencing=False,
+        ai_live=False,
+    ):
         with self.lock:
-            return self._process(request, use_cache, actor, login, differencing)
+            return self._process(request, use_cache, actor, login, differencing, ai_live)
 
-    def _process(self, request, use_cache, actor, login, differencing_guard):
+    def _process(self, request, use_cache, actor, login, differencing_guard, ai_live):
         cache_key = hashlib.sha256(
             json.dumps(
-                [request, login, differencing_guard],
+                [request, login, differencing_guard, ai_live],
                 sort_keys=True,
                 ensure_ascii=False,
             ).encode("utf-8")
@@ -84,7 +87,9 @@ class AccessDesk:
         }
         if ai_status["enabled"]:
             system, user = ai_spec.purpose_messages(request)
-            answer = self.ai.call("purpose", system, user, ai_spec.purpose_schema())
+            answer = self.ai.call(
+                "purpose", system, user, ai_spec.purpose_schema(), not ai_live,
+            )
             ai["cached"] = answer["cached"]
             if answer["value"] is not None:
                 opinion = dict(answer["value"])
@@ -109,8 +114,11 @@ class AccessDesk:
         )
 
         t = time.perf_counter()
-        parser.AI_MAPPER = self._map_term if ai_status["enabled"] else None
-        plan = parser.parse(request, self.store)
+        ai_mapper = (
+            (lambda name, body: self._map_term(name, body, cache_only=not ai_live))
+            if ai_status["enabled"] else None
+        )
+        plan = parser.parse(request, self.store, ai_mapper=ai_mapper)
         mappings = safe_data.mappings(plan, self.store)
         timings["translation"] = _ms(t)
 
@@ -223,10 +231,12 @@ class AccessDesk:
         self.cache[cache_key] = result
         return result
 
-    def _map_term(self, name, body):
+    def _map_term(self, name, body, cache_only=False):
         codes = ai_spec.allowed_codes(self.store)
         system, user = ai_spec.term_messages(self.store, name, body)
-        answer = self.ai.call("term", system, user, ai_spec.term_schema(self.store))
+        answer = self.ai.call(
+            "term", system, user, ai_spec.term_schema(self.store), cache_only,
+        )
         value = answer["value"]
         if not isinstance(value, dict) or value.get("system") not in ("icd10", "atc", "loinc"):
             return None
@@ -257,6 +267,12 @@ class AccessDesk:
 
     @staticmethod
     def _delivery(decision, who, ai):
+        if ai.get("agrees") is False:
+            return {
+                "status": "on_hold_review",
+                "en": "Approved by the rules, but held for staff review (see warnings).",
+                "de": "Nach den Regeln genehmigt, aber zur Prüfung durch die Behörde zurückgehalten (siehe Hinweise).",
+            }
         if decision["decision"] == "REJECT":
             return {
                 "status": "rejection_sent",
@@ -275,7 +291,7 @@ class AccessDesk:
                 "en": "On hold until the applicant has verified their identity (eID) and organisation.",
                 "de": "Zurückgehalten, bis Identität (eID) und Organisation bestätigt sind.",
             }
-        if who["flags"] or ai.get("agrees") is False:
+        if who["flags"]:
             return {
                 "status": "on_hold_review",
                 "en": "Approved by the rules, but held for staff review (see warnings).",

@@ -5,7 +5,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import type { Identity, Language } from "../api/types";
+import type { AIStatus, Identity, Language } from "../api/types";
 
 export type ThemeName = "white" | "g100";
 export type Role = "staff" | "applicant" | "public";
@@ -19,7 +19,7 @@ export interface AppContextValue {
   identity: string;
   setIdentity: Dispatch<SetStateAction<string>>;
   identities: Identity[];
-  ai: { enabled: boolean; reason?: string; model?: string };
+  ai: AIStatus;
   route: string;
   navigate: (path: string) => void;
 }

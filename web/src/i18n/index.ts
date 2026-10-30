@@ -1,12 +1,17 @@
 import { de } from "./de";
 import { en } from "./en";
-import type { Language } from "../api/types";
+import type { AIStatus, Language } from "../api/types";
 
 export type TranslationKey = keyof typeof de;
 const dictionaries: Record<Language, Record<TranslationKey, string>> = { de, en };
 
 export const t = (language: Language, key: TranslationKey): string =>
   dictionaries[language][key];
+
+export function aiProviderModel(ai: Pick<AIStatus, "provider" | "model">): string {
+  const provider = ai.provider === "gemini" ? "Gemini" : "Claude";
+  return [provider, ai.model].filter(Boolean).join(" ");
+}
 
 export const locale = (language: Language): string =>
   language === "de" ? "de-AT" : "en-GB";

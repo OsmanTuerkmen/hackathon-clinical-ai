@@ -1,4 +1,11 @@
 export type Language = "de" | "en";
+export interface AIStatus {
+  enabled: boolean;
+  provider?: "claude" | "gemini";
+  model?: string;
+  reason?: string;
+}
+
 export type CaseGroup = "test" | "demo" | "custom";
 export type InboxStatus =
   | "auto_decided"
@@ -215,7 +222,7 @@ export interface PipelineResult {
   };
   decision: CaseDecision;
   ai: {
-    status: { enabled: boolean; reason?: string; model?: string };
+    status: AIStatus;
     opinion: Record<string, unknown> | null;
     agrees: boolean | null;
   };
