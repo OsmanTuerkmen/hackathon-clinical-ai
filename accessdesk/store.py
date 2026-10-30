@@ -107,21 +107,15 @@ def load(data_dir):
             "SELECT s.patient_id, s.loinc, s.name, s.value, s.unit, s.date "
             "FROM _source_observations s JOIN patients p USING (patient_id)"
         ).fetchall()
-        observations = [
-            (patient_id, loinc, name, value, _tenths(value), unit, date)
-            for patient_id, loinc, name, value, unit, date in observation_rows
-        ]
+        for row in observation_rows:
+            _tenths(row[3])
         con.execute(
-            "CREATE TABLE observations (patient_id VARCHAR, loinc VARCHAR, name VARCHAR, "
-            "value VARCHAR, value10 INTEGER, unit VARCHAR, date DATE)"
+            "CREATE TABLE observations AS "
+            "SELECT s.patient_id, s.loinc, s.name, s.value, "
+            "CAST(CAST(trim(s.value) AS DECIMAL(38, 1)) * 10 AS INTEGER) AS value10, "
+            "s.unit, s.date "
+            "FROM _source_observations s JOIN patients p USING (patient_id)"
         )
-        con.execute("BEGIN TRANSACTION")
-        try:
-            con.executemany("INSERT INTO observations VALUES (?, ?, ?, ?, ?, ?, ?)", observations)
-            con.execute("COMMIT")
-        except Exception:
-            con.execute("ROLLBACK")
-            raise
         con.execute(
             "CREATE TABLE encounters AS SELECT s.encounter_id, s.patient_id, s.data_holder, s.type, "
             "s.start_date, s.end_date, s.primary_icd10, "
