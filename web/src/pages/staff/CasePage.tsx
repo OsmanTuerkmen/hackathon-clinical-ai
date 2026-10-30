@@ -16,7 +16,8 @@ import {
   Funnel,
   groupDimensionLabel,
   PageState,
-  differencingCellLabel,
+  differencingReference,
+  differencingSubject,
   measureLabel,
   ResultChart,
   ResultTable,
@@ -501,15 +502,17 @@ function ResultPanel({ detail, language }: { detail: CaseDetail; language: "de" 
             <Funnel steps={detail.result.funnel} language={language} />
           </section>
           {(released.differencing?.suppressed ?? []).length > 0 && (
-            <ol className="differencing-notes">
+            <ul className="differencing-notes">
               {released.differencing?.suppressed.map((item, index) => (
                 <li key={`${item.measure}-${item.part}-${index}`}>
+                  <sup>{index + 1}</sup>{" "}
+                  <strong>{differencingSubject(item.against.measure, item.against.group, item.against.part, language)}:</strong>{" "}
                   {language === "de"
-                    ? `Unterscheidet sich um ${formatNumber(item.difference, language, 0)} Personen von der früheren Antwort ${item.against.request_id} (${item.against.group.join(" · ")} · ${differencingCellLabel(item.against.measure, item.against.part, language)}).`
-                    : `Differs by ${formatNumber(item.difference, language, 0)} people from earlier answer ${item.against.request_id} (${item.against.group.join(" · ")} · ${differencingCellLabel(item.against.measure, item.against.part, language)}).`}
+                    ? `unterscheidet sich um ${formatNumber(item.difference, language, 0)} Personen von der früheren Antwort ${item.against.request_id} (${differencingReference(item.against.measure, item.against.group)}).`
+                    : `differs by ${formatNumber(item.difference, language, 0)} people from earlier answer ${item.against.request_id} (${differencingReference(item.against.measure, item.against.group)}).`}
                 </li>
               ))}
-            </ol>
+            </ul>
           )}
         </div>
       )}

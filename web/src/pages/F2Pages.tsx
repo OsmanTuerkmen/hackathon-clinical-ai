@@ -284,7 +284,12 @@ export function BuilderPage() {
             </div>
           )}
         </div>
-        <PrecheckPanel precheck={precheck} loading={loadingCheck} language={language} />
+        <PrecheckPanel
+          precheck={precheck}
+          loading={loadingCheck}
+          language={language}
+          hasDefinitions={request.definitions.some((definition) => definition.trim())}
+        />
       </div>
     </section>
   );
@@ -294,10 +299,12 @@ function PrecheckPanel({
   precheck,
   loading,
   language,
+  hasDefinitions,
 }: {
   precheck: PrecheckResult | null;
   loading: boolean;
   language: "de" | "en";
+  hasDefinitions: boolean;
 }) {
   return (
     <aside className="precheck-panel" aria-label={language === "de" ? "Vorprüfung" : "Pre-check"}>
@@ -315,35 +322,52 @@ function PrecheckPanel({
               subtitle={item.evidence.map((evidence) => `„${evidence.phrase}“`).join(" · ")} />
           ))}
           <h3>{language === "de" ? "Begriffe und Codes" : "Terms and codes"}</h3>
-          <div className="table-scroll" role="region" aria-label={language === "de" ? "Begriffe und Codes" : "Terms and codes"} tabIndex={0}>
-            <table className="data-table">
-              <thead><tr><th>{t(language, "case.term")}</th><th>{t(language, "case.code")}</th><th>{t(language, "case.rows")}</th><th>{t(language, "inbox.status")}</th></tr></thead>
-              <tbody>{precheck.mappings.flatMap((mapping) => mapping.codes.map((code) => (
-                <tr key={`${mapping.name}-${code.code}`}>
-                  <td>{mapping.name}</td><td className="mono">{code.code}</td>
-                  <td>{code.rows === null ? "—" : String(code.rows)}</td>
-                  <td>{mapping.ai ? "KI" : mapping.source.toLowerCase().includes("code list") ? "Code-Liste" : "Definition"}</td>
-                </tr>
-              )))}</tbody>
-            </table>
-          </div>
+          {!hasDefinitions || precheck.mappings.length === 0 ? (
+            <p className="secondary-text">{language === "de" ? "Noch keine Begriffe." : "No terms yet."}</p>
+          ) : (
+            <div className="table-scroll" role="region" aria-label={language === "de" ? "Begriffe und Codes" : "Terms and codes"} tabIndex={0}>
+              <table className="data-table">
+                <thead><tr><th>{t(language, "case.term")}</th><th>{t(language, "case.code")}</th><th>{t(language, "case.rows")}</th><th>{t(language, "inbox.status")}</th></tr></thead>
+                <tbody>{precheck.mappings.flatMap((mapping) => mapping.codes.map((code) => (
+                  <tr key={`${mapping.name}-${code.code}`}>
+                    <td>{mapping.name}</td><td className="mono">{code.code}</td>
+                    <td>{code.rows === null ? "—" : String(code.rows)}</td>
+                    <td>{mapping.ai ? "KI" : mapping.source.toLowerCase().includes("code list") ? "Code-Liste" : "Definition"}</td>
+                  </tr>
+                )))}</tbody>
+              </table>
+            </div>
+          )}
           <dl className="gate-stats">
             <div><dt>{language === "de" ? "Kohortengröße (gerundet)" : "Cohort estimate (rounded)"}</dt><dd>
               {typeof precheck.cohort_estimate === "number" ? formatNumber(precheck.cohort_estimate, language, 0) : precheck.cohort_estimate ?? "—"}
             </dd></div>
             <div><dt>{language === "de" ? "Zellen" : "Cells"}</dt><dd>{precheck.result_shape?.cells ?? "—"}</dd></div>
-            <div><dt>{language === "de" ? "Identität" : "Identity"}</dt><dd>{precheck.identity.status}</dd></div>
+            <div><dt>{language === "de" ? "Identität" : "Identity"}</dt><dd>{formatIdentityStatus(precheck.identity.status, language)}</dd></div>
           </dl>
           {precheck.result_shape && (
             <p className="secondary-text">
               {language === "de" ? "Gruppierungen" : "Groups"}: {precheck.result_shape.group_dims.map((dim) => dim).join(" · ")}
             </p>
           )}
-          {precheck.warnings.map((warning) => <p className="secondary-text" key={warning}>{warning}</p>)}
+          <h3>{language === "de" ? "Hinweise des Parsers" : "Parser notes"}</h3>
+          {precheck.warnings.length > 0
+            ? precheck.warnings.map((warning) => <p className="secondary-text" key={warning}>{warning}</p>)
+            : <p className="secondary-text">—</p>}
         </>
       )}
     </aside>
   );
+}
+
+function formatIdentityStatus(status: string, language: "de" | "en"): string {
+  if (status === "verified" || status === "confirmed") {
+    return language === "de" ? "bestätigt" : "confirmed";
+  }
+  if (status.includes("invalid")) {
+    return language === "de" ? "Nachweis ungültig" : "credential invalid";
+  }
+  return language === "de" ? "nicht bestätigt" : "not confirmed";
 }
 
 export function SPEWorkspacePage({ permitId }: { permitId: string }) {

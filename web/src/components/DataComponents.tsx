@@ -512,12 +512,13 @@ export function measureLabel(label: string): string {
   return cleaned ? cleaned[0].toLocaleUpperCase() + cleaned.slice(1) : label;
 }
 
-export function differencingCellLabel(measure: string, part: string, language: Language): string {
-  const label = measureLabel(measure);
-  if (part === "den") {
-    return `${label} (${language === "de" ? "Nenner" : "denominator"})`;
-  }
-  return label;
+export function differencingSubject(measure: string, group: string[], part: string, language: Language): string {
+  const suffix = part === "den" ? ` (${language === "de" ? "Nenner" : "denominator"})` : "";
+  return `${measureLabel(measure)} · ${group.join(" · ")}${suffix}`;
+}
+
+export function differencingReference(measure: string, group: string[]): string {
+  return `${group.join(" · ")} · ${measureLabel(measure)}`;
 }
 
 export function PageState({

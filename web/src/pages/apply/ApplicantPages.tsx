@@ -2,7 +2,16 @@ import { Button, Tag, Toggletip, ToggletipButton, ToggletipContent } from "@carb
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../api/client";
 import type { CaseSummary } from "../../api/types";
-import { DecisionTag, Funnel, PageState, ResultChart, ResultTable, StatusTag, differencingCellLabel } from "../../components/DataComponents";
+import {
+  DecisionTag,
+  differencingReference,
+  differencingSubject,
+  Funnel,
+  PageState,
+  ResultChart,
+  ResultTable,
+  StatusTag,
+} from "../../components/DataComponents";
 import { useAppState } from "../../state/AppContext";
 import { formatDateTime, formatNumber, t } from "../../i18n";
 
@@ -178,15 +187,17 @@ export function ApplicantCasePage({ caseId }: { caseId: string }) {
                 </div>
               )}
               {(result.released?.differencing?.suppressed ?? []).length > 0 && (
-                <ol className="differencing-notes">
+                <ul className="differencing-notes">
                   {result.released?.differencing?.suppressed.map((item, index) => (
                     <li key={`${item.measure}-${item.part}-${index}`}>
+                      <sup>{index + 1}</sup>{" "}
+                      <strong>{differencingSubject(item.against.measure, item.against.group, item.against.part, language)}:</strong>{" "}
                       {language === "de"
-                        ? `Unterscheidet sich um ${formatNumber(item.difference, language, 0)} Personen von Ihrer früheren Antwort ${item.against.request_id} (${item.against.group.join(" · ")} · ${differencingCellLabel(item.against.measure, item.against.part, language)}). Sonst ließe sich eine Gruppe unter 10 Personen errechnen.`
-                        : `This differs by ${formatNumber(item.difference, language, 0)} people from your earlier answer ${item.against.request_id} (${item.against.group.join(" · ")} · ${differencingCellLabel(item.against.measure, item.against.part, language)}). Otherwise, a group of fewer than 10 people could be calculated.`}
+                        ? `unterscheidet sich um ${formatNumber(item.difference, language, 0)} Personen von Ihrer früheren Antwort ${item.against.request_id} (${differencingReference(item.against.measure, item.against.group)}). Sonst ließe sich eine Gruppe unter 10 Personen errechnen.`
+                        : `differs by ${formatNumber(item.difference, language, 0)} people from your earlier answer ${item.against.request_id} (${differencingReference(item.against.measure, item.against.group)}). Otherwise, a group of fewer than 10 people could be calculated.`}
                     </li>
                   ))}
-                </ol>
+                </ul>
               )}
               {result.funnel && (
                 <section className="applicant-cohort">

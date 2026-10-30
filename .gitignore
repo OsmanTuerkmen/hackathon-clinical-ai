@@ -9,3 +9,5 @@ test-results/
 playwright-report/
 data/
 *.csv
+docs/demo/*.mp4
+docs/demo/*.mp4
