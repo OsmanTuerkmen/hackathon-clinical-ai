@@ -14,8 +14,9 @@ Stand: 2026-10-30. Details zur Weiterarbeit: `docs/HANDOFF.md`. Reihenfolge laut
 - [x] Meilenstein-Review M2 (Range 791dcd6..6d1e439), vier Befunde behoben und separat nachgeprüft
 - [x] Task 10: optionaler LLM-Pfad (50 Tests, Codesystembindung inkl. Cache, Review abgeschlossen)
 - [x] Task 11: HTTP-API (52 HTTP-Fälle und separater Review)
-- [x] Task 12: Web-UI (Applicant/Staff/SPE, Screenshots, 53 Browserchecks)
-- [ ] Meilenstein-Review M3 abschließen (läuft)
+- [x] Task 12: Web-UI (Applicant/Staff/SPE, Screenshots, 57 Browserchecks)
+- [x] Meilenstein-Review M3 (Approved, keine Critical/Important)
+- [x] UI-Korrektur: verspätete Inbox-Initialladung darf eigenen Antrag nicht verdecken (57 Browserchecks, Nachreview)
 - [ ] Task 13: Referenzskript und Eval
 - [ ] Task 14: eigene Anträge in `requests/extra/`
 - [ ] Task 15: README (Englisch), Sicherheitsprüfung, Abschluss

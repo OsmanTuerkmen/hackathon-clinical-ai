@@ -97,6 +97,7 @@ function desk() {
   append(layout, aside, main); app.append(layout, footer); activateTab('applicant'); loadInbox();
 }
 async function loadInbox() {
+  const initialEpoch = state.epoch;
   try {
     const [requests, law] = await Promise.all([api('/api/requests'), api('/api/law')]); state.requests = requests; state.law = law;
     document.querySelector('.inbox-heading .count').textContent = requests.length;
@@ -104,8 +105,9 @@ async function loadInbox() {
       const item = button('', () => selectRequest(request.id), 'request-item'); item.dataset.requestId = request.id;
       append(item, append(el('span', null, 'request-line'), el('strong', request.id), el('span', request.source === 'extra' ? 'Additional' : 'Request', 'request-type')), el('span', request.organisation, 'organisation'), el('span', request.purpose, 'request-purpose')); $('request-list').append(item);
     });
+    if (state.epoch !== initialEpoch) return;
     if (requests.length) await selectRequest(requests[0].id); else status('No stored requests. Create a new request to begin.');
-  } catch (error) { status(error.message, true); }
+  } catch (error) { if (state.epoch === initialEpoch) status(error.message, true); }
 }
 function selection(id) {
   state.selected = id; document.querySelectorAll('.request-item').forEach(item => { if (item.dataset.requestId === id) item.setAttribute('aria-current', 'true'); else item.removeAttribute('aria-current'); });

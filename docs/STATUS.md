@@ -16,9 +16,9 @@ Stand: 2026-10-30 · Branch `track3-app` (Worktree `.claude/worktrees/track3-app
 | M2 – Task 9: Pipeline und CLI | fertig, reviewt; Meilenstein-Review M2 abgeschlossen, vier Befunde mit Regressionstests behoben |
 | M3 – Task 10: optionaler Claude-Pfad | fertig, Fake-Client-/SDK-Schematests, separat reviewt; kein Live-API-Nachweis |
 | M3 – Task 11: FastAPI | fertig, 52 HTTP-Tests, separat reviewt |
-| M3 – Task 12: Web-UI | fertig, Applicant/Staff/SPE, 53 echte Browserchecks (Desktop/375 px), Taskreview Approved; M3-Review läuft |
-| M4: Referenz, Eval, eigene Anträge, README | offen |
+| M3 – Task 12: Web-UI | fertig, Applicant/Staff/SPE, 57 echte Browserchecks (Desktop/375 px), Taskreview und M3-Review Approved; Initialladungs-Race behoben |
+| M4: Referenz, Eval, eigene Anträge, README | Task 13 in Arbeit; Tasks 14–15 offen |
 
-Tests: `.venv/Scripts/python -m pytest -q` → 522 passed in 36.04s (2026-10-30, nach Task 12); anschließend Prozentbeschriftung durch 53 Browserchecks und JS-Syntaxprüfung verifiziert.
+Tests: `.venv/Scripts/python -m pytest -q` → 522 passed in 36.04s (2026-10-30, nach Task 12); anschließend Prozentbeschriftung durch 57 Browserchecks und JS-Syntaxprüfung verifiziert.
 Übergabe für die Weiterarbeit: `docs/HANDOFF.md`.
 Eval-Metriken: noch nicht messbar (Eval in M4).
