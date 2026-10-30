@@ -75,25 +75,67 @@
             <label>Your question <span class="req-tag">required</span><textarea id="f-question" rows="2"
               placeholder="e.g. How many adults have type 2 diabetes in each region?"></textarea></label>
 
-            <div class="field-label">What exactly should be counted? <span class="req-tag">required</span></div>
-            <p class="help">One line per definition, ending with a line that starts with <b>“Report per …”</b>.
-              Doccess computes exactly what you define.</p>
-            <div id="f-defs" class="defs"></div>
-            <div class="def-actions">
-              <button type="button" class="link-btn" id="add-def">+ Add line</button>
-              <button type="button" class="link-btn" id="template-def">Insert an example</button>
+            <div class="defs-head">
+              <div class="field-label">What exactly should be counted? <span class="req-tag">required</span></div>
+              <div class="seg" role="tablist" aria-label="How to define the request">
+                <button type="button" class="seg-btn active" id="mode-guided">Guided</button>
+                <button type="button" class="seg-btn" id="mode-manual">Write it myself</button>
+              </div>
             </div>
-            <details class="more">
-              <summary>How do I write this?</summary>
-              <ul class="help">
-                <li>Name each term with its code, e.g. <i>Type 2 diabetes = any condition with an ICD-10 code starting
-                  with E11.</i> Common names like “statin” or “COPD” are recognised automatically.</li>
-                <li>Add groups or rules if needed, e.g. <i>Adult = aged 18 or older on 31 December 2025</i>.</li>
-                <li>Finish with the numbers you want per group, e.g. <i>Report per region: adults, adults with type 2
-                  diabetes and the share (%).</i></li>
-                <li>For records in a secure workspace, define <i>Cohort = …</i> instead of a report line.</li>
-              </ul>
-            </details>
+            <div id="assistant" class="assistant">
+              <div class="row2">
+                <label>Who
+                  <select id="as-who">
+                    <option value="all">All patients</option>
+                    <option value="adults" selected>Adults (18+)</option>
+                    <option value="children">Children (under 18)</option>
+                    <option value="seniors">Aged 65 and older</option>
+                  </select>
+                </label>
+                <label>Sex
+                  <select id="as-sex">
+                    <option value="any">Women and men</option>
+                    <option value="female">Women only</option>
+                    <option value="male">Men only</option>
+                  </select>
+                </label>
+              </div>
+              <label>Condition <span class="opt-tag">optional</span><select id="as-cond"><option value="">None</option></select></label>
+              <label>Medication <span class="opt-tag">optional</span><select id="as-med"><option value="">None</option></select></label>
+              <label>Measurement <span class="opt-tag">optional</span><select id="as-meas"><option value="">None</option></select></label>
+              <div class="field-label small">Show the numbers per</div>
+              <div class="as-groups" id="as-groups">
+                <label><input type="checkbox" value="region" checked> Region</label>
+                <label><input type="checkbox" value="age band"> Age group</label>
+                <label><input type="checkbox" value="sex"> Sex</label>
+                <label><input type="checkbox" value="hospital"> Hospital</label>
+              </div>
+              <details class="more">
+                <summary>See the definitions Doccess will use</summary>
+                <ol class="as-preview" id="as-preview"></ol>
+              </details>
+            </div>
+            <div id="manual-defs" class="hidden">
+              <p class="help">One line per definition, ending with a line that starts with <b>“Report per …”</b>.
+                Doccess computes exactly what you define.</p>
+              <div id="f-defs" class="defs"></div>
+              <div class="def-actions">
+                <button type="button" class="link-btn" id="add-def">+ Add line</button>
+                <button type="button" class="link-btn" id="template-def">Insert an example</button>
+              </div>
+              <details class="more">
+                <summary>How do I write this?</summary>
+                <ul class="help">
+                  <li>Name each term with its code, e.g. <i>Type 2 diabetes = any condition with an ICD-10 code starting
+                    with E11.</i> Common names like “statin” or “COPD” are recognised automatically.</li>
+                  <li>Add groups or rules if needed, e.g. <i>Adult = aged 18 or older on 31 December 2025</i>.</li>
+                  <li>Finish with the numbers you want per group, e.g. <i>Report per region: adults, adults with type 2
+                    diabetes and the share (%).</i></li>
+                  <li>For records in a secure workspace, define <i>Cohort = …</i> instead of a report line and name the
+                    records you need in your question.</li>
+                </ul>
+              </details>
+            </div>
             <details class="more">
               <summary>More options</summary>
               <div class="row3">
@@ -150,18 +192,22 @@
                 <span class="decision-icon" id="decision-icon"></span>
                 <div>
                   <div class="decision-label" id="decision-label"></div>
+                  <p class="decision-summary" id="decision-summary"></p>
                   <div class="articles" id="articles"></div>
                 </div>
               </div>
               <div class="decision-code" id="decision-code"></div>
             </div>
-            <p class="receive" id="receive"></p>
-            <p class="reason" id="reason"></p>
+            <div class="receive-row">
+              <p class="receive" id="receive"></p>
+              <a class="btn secondary small" id="pdf-btn" href="#" download>Decision letter (PDF)</a>
+            </div>
             <div class="meta" id="meta"></div>
             <details class="more checks" id="checks-box">
-              <summary>How Doccess checked this request</summary>
-              <ol class="stepper" id="stepper" aria-label="Processing steps"></ol>
+              <summary>Full reasoning and checks</summary>
+              <p class="reason" id="reason"></p>
               <ul class="notes" id="decision-notes"></ul>
+              <ol class="stepper" id="stepper" aria-label="Processing steps"></ol>
             </details>
             <h3 class="result-title" id="result-title">Answer</h3>
             <div id="result"></div>

@@ -188,3 +188,13 @@ def entries_for_code(kind: str, code: str) -> list[VocabEntry]:
 
 def observation_by_loinc(code: str) -> VocabEntry | None:
     return next((e for e in OBSERVATIONS if e.codes[0] == code), None)
+
+
+def catalog() -> dict:
+    """Terms for the guided request assistant. `term` is a short name that is safe to reuse in a report line
+    (no 'and', 'or' or commas that would split it into two statistics)."""
+    def term(e: VocabEntry) -> str:
+        return next((t for t in e.terms if not any(x in f" {t} " for x in (" and ", " or ", ","))), e.label.lower())
+    pick = lambda entries: [{"label": e.label, "term": term(e), "codes": list(e.codes), "unit": e.unit}
+                            for e in entries]
+    return {"conditions": pick(CONDITIONS), "medications": pick(MEDICATIONS), "observations": pick(OBSERVATIONS)}

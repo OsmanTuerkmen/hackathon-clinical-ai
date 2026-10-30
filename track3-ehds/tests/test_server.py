@@ -97,6 +97,33 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(self.raw_call("/api/auth/me", token=token)[0], 401)
         self.assertEqual(self.raw_call("/api/submit", json.dumps(SPE_REQUEST).encode(), token=token)[0], 401)
 
+    def test_short_reason_and_pdf_decision_letter(self):
+        status, body = self.call("/api/submit", json.dumps(SPE_REQUEST).encode())
+        view = json.loads(body)
+        self.assertIn("secure workspace", view["decision"]["summary"])
+        self.assertIn("cannot be downloaded", view["decision"]["receive"])
+        req = urllib.request.Request(self.base + f"/api/cases/{view['case_id']}/letter.pdf")
+        with urllib.request.urlopen(req, timeout=30) as r:
+            pdf, ctype, disp = r.read(), r.headers["Content-Type"], r.headers["Content-Disposition"]
+        self.assertEqual(ctype, "application/pdf")
+        self.assertIn(f"doccess-decision-{view['case_id']}.pdf", disp)
+        self.assertTrue(pdf.startswith(b"%PDF-1.4") and pdf.rstrip().endswith(b"%%EOF"))
+        xref = int(pdf.rsplit(b"startxref", 1)[1].split()[0])
+        self.assertEqual(pdf[xref:xref + 4], b"xref", "cross-reference offset must point at the xref table")
+        for text in (b"Decision on your health data request", b"secure processing environment", b"Dr. Lena Gruber"):
+            self.assertIn(text, pdf)
+        self.assertNotRegex(pdf.decode("latin-1"), r"p-[0-9a-f]{8}", "no patient identifiers in the letter")
+        self.assertEqual(self.raw_call("/api/cases/C-9999/letter.pdf")[0], 404)
+
+    def test_vocabulary_terms_are_safe_for_report_lines(self):
+        status, body = self.raw_call("/api/vocabulary")
+        vocab = json.loads(body)
+        self.assertEqual(status, 200)
+        for kind in ("conditions", "medications", "observations"):
+            self.assertTrue(vocab[kind])
+            for e in vocab[kind]:
+                self.assertFalse(any(x in f" {e['term']} " for x in (" and ", " or ", ",")), e)
+
     def test_spe_download_is_blocked_and_logged(self):
         status, body = self.call("/api/submit", json.dumps(SPE_REQUEST).encode())
         view = json.loads(body)

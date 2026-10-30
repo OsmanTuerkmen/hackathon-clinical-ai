@@ -169,6 +169,45 @@ class Desk:
         return next((c for c in reversed(self.cases) if c["case_id"] == case_id), None)
 
 
+# ---------------------------------------------------------------------- plain-language summaries
+def short_reason(d: dict) -> str:
+    """One sentence for the screen; the full legal reasoning stays in `reason`."""
+    outcome = d.get("outcome")
+    flags = d.get("prohibited") or []
+    purposes = []
+    for p in d.get("purposes") or []:
+        if p["label"] not in purposes:
+            purposes.append(p["label"])
+    purpose = ", ".join(purposes[:2])
+    if outcome == policy.REJECT:
+        f = flags[0] if flags else {"label": "a prohibited use", "point": "54"}
+        return f"Not allowed: {f['label']} (Art. {f['point']})."
+    if outcome == policy.NO_DECISION:
+        return (f"A staff member reviews this request: the purpose suggests {flags[0]['label']}." if flags else
+                "A staff member reviews this request: no allowed purpose was recognised.")
+    if outcome == policy.APPROVE_SPE:
+        return (f"Allowed purpose ({purpose}), and individual records are really needed, so access is granted in a "
+                "secure workspace.")
+    if "66" in (d.get("articles") or []):
+        return (f"Allowed purpose ({purpose}). Individual records are not needed for this question, so you get "
+                "anonymised statistics.")
+    return f"Allowed purpose ({purpose}). You get anonymised statistics."
+
+
+def receive_text(d: dict, fulfilment: dict) -> str:
+    outcome = d.get("outcome")
+    if outcome == policy.REJECT:
+        return "Nothing. No patient data was touched."
+    if outcome == policy.NO_DECISION:
+        return "Nothing yet. A staff member reviews the request."
+    if fulfilment.get("status") in ("NOT_PRODUCED", "WITHHELD"):
+        return "No numbers yet: the request could not be computed safely."
+    if outcome == policy.APPROVE_SPE:
+        return ("Access to pseudonymised records inside a secure workspace. Records cannot be downloaded; only "
+                "aggregate results that pass the privacy check may leave it.")
+    return "Anonymised statistics. You can download the table; it contains no patient records."
+
+
 # ---------------------------------------------------------------------- views
 def applicant_view(case: dict) -> dict:
     req = case.get("request") or {}
@@ -180,7 +219,8 @@ def applicant_view(case: dict) -> dict:
         "request_id": req.get("id"),
         "applicant": req.get("applicant"),
         "requested_as": req.get("requested_as"),
-        "decision": {k: d.get(k) for k in ("outcome", "label", "articles", "article_titles", "reason", "notes")}
+        "decision": ({k: d.get(k) for k in ("outcome", "label", "articles", "article_titles", "reason", "notes")}
+                     | {"summary": short_reason(d), "receive": receive_text(d, case.get("fulfilment") or {})})
         if d else None,
         "fulfilment": case.get("fulfilment"),
         "result": case.get("result"),

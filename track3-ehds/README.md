@@ -36,8 +36,8 @@ Then open **http://127.0.0.1:8000**. Use `python3 -m desk serve --port 8080` to 
 | Start the web app | `python3 -m desk` |
 | Evaluate R01–R10 three times against `expected.json` | `python3 -m desk evaluate` (add `--save` to write `reports/`) |
 | Same evaluation through the running web server | `python3 -m desk evaluate --url http://127.0.0.1:8000` |
-| Unit and integration tests (92) | `python3 -m unittest discover -s tests -t .` |
-| Browser end-to-end test (27 checks, needs Node ≥ 22 and Chrome) | `node tests/e2e/browser_flow.mjs http://127.0.0.1:8000` |
+| Unit and integration tests (94) | `python3 -m unittest discover -s tests -t .` |
+| Browser end-to-end test (28 checks, needs Node ≥ 22 and Chrome) | `node tests/e2e/browser_flow.mjs http://127.0.0.1:8000` |
 | Process one file on the command line | `python3 -m desk run new_requests/N01.json [--staff]` |
 | Record the silent demo video, about 50 s, 1920×1080 (macOS, Chrome) | `node tools/record_demo.mjs http://127.0.0.1:8000 doccess-demo.mp4` |
 
@@ -138,6 +138,14 @@ and only after the answers have been produced. No runtime code path reads it.
   - a collapsed *Advanced* panel shows or accepts raw JSON (for the jury).
 
   Ctrl/⌘ + Enter submits.
+- **Guided assistant:** instead of writing definitions, applicants can pick who to count (age group, sex), an
+  optional condition, medication or measurement, and how to group the numbers. The assistant writes the
+  definition lines in the challenge grammar, using codes from the vocabulary, and the same rules engine
+  computes them. *Write it myself* keeps free-text definitions for anything unusual.
+- **Short decision and decision letter:** the screen shows the decision, a one-sentence reason and what the
+  applicant receives. The full legal reasoning and the processing checks are collapsible. *Decision letter
+  (PDF)* downloads the complete decision; it is generated with a small standard-library PDF writer
+  ([desk/letter.py](desk/letter.py)).
 - **Decision:** the banner shows an icon, the cited articles (hover for a one-line summary of each article),
   a plain-language reason, the answer time, whether patient data was queried and the number of privacy
   checks passed.
@@ -362,7 +370,7 @@ CSV files directly. That calculation shares no code with the desk.
   - submitting without a session is refused;
   - the identity is recorded in the case;
   - open redirects, code reuse and use after sign-out are rejected.
-- `tests/e2e/browser_flow.mjs`: headless Chrome through the DevTools protocol (no npm packages), 27 checks.
+- `tests/e2e/browser_flow.mjs`: headless Chrome through the DevTools protocol (no npm packages), 28 checks.
   It includes submitting without sign-in (blocked) and the full ID Austria redirect flow, plus:
   - the demo flow: R10 rejection, R08/R01 statistics, R05 SPE with blocked download, access log and an
     aggregate analysis inside the SPE, N01,

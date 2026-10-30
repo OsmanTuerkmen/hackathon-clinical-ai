@@ -222,6 +222,9 @@ try {
     const jsonVisible = await evaluate(`document.querySelector('#json-advanced').open`);
     await evaluate(`(() => {
       document.querySelector('#clear-btn').click();
+      document.querySelector('#mode-manual').click();
+      document.querySelector('#f-defs').replaceChildren();
+      document.querySelector('#add-def').click();
       const set = (sel, v) => { const e = document.querySelector(sel); e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); };
       set('#f-name', 'Dr. Form Test'); set('#f-org', 'University hospital research unit'); set('#f-country', 'AT');
       set('#f-purpose', 'Scientific research on heart failure care to improve treatment quality.');
@@ -237,6 +240,30 @@ try {
     if (jsonVisible || rows.length !== 3) throw new Error(`json visible=${jsonVisible} rows=${JSON.stringify(rows)}`);
     await shot("08-form-request");
     return `JSON hidden; ${rows.join(", ")}`;
+  });
+  await step("Guided assistant builds a correct request; short summary and PDF letter", async () => {
+    await evaluate(`(() => {
+      document.querySelector('#clear-btn').click();
+      const set = (sel, v) => { const e = document.querySelector(sel); e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); };
+      set('#f-purpose', 'Research on type 2 diabetes to plan prevention programmes.');
+      set('#f-question', 'How many adults have type 2 diabetes in each region?');
+      const cond = document.querySelector('#as-cond');
+      cond.value = [...cond.options].find(o => o.text.startsWith('Type 2 diabetes')).value;
+      cond.dispatchEvent(new Event('change', { bubbles: true }));
+      window.__prevCase = ${text("#meta")};
+      document.querySelector('#submit-btn').click();
+    })()`);
+    await waitFor(`${text("#meta")} !== window.__prevCase && ${text("#meta")}.includes("Request WEB-")`, 30000, "assistant answer");
+    const wien = await evaluate(`[...document.querySelectorAll('#stat-table tbody tr')].map(tr => [...tr.cells].map(c => c.innerText.trim())).find(r => r[0] === 'Wien')`);
+    if (!wien || wien.slice(1).join("|") !== "3 247|263|8.1") throw new Error(JSON.stringify(wien));
+    const summary = await evaluate(text("#decision-summary"));
+    const sentence = await evaluate(text("#result-sentence"));
+    const pdf = await evaluate(`fetch(document.querySelector('#pdf-btn').href).then(async r => r.headers.get('content-type') + '|' + (await r.text()).slice(0, 5))`);
+    if (!summary.startsWith("Allowed purpose") || !sentence.includes("Highest share: Tirol (8.9 %)") || pdf !== "application/pdf|%PDF-") {
+      throw new Error(`${summary} | ${sentence} | ${pdf}`);
+    }
+    await shot("09-guided-assistant");
+    return `Wien ${wien.slice(1).join(" / ")}; "${sentence}"; PDF ok`;
   });
   await step("Long purpose text is fully visible or scrollable", async () => {
     await evaluate(`document.querySelector('[data-id="R05"]').click()`);

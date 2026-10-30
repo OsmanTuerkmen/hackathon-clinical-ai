@@ -140,6 +140,7 @@ $("#request-filter").addEventListener("input", renderRequestList);
 // desk). Power users can still upload a file or open the advanced JSON panel.
 const form = { id: null, edited: false, keepRawJson: false };
 const auth = { token: sessionStorage.getItem("doccess.token"), identity: null };  // simulated ID Austria session
+const assistant = { vocab: null, mode: "guided" };  // guided assistant that writes the definition lines
 const jsonBox = $("#request-json");
 const advanced = $("#json-advanced");
 
@@ -184,6 +185,7 @@ function requestToForm(r) {
   $("#f-defs").replaceChildren();
   const defs = Array.isArray(r.definitions) ? r.definitions.filter(d => typeof d === "string") : [];
   (defs.length ? defs : [""]).forEach(d => addDefRow(d));
+  if (defs.length) setDefsMode("manual");  // examples, uploads and JSON bring their own definitions
   ["#f-purpose", "#f-question"].forEach(s => autoGrow($(s)));
   form.id = r.id ? String(r.id) : null;
   form.edited = false;
@@ -246,18 +248,106 @@ $("#request-form").addEventListener("input", (ev) => {
 $("#request-form").addEventListener("change", markEdited);
 $("#add-def").addEventListener("click", () => addDefRow("", true));
 $("#template-def").addEventListener("click", () => {
-  [...document.querySelectorAll("#f-defs .def-row")].filter(r => !r.querySelector("textarea").value.trim()).forEach(r => r.remove());
+  $("#f-defs").replaceChildren();
   ["Type 2 diabetes = any condition with an ICD-10 code starting with E11.",
     "Adult = aged 18 or older on 31 December 2025.",
     "Report per region: adults, adults with type 2 diabetes and the share of adults with type 2 diabetes (%)."]
     .forEach(d => addDefRow(d));
+  setDefsMode("manual");
   markEdited();
-  $("#editor-hint").textContent = "Template inserted: replace the term, code and groups with what you need.";
+  $("#editor-hint").textContent = "Example inserted: replace the term, code and groups with what you need.";
 });
 document.querySelectorAll('input[name="f-type"]').forEach(i => i.addEventListener("change", () => {
   // the two choices set the matching format; "More options" can still change it (e.g. an application for statistics)
-  if (i.checked) $("#f-format").value = i.value === "health data request" ? "anonymised statistics" : "pseudonymised records";
+  if (!i.checked) return;
+  $("#f-format").value = i.value === "health data request" ? "anonymised statistics" : "pseudonymised records";
+  if (i.value !== "health data request" && assistant.mode === "guided") {
+    setDefsMode("manual");
+    $("#editor-hint").textContent = "For records in a secure workspace, define the group as “Cohort = …” and name " +
+      "the records you need in your question.";
+  }
 }));
+
+// ------------------------------------------------------------------ guided assistant (writes the definition lines)
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const codeList = c => (c.length > 1 ? `${c.slice(0, -1).join(", ")} or ${c[c.length - 1]}` : c[0]);
+const AGE_RULE = { adults: "aged 18 or older on 31 December 2025", children: "aged under 18 on 31 December 2025",
+  seniors: "aged 65 or older on 31 December 2025" };
+const AGE_BANDS = { all: "0-17, 18-49, 50-64, 65+", adults: "18-49, 50-64, 65+", children: "0-4, 5-11, 12-17",
+  seniors: "65-74, 75-84, 85+" };
+const POP_NAMES = {  // plain names for the group, reused as table headings
+  all: { any: null, female: "Women", male: "Men" },
+  adults: { any: "Adults", female: "Adult women", male: "Adult men" },
+  children: { any: "Children", female: "Girls", male: "Boys" },
+  seniors: { any: "Seniors", female: "Senior women", male: "Senior men" },
+};
+
+function assistantLines() {
+  const v = assistant.vocab;
+  if (!v) return [];
+  const who = $("#as-who").value;
+  const sex = { female: "female ", male: "male " }[$("#as-sex").value] || "";
+  const cond = v.conditions[$("#as-cond").value];
+  const med = v.medications[$("#as-med").value];
+  const meas = v.observations[$("#as-meas").value];
+  const dims = [...document.querySelectorAll("#as-groups input:checked")].map(i => i.value);
+  const lines = [];
+  const name = POP_NAMES[who][$("#as-sex").value];
+  let pop = "patients";
+  if (name) {
+    lines.push(`${name} = ${sex}patients${AGE_RULE[who] ? ` ${AGE_RULE[who]}` : ""}.`);
+    pop = name.toLowerCase();
+  }
+  if (cond) lines.push(`${cap(cond.term)} = any condition with an ICD-10 code starting with ${codeList(cond.codes)}.`);
+  if (med) {
+    lines.push(`${cap(med.term)} = ATC code starting with ${codeList(med.codes)}.`);
+    lines.push("A medication is active on 31 December 2025 if start_date is on or before that day and end_date is " +
+      "empty or on or after that day.");
+  }
+  if (meas) lines.push(`Use the latest ${meas.term} (LOINC ${meas.codes[0]}) per patient.`);
+  if (dims.includes("age band")) lines.push(`Age bands on 31 December 2025: ${AGE_BANDS[who]}.`);
+  const numbers = [pop];
+  if (cond) numbers.push(`${pop} with ${cond.term}`, `the share of ${pop} with ${cond.term} (%)`);
+  if (med && cond) numbers.push(`of them with an active ${med.term}`, "that share (%)");
+  if (med && !cond) numbers.push(`${pop} with an active ${med.term}`, `the share of ${pop} with an active ${med.term} (%)`);
+  if (meas) numbers.push(`mean ${meas.term}`);
+  lines.push(`Report per ${dims.length ? dims.join(" and ") : "region"}: ${numbers.join(", ")}, one decimal.`);
+  return lines;
+}
+
+function applyAssistant() {
+  const lines = assistantLines();
+  if (!lines.length) return;
+  $("#f-defs").replaceChildren();
+  lines.forEach(l => addDefRow(l));
+  $("#as-preview").replaceChildren(...lines.map(l => el("li", { text: l })));
+  markEdited();
+}
+
+function setDefsMode(mode) {
+  assistant.mode = mode;
+  $("#mode-guided").classList.toggle("active", mode === "guided");
+  $("#mode-manual").classList.toggle("active", mode === "manual");
+  $("#assistant").classList.toggle("hidden", mode !== "guided");
+  $("#manual-defs").classList.toggle("hidden", mode !== "manual");
+  if (mode === "guided") applyAssistant();
+  else requestAnimationFrame(growAll);
+}
+
+async function initAssistant() {
+  const { body } = await api("/api/vocabulary");
+  if (!body) return;
+  assistant.vocab = body;
+  const fill = (sel, items, codes) => $(sel).append(...items.map((e, i) =>
+    el("option", { value: String(i), text: `${e.label} (${codes(e)})` })));
+  fill("#as-cond", body.conditions, e => `ICD-10 ${e.codes.join(", ")}`);
+  fill("#as-med", body.medications, e => `ATC ${e.codes.join(", ")}`);
+  fill("#as-meas", body.observations, e => `LOINC ${e.codes[0]}`);
+  if (assistant.mode === "guided") applyAssistant();
+}
+$("#assistant").addEventListener("change", (ev) => { ev.stopPropagation(); applyAssistant(); });
+$("#mode-guided").addEventListener("click", () => setDefsMode("guided"));
+$("#mode-manual").addEventListener("click", () => setDefsMode("manual"));
 
 $("#file-input").addEventListener("change", async (ev) => {
   const file = ev.target.files[0];
@@ -288,6 +378,7 @@ $("#format-btn").addEventListener("click", () => {
 });
 $("#clear-btn").addEventListener("click", () => {
   requestToForm({});
+  setDefsMode("guided");
   jsonBox.value = "";
   selectExample(null);
   $("#editor-hint").textContent = "Ctrl/⌘ + Enter submits. Only the request text is processed; patient-level data never leaves the desk.";
@@ -460,7 +551,9 @@ function renderAnswer(view) {
     $("#decision-label").textContent = "Request not valid";
     $("#decision-code").textContent = "INVALID_REQUEST";
     $("#reason").textContent = "The request does not follow the expected JSON format, so it was not assessed.";
+    $("#decision-summary").textContent = "The request is incomplete or not in the expected format.";
     $("#receive").textContent = "";
+    $("#pdf-btn").classList.add("hidden");
     result.append(el("div", { class: "callout amber" }, el("h3", {}, icon("alert"), "Problems found"),
       el("ul", {}, (view.errors || []).map(e => el("li", { text: e })))));
     $("#result-title").textContent = "No answer";
@@ -477,8 +570,11 @@ function renderAnswer(view) {
     $("#articles").append(el("span", { class: "chip", title: ARTICLE_HELP[a] || "" },
       el("b", { text: `Art. ${a}` }), ` · ${d.article_titles[a] || ""}`));
   }
+  $("#decision-summary").textContent = d.summary;
   $("#reason").textContent = d.reason;
-  $("#receive").replaceChildren(el("b", { text: "What you receive: " }), receiveText(d, view.fulfilment || {}));
+  $("#receive").replaceChildren(el("b", { text: "You receive: " }), d.receive);
+  $("#pdf-btn").classList.remove("hidden");
+  $("#pdf-btn").setAttribute("href", `/api/cases/${view.case_id}/letter.pdf`);
   for (const n of d.notes || []) $("#decision-notes").append(el("li", { text: n }));
 
   const ps = view.privacy_summary || {};
@@ -526,25 +622,26 @@ function renderAnswer(view) {
   }
 }
 
-// Plain-language summary of what the applicant gets (and may download) for each outcome.
-function receiveText(d, f) {
-  if (d.outcome === "REJECT") return "nothing. The purpose is prohibited (Art. 54), so no data is released.";
-  if (d.outcome === "NO_DECISION") return "nothing yet. A staff member reviews the request.";
-  if (d.outcome === "APPROVE_SPE") {
-    return "access to pseudonymised records inside the secure processing environment (Art. 73). Records cannot be " +
-      "downloaded; only aggregate results that pass the disclosure check may leave it.";
+// One plain sentence above the table: the top group and how many groups are hidden for privacy.
+function summarySentence(res) {
+  const pct = [...res.columns].reverse().find(c => c.type === "percent");
+  const col = pct || res.columns.find(c => c.type === "count") || res.columns[0];
+  let best = null;
+  for (const r of res.rows) {
+    const v = r.cells[col.id];
+    if (typeof v === "number" && (!best || v > best.v)) best = { v, g: r.label };
   }
-  if (f.status === "NOT_PRODUCED" || f.status === "WITHHELD") {
-    return "no numbers yet: the request could not be computed safely (see below).";
-  }
-  return (d.articles || []).includes("66")
-    ? "anonymised statistics instead of records, because the access application does not explain why statistics " +
-      "are not enough (Art. 66). You can download the table; it contains no patient records."
-    : "anonymised statistics (Art. 69). You can download the table; it contains no patient records.";
+  const hidden = res.rows.filter(r => res.columns.some(c => isMasked(r.cells[c.id]))).length;
+  const parts = [];
+  if (best) parts.push(`Highest ${pct ? "share" : "number"}: ${best.g} (${pct ? `${best.v.toFixed(1)} %` : fmt(best.v)}).`);
+  parts.push(hidden ? `${hidden} of ${res.rows.length} groups are partly hidden because fewer than 10 patients were involved.`
+    : `All ${res.rows.length} groups are shown in full.`);
+  return parts.join(" ");
 }
 
 function renderStatistics(root, res, view) {
   $("#result-title").textContent = "Your anonymised statistics";
+  root.append(el("p", { class: "result-sentence", id: "result-sentence", text: summarySentence(res) }));
 
   const max = {};
   for (const c of res.columns) {
@@ -860,5 +957,6 @@ function renderEvaluation(rep) {
 // ------------------------------------------------------------------ start
 setTimeout(() => document.body.classList.remove("intro"), 1800);  // the opening animation plays once
 initAuth();
+initAssistant();
 loadRequests();
 api("/api/evaluation").then(({ body }) => { if (body && body.metrics) renderEvaluation(body); });

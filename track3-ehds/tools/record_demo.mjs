@@ -95,6 +95,13 @@ async function type(selector, text) {  // fast typing effect, three characters p
   }
   await sleep(150);
 }
+async function choose(selector, optionTextStart) {  // pick a <select> option by its visible text
+  await pointAt(selector);
+  await evaluate(`(() => { const s = document.querySelector(${JSON.stringify(selector)});
+    s.value = [...s.options].find(o => o.text.startsWith(${JSON.stringify(optionTextStart)})).value;
+    s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+  await sleep(500);
+}
 async function scrollTo(selector, block = "start") {
   await evaluate(`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({ block: '${block}', behavior: 'smooth' })`);
   await sleep(650);
@@ -160,20 +167,21 @@ async function demo() {
   await pointAt("#download-result");
   await sleep(1300);
 
-  // 5. A new request written in the form (derived value: length of stay)
+  // 5. A new request built with the guided assistant, then the decision letter
   await scrollTo("#request-panel");
   await evaluate(`document.querySelector('#examples').open = false; document.querySelector('#clear-btn').click()`);
   await sleep(300);
-  await type("#f-purpose", "Research on hospital efficiency to plan beds.");
-  await type("#f-question", "Mean length of inpatient stays in 2025 by hospital?");
-  await type("#f-defs .def-row:last-child .def-input", "Inpatient stay = encounter with type 'inpatient'.");
-  await click("#add-def");
-  await type("#f-defs .def-row:last-child .def-input", "Count stays whose start_date is in 2025.");
-  await click("#add-def");
-  await type("#f-defs .def-row:last-child .def-input", "Report per hospital: inpatient stays and mean length of stay.");
+  await type("#f-purpose", "Research on heart failure care to plan hospital capacity.");
+  await type("#f-question", "How many adults have heart failure, by hospital?");
+  await choose("#as-cond", "Heart failure");
+  await click('#as-groups input[value="region"]');
+  await click('#as-groups input[value="hospital"]');
+  await sleep(300);
   await submitAndWait("Request WEB-");
-  await pointAt("#stat-table");
+  await pointAt("#result-sentence");
   await sleep(1300);
+  await pointAt("#pdf-btn");
+  await sleep(900);
 
   // 6. Staff view and the evaluation metrics
   await click("#meta a");

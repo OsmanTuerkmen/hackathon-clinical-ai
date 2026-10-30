@@ -26,7 +26,9 @@ from urllib.parse import unquote, urlparse
 from . import __version__
 from .config import HOST, NEW_REQUESTS_DIR, PORT, REQUESTS_DIR, STATE_DIR, WEB_DIR
 from .identity import IdentityError, IdentityProvider
+from .letter import decision_letter
 from .pipeline import Desk, applicant_view, staff_view
+from .vocabulary import catalog as vocabulary_catalog
 from .request_schema import MAX_BYTES
 
 STATIC_TYPES = {".html", ".js", ".css", ".svg", ".png", ".ico", ".json"}
@@ -86,10 +88,12 @@ def make_handler(app: App):
                                  f"{args[1] if len(args) > 1 else ''}\n")
 
         # -------------------------------------------------------------- helpers
-        def _send(self, status: int, body: bytes, ctype: str):
+        def _send(self, status: int, body: bytes, ctype: str, extra: dict | None = None):
             self.send_response(status)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
+            for k, v in (extra or {}).items():
+                self.send_header(k, v)
             for k, v in SECURITY_HEADERS.items():
                 self.send_header(k, v)
             self.end_headers()
@@ -193,6 +197,15 @@ def make_handler(app: App):
             if m:
                 case = desk.get_case(m.group(1))
                 return self._json(200, staff_view(case, desk.spe)) if case else self._json(404, {"error": "unknown case"})
+            m = re.fullmatch(r"/api/cases/(C-\d{4,})/letter\.pdf", path)
+            if m:
+                case = desk.get_case(m.group(1))
+                if not case:
+                    return self._json(404, {"error": "unknown case"})
+                return self._send(200, decision_letter(case), "application/pdf",
+                                  {"Content-Disposition": f'attachment; filename="doccess-decision-{m.group(1)}.pdf"'})
+            if path == "/api/vocabulary":
+                return self._json(200, vocabulary_catalog())
             m = re.fullmatch(r"/api/spe/([a-z0-9-]+)/download(?:/([a-z]+))?", path)
             if m:
                 return self._download(m.group(1), m.group(2))
