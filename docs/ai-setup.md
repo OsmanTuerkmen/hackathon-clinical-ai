@@ -52,6 +52,12 @@ Restricted ElevenLabs keys need **Text to Speech: Access** for generation and
 `docs/demo/voice/` by text, voice, model, and settings so reruns do not spend
 credits again.
 
+Gemini speech can be generated without ElevenLabs using
+`python tools/voiceover.py --provider gemini`. It defaults to the `Charon`
+prebuilt voice and also caches a `Kore` version of the first row for comparison.
+The Gemini path transcribes each clip and stops rather than cutting speech when
+the slot cannot be met at 1.10x.
+
 ## Official documentation
 
 Checked 2026-10-30:
