@@ -31,7 +31,7 @@ MODEL = "eleven_multilingual_v2"
 # https://ui.elevenlabs.io/docs/components/voice-picker
 DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"
 GEMINI_TTS_MODEL = "gemini-3.8-flash-tts"
-GEMINI_TEXT_MODEL = "gemini-3.8-flash"
+GEMINI_TEXT_MODEL = "gemini-3.1-flash-lite"
 DEFAULT_GEMINI_VOICE = "Charon"
 ALTERNATE_GEMINI_VOICE = "Kore"
 ELEVENLABS_API = "https://api.elevenlabs.io/v1"
@@ -580,12 +580,17 @@ def _transcribe_gemini(path, expected_text, key):
 
 
 def _words(text):
+    text = re.sub(r"(?<=\d)[.,](?=\d{3}(?:\D|$))", "", text)
     normalized = re.sub(r"[^\w]+", " ", text.casefold(), flags=re.UNICODE)
     tokens = normalized.split()
-    return [
-        token.replace(".", "").replace(",", "")
-        for token in tokens
-    ]
+    number_words = {
+        "null": "0", "eins": "1", "zwei": "2", "drei": "3", "vier": "4",
+        "fünf": "5", "sechs": "6", "sieben": "7", "acht": "8", "neun": "9",
+        "zehn": "10", "elf": "11", "zwölf": "12", "dreizehn": "13",
+        "vierzehn": "14", "fünfzehn": "15", "sechzehn": "16",
+        "siebzehn": "17", "achtzehn": "18", "neunzehn": "19", "zwanzig": "20",
+    }
+    return [number_words.get(token, token) for token in tokens]
 
 
 def transcript_score(expected, actual):
@@ -607,7 +612,8 @@ def _generate_gemini(rows, args, key):
     voice_settings = {"response_modalities": ["AUDIO"]}
     generated = []
     variants = [(row, args.voice, False) for row in rows]
-    variants.append((rows[0], args.alternate_first_voice, True))
+    if args.alternate_first_voice:
+        variants.append((rows[0], args.alternate_first_voice, True))
 
     with tempfile.TemporaryDirectory(prefix="accessdesk-gemini-voice-") as temp:
         temp_path = Path(temp)
@@ -691,7 +697,7 @@ def main(argv=None):
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--list-voices", action="store_true")
     parser.add_argument("--voice")
-    parser.add_argument("--alternate-first-voice", default=ALTERNATE_GEMINI_VOICE)
+    parser.add_argument("--alternate-first-voice")
     parser.add_argument("--model")
     parser.add_argument("--stability", type=float, default=SPEAKER_SETTINGS["stability"])
     parser.add_argument("--similarity", type=float, default=SPEAKER_SETTINGS["similarity_boost"])

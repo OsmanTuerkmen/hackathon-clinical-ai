@@ -97,6 +97,7 @@ Shares and cohorts
 The last definition is always the report sentence:
 - Report per <region | hospital | age band | sex | year>[ and <second dimension>]: <measure>, <measure> and <measure>, one decimal.
   Measures look like: "adults with <condition>", "how many of them have <X>", "how many of them have no active <drug>", "that share in %", "% with an active <drug>", "adults with <condition> who have a <measurement> value and their mean <measurement>", "<name> stays".
+  Thresholds on the latest measurement value ARE supported: "how many of them have a <measurement> above <number>" (also: below, at least). Example: "Report per region: women with breast cancer who have a BMI value, how many of them have a BMI above 30, and that share in %, one decimal."
 - For an access application that needs individual-level records: Report the size of the cohort you would make available.
 
 Rules

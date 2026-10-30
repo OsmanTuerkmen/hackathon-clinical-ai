@@ -19,7 +19,7 @@ default when `ANTHROPIC_API_KEY` is present. Gemini is selected when
 ACCESSDESK_AI_PROVIDER=gemini
 ```
 
-The default model is `gemini-3.8-flash`; `ACCESSDESK_AI_MODEL` overrides it.
+The default model is `gemini-3.1-flash-lite`; `ACCESSDESK_AI_MODEL` overrides it.
 The current Google pricing page lists free input and output tokens for this
 model on eligible free-tier projects, subject to model quota and rate limits.
 Google notes that free-tier content may be used to improve its products; do not

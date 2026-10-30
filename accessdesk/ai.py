@@ -12,10 +12,10 @@ from . import ai_spec
 from .atomic import write_json_atomic
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-GEMINI_MODEL = "gemini-3.8-flash"
+GEMINI_MODEL = "gemini-3.1-flash-lite"
 GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models"
-# Verified 2026-10-30: stable model and free-tier tokens per
-# https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash and
+# Verified 2026-10-30: gemini-3.1-flash-lite is stable and free-tier per
+# https://ai.google.dev/gemini-api/docs/models and
 # https://ai.google.dev/gemini-api/docs/pricing.
 
 

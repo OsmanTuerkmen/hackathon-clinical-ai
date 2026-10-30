@@ -236,7 +236,7 @@ def test_gemini_rest_request_parses_structured_output_and_uses_cache(tmp_path, m
     request, timeout = requests[0]
     assert request.full_url == (
         "https://generativelanguage.googleapis.com/v1beta/models/"
-        "gemini-3.8-flash:generateContent"
+        "gemini-3.1-flash-lite:generateContent"
     )
     assert request.get_header("X-goog-api-key") == "test-gemini-key"
     assert "test-gemini-key" not in request.full_url
@@ -528,4 +528,4 @@ def test_info_and_settings_report_the_selected_provider_and_model(tmp_path, data
     settings = client.get("/api/settings").json()["ai"]
 
     assert info["provider"] == settings["provider"] == "gemini"
-    assert info["model"] == settings["model"] == "gemini-3.8-flash"
+    assert info["model"] == settings["model"] == "gemini-3.1-flash-lite"

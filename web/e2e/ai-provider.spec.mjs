@@ -7,7 +7,7 @@ test("Gemini provider and model are named in the shell and opinion toggletip", a
     body.ai = {
       enabled: true,
       provider: "gemini",
-      model: "gemini-3.8-flash",
+      model: "gemini-3.1-flash-lite",
       reason: null,
     };
     await route.fulfill({ response, json: body });
@@ -19,7 +19,7 @@ test("Gemini provider and model are named in the shell and opinion toggletip", a
       status: {
         enabled: true,
         provider: "gemini",
-        model: "gemini-3.8-flash",
+        model: "gemini-3.1-flash-lite",
         reason: null,
       },
       opinion: {
@@ -35,12 +35,12 @@ test("Gemini provider and model are named in the shell and opinion toggletip", a
   });
 
   await page.goto("/#/staff/case/R01");
-  await expect(page.locator(".app-header__ai").first()).toHaveText("KI an · Gemini gemini-3.8-flash");
+  await expect(page.locator(".app-header__ai").first()).toHaveText("KI an · Gemini gemini-3.1-flash-lite");
   await page.getByRole("tab", { name: "Entscheidung" }).click();
-  await expect(page.getByText("KI · Gemini gemini-3.8-flash")).toBeVisible();
+  await expect(page.getByText("KI · Gemini gemini-3.1-flash-lite")).toBeVisible();
 
   const toggle = page.locator(".cds--toggletip-button");
-  await expect(toggle).toHaveAttribute("aria-label", "KI-Hinweis · Gemini gemini-3.8-flash");
+  await expect(toggle).toHaveAttribute("aria-label", "KI-Hinweis · Gemini gemini-3.1-flash-lite");
   await expect(page.locator(".cds--toggletip-content"))
-    .toContainText("Gemini gemini-3.8-flash gibt nur eine Zweitmeinung");
+    .toContainText("Gemini gemini-3.1-flash-lite gibt nur eine Zweitmeinung");
 });
