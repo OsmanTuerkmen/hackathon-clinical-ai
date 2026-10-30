@@ -23,8 +23,8 @@ Task 11 abgeschlossen (3f362e6): FastAPI create_app und lazy app-Export, health/
 ## Aktuell / nächste Schritte
 
 - Task 12 abgeschlossen und task-reviewt: web/index.html, app.js, styles.css; vier Smoke-Tests, volle Suite 522 passed in 36.04s, zuletzt 57 echte Browserchecks einschließlich Desktop/375 px, R05 mit 403/Audit und XSS/Race. R01-Screenshots unter docs/img/. Commit 8c38028. M3-Schnittstellenreview Approved ohne Critical/Important. Der kleine Initialladungs-Race der Inbox wurde mit Browser-TDD behoben und separat nachreviewt. Eigener Server http://127.0.0.1:62499, Session 92712, PID 16260, EHDS_LLM=off, var/task12-browser. Bei späteren Python-Änderungen eigenen Server neu starten.
-- Task 13 läuft durch task13_eval: unabhängige Referenz und TestClient-Eval, eigene Runtime unter var/eval (nicht var/task12-browser). Danach Tasks 14 und 15: unabhängige stdlib-Referenz plus Eval über TestClient (3 Läufe,5Metriken), mindestens8 eigene Anträge (Plan sieht10vor), englisches README mit Mermaid/Metriken/Grenzen, Sicherheitsprüfung und Abschluss nach PROMPT§7.
-- Fertig erst bei echten Eval-Zielen: Entscheidungen10/10, Zahlen6/6, Leaks0, Konsistenz10/10, langsamsterAntrag<60s. Eval-Metriken sind noch nicht erstellt.
+- Task 13 ist implementiert und nachreviewt: unabhängige stdlib-Referenz 6/6, TestClient-Eval mit eigener Runtime unter var/eval. Nächste Tasks 14 und 15: unabhängige stdlib-Referenz plus Eval über TestClient (3 Läufe,5Metriken), mindestens8 eigene Anträge (Plan sieht10vor), englisches README mit Mermaid/Metriken/Grenzen, Sicherheitsprüfung und Abschluss nach PROMPT§7.
+- Fertig erst bei echten Eval-Zielen: Entscheidungen10/10, Zahlen6/6, Leaks0, Konsistenz10/10, langsamsterAntrag<60s. eval/results.md belegt echte Kernziele 10/10,6/6,0,10/10,max0.506s und CSV-Referenz6/6. Der SPE-Prüfer verwendet nach Reviewkorrektur unabhängige CSV-/Vertragsspalten und Zeilenmultiplizität; 16 sichere Regressionen sowie Header-only-Probe, Nachreview ohne Restbefund. Letzte volle Suite594 passed46.53s, 72 gezielte Eval-Tests. Eigene Anträge fehlen weiterhin (Task14 als Nächstes).
 
 ## Skills und Browser
 

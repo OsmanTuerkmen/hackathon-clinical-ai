@@ -81,3 +81,8 @@ Review-Ergänzung: Jedes Codefeld wird vor Übernahme und beim Cache-Lesen an se
 
 Status: angenommen und umgesetzt (Task 12, 2026-10-30).
 Die UI nutzt lokale Assets und DOM-Textknoten statt HTML-Strings aus Anträgen oder API-Antworten. AbortController und Versionszähler verhindern, dass verspätete Antworten einen neu gewählten Antrag überschreiben. Abbruch einer Browseranfrage ist keine Zusage, bereits gestartete Serverarbeit hart abzubrechen. Browserprüfungen erfassen SPE-Funktionen nur als Bool-/Anzahlnachweise; Doku-Screenshots enthalten ausschließlich anonymisierte Statistik.
+
+## ADR-012: Unabhängiger Eval-Vertrag statt Selbstvergleich
+
+Status: angenommen und umgesetzt (Task 13, 2026-10-30).
+Die Referenz rechnet ausschließlich aus Original-CSVs mit der Standardbibliothek. Eval prüft jede der drei HTTP-Antworten und scannt auch Fehlantworten. SPE-Spalten stammen als Erwartung unabhängig aus CSV-Headern beziehungsweise dem ausdrücklich erlaubten cohort-/patients-Schema; tatsächliche DB-Spalten definieren keine Erwartung. Record-Vergleich erhält Zeilenmultiplizität. Ein eigener Runtime-Unterordner verhindert Überschneidungen mit der laufenden Browser-Demo. Bei fehlender IANA-Datenbank berechnet ein durch DST-Grenztests abgesicherter stdlib-Fallback die aktuelle Europe/Vienna-Zeit; dessen EU-Zeitregeln müssten bei künftigen gesetzlichen Änderungen angepasst werden.
