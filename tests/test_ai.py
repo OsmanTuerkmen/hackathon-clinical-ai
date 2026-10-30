@@ -244,6 +244,7 @@ def test_gemini_rest_request_parses_structured_output_and_uses_cache(tmp_path, m
     assert body["systemInstruction"]["parts"] == [{"text": "system prompt"}]
     assert body["contents"] == [{"role": "user", "parts": [{"text": "request text"}]}]
     assert body["generationConfig"]["responseJsonSchema"] == schema
+    assert body["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "low"}
     assert timeout == 30
 
     monkeypatch.setenv("ACCESSDESK_AI_MODEL", "gemini-3.6-flash")
@@ -265,6 +266,45 @@ def test_gemini_rest_request_parses_structured_output_and_uses_cache(tmp_path, m
     assert fourth["provider"] == "claude"
     assert fourth["cached"] is False
     assert len(client.messages.calls) == 1
+
+
+def test_gemini_draft_uses_the_extended_timeout(tmp_path, monkeypatch):
+    from accessdesk import ai
+
+    monkeypatch.setenv("ACCESSDESK_AI", "on")
+    monkeypatch.setenv("ACCESSDESK_AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    assistant = Assistant(tmp_path)
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps({
+                "candidates": [{
+                    "content": {"parts": [{"text": '{"answer": true}'}]},
+                    "finishReason": "STOP",
+                }],
+            }).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        captured.update({"request": request, "timeout": timeout})
+        return FakeResponse()
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", fake_urlopen)
+    result = assistant.call("draft", "system", "user", {"type": "object"})
+
+    assert result["value"] == {"answer": True}
+    assert captured["timeout"] == 60
+    assert json.loads(captured["request"].data)["generationConfig"]["thinkingConfig"] == {
+        "thinkingLevel": "low",
+    }
 
 
 def test_gemini_quota_error_returns_a_clear_reason_without_raising(tmp_path, monkeypatch):

@@ -294,7 +294,9 @@ def _retry_after_seconds(error):
     return 7.0
 
 
-def _gemini_request(model, key, payload, attempts=3):
+def _gemini_request(
+    model, key, payload, attempts=3, timeout=30, retry_timeout=False,
+):
     global _gemini_last_request
     url = f"{GEMINI_API}/{urllib.parse.quote(model, safe='.-')}:generateContent"
     request = urllib.request.Request(
@@ -308,21 +310,26 @@ def _gemini_request(model, key, payload, attempts=3):
         if _gemini_last_request and wait > 0:
             time.sleep(wait)
         try:
-            with urllib.request.urlopen(request, timeout=30) as response:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
                 _gemini_last_request = time.monotonic()
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             _gemini_last_request = time.monotonic()
-            if exc.code == 429 and attempt + 1 < attempts:
+            if exc.code in (429, 503) and attempt + 1 < attempts:
                 time.sleep(_retry_after_seconds(exc))
                 continue
-            if exc.code == 429:
-                raise VoiceoverError("Gemini TTS quota/rate limit remains exceeded after 3 attempts.") from None
+            if exc.code in (429, 503):
+                raise VoiceoverError(
+                    f"Gemini API returned HTTP {exc.code} after {attempts} attempts."
+                ) from None
             if exc.code in (401, 403):
                 raise VoiceoverError(f"Gemini API key was rejected (HTTP {exc.code}).") from None
             raise VoiceoverError(f"Gemini API request failed (HTTP {exc.code}).") from None
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             _gemini_last_request = time.monotonic()
+            if retry_timeout and attempt + 1 < attempts:
+                time.sleep(7.0)
+                continue
             raise VoiceoverError(
                 f"Gemini API request failed: {exc.reason if hasattr(exc, 'reason') else exc}"
             ) from None
@@ -554,7 +561,9 @@ def _transcribe_gemini(path, expected_text, key):
             },
         },
     }
-    response = _gemini_request(GEMINI_TEXT_MODEL, key, payload)
+    response = _gemini_request(
+        GEMINI_TEXT_MODEL, key, payload, attempts=2, timeout=60, retry_timeout=True,
+    )
     try:
         text = next(
             part["text"]

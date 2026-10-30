@@ -1,159 +1,109 @@
 1
-00:00:00,000 --> 00:00:04,000
+00:00:00,000 --> 00:00:06,909
 AccessDesk 2 ist eine automatisierte
-Zugangsstelle nach dem Europäischen
+Zugangsstelle für Gesundheitsdaten nach
 
 2
-00:00:04,000 --> 00:00:05,167
-Gesundheitsdatenraum.
+00:00:06,909 --> 00:00:12,000
+dem EHDS. Jeder Antrag wird nach den Five
+Safes geprüft.
 
 3
-00:00:05,167 --> 00:00:09,444
-Jeder Antrag wird nach den Five Safes
-geprüft: wer fragt, wozu, welche Daten,
-
-4
-00:00:09,444 --> 00:00:12,000
-wo gerechnet wird und was die Stelle
-verlässt.
-
-5
-00:00:12,000 --> 00:00:15,778
+00:00:12,000 --> 00:00:16,192
 Eine Versicherung will Prämien an Diabetes
 koppeln.
 
+4
+00:00:16,192 --> 00:00:20,959
+Die Regeln markieren die Stelle: verboten
+nach Artikel 54.
+
+5
+00:00:20,959 --> 00:00:24,000
+Abgelehnt, ohne eine einzige Abfrage.
+
 6
-00:00:15,778 --> 00:00:20,444
-Die Regeln markieren die Stelle, das ist
-nach Art. 54 verboten.
-
-7
-00:00:20,444 --> 00:00:24,000
-Abgelehnt, ohne dass eine einzige Abfrage
-läuft.
-
-8
-00:00:24,000 --> 00:00:27,990
+00:00:24,000 --> 00:00:28,988
 Eine Forscherin fragt nach Typ-2-Diabetes
 pro Bundesland.
 
-9
-00:00:27,990 --> 00:00:33,800
-Sie bekommt eine anonymisierte Statistik
+7
+00:00:28,988 --> 00:00:36,163
+Sie erhält eine anonymisierte Statistik
 mit Karte und einen formellen Bescheid auf
 
+8
+00:00:36,163 --> 00:00:38,000
+Deutsch und Englisch.
+
+9
+00:00:38,000 --> 00:00:44,000
+Der Bescheid nennt Artikel, Begründung und
+Auflagen.
+
 10
-00:00:33,800 --> 00:00:38,000
-Deutsch und Englisch, mit Artikeln,
-Begründung und Auflagen.
+00:00:44,000 --> 00:00:51,128
+Gruppen unter zehn Personen bleiben
+verborgen und sind schraffiert.
 
 11
-00:00:38,000 --> 00:00:39,832
-Der Bescheid ist druckfertig.
+00:00:51,128 --> 00:00:54,000
+Summenzeilen gibt es nicht.
 
 12
-00:00:39,832 --> 00:00:44,000
-Die Texte haben wir gegen den Originaltext
-der Verordnung geprüft.
+00:00:54,000 --> 00:00:58,576
+Dieselbe Forscherin fragt erneut, jetzt ab
+19 Jahren.
 
 13
-00:00:44,000 --> 00:00:49,000
-Kleine Gruppen: Unter 10 Personen steht
-‚<10‘ oder ‚unterdrückt‘, schraffiert.
+00:00:58,576 --> 00:01:03,496
+In Vorarlberg würde die Differenz acht
+Personen verraten.
 
 14
-00:00:49,000 --> 00:00:54,000
-Summenzeilen gibt es nicht, damit niemand
-verborgene Werte zurückrechnen kann.
+00:01:03,496 --> 00:01:06,000
+Diese Zelle wird unterdrückt.
 
 15
-00:00:54,000 --> 00:00:57,871
-Dieselbe Forscherin fragt noch einmal,
-diesmal ab 19 Jahren.
-
-16
-00:00:57,871 --> 00:01:01,677
-In Vorarlberg würde die Differenz acht
-18-Jährige verraten.
-
-17
-00:01:01,677 --> 00:01:06,000
-Der Differenz-Schutz erkennt das und
-unterdrückt genau diese Zelle.
-
-18
-00:01:06,000 --> 00:01:09,218
+00:01:06,000 --> 00:01:11,045
 Ein KI-Start-up begründet, warum Statistik
 nicht reicht.
 
-19
-00:01:09,218 --> 00:01:12,839
-Es bekommt Einzeldaten von genau 1.152
-Personen, nur Diagnosen,
+16
+00:01:11,045 --> 00:01:16,000
+Es erhält Einzeldaten von 1.152 Personen,
+abgeschottet.
 
-20
-00:01:12,839 --> 00:01:16,000
-Medikation und HbA1c, in einer
-abgeschotteten Umgebung.
-
-21
-00:01:16,000 --> 00:01:22,167
+17
+00:01:16,000 --> 00:01:23,929
 Abfragen laufen nur lesend. Ein Download
 wird blockiert und protokolliert.
 
-22
-00:01:22,167 --> 00:01:28,000
-Hinaus dürfen nur geprüfte Aggregate, nach
-Freigabe durch die Behörde.
+18
+00:01:23,929 --> 00:01:28,000
+Hinaus dürfen nur geprüfte Ergebnisse.
 
-23
-00:01:28,000 --> 00:01:30,370
-Neue Anträge prüft die App live.
+19
+00:01:28,000 --> 00:01:33,438
+Neue Anträge prüft die App live: Begriffe
+werden zu Codes,
 
-24
-00:01:30,370 --> 00:01:35,333
-Vor dem Absenden sieht man, welcher
-Begriff auf welchen Code führt,
+20
+00:01:33,438 --> 00:01:40,000
+die Kohorte bleibt geschützt, und vor
+verbotenen Zwecken wird gewarnt.
 
-25
-00:01:35,333 --> 00:01:40,000
-die geschützte Kohortengröße und hier die
-Warnung nach Art. 54.
-
-26
-00:01:40,000 --> 00:01:43,543
+21
+00:01:40,000 --> 00:01:46,000
 Jeder Schritt landet in einem
 manipulationssicheren Protokoll.
 
-27
-00:01:43,543 --> 00:01:46,000
-Jeder Eintrag enthält den Hash des
-vorigen.
+22
+00:01:46,000 --> 00:01:54,000
+Ergebnis: zehn von zehn Entscheidungen,
+sechs von sechs Zahlen, null Lecks.
 
-28
-00:01:46,000 --> 00:01:49,685
-Ergebnis: 10 von 10 Entscheidungen, 6 von
-6 Zahlen, 0 Lecks, 10 von 10 konsistent,
-
-29
-00:01:49,685 --> 00:01:50,539
-unter 0,1 Sekunden.
-
-30
-00:01:50,539 --> 00:01:54,000
-Dazu stimmen 29 von 29 Anfragen mit einem
-unabhängigen pandas-Orakel überein.
-
-31
-00:01:54,000 --> 00:01:56,057
-Ehrlich gesagt: eID und Register sind
-simuliert,
-
-32
-00:01:56,057 --> 00:01:58,543
-die Föderation ist nur entworfen, und die
-KI ist optional.
-
-33
-00:01:58,543 --> 00:02:00,000
-Alle Zahlen kommen aus den Regeln.
+23
+00:01:54,000 --> 00:02:00,000
+eID und Register sind simuliert, die
+Föderation ist nur entworfen.

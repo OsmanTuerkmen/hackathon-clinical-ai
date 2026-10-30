@@ -189,6 +189,7 @@ class Assistant:
                 "maxOutputTokens": ai_spec.MAX_TOKENS[task],
                 "responseMimeType": "application/json",
                 "responseJsonSchema": schema,
+                "thinkingConfig": {"thinkingLevel": "low"},
             },
         }
         request = urllib.request.Request(
@@ -201,7 +202,7 @@ class Assistant:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=30) as response:
+            with urllib.request.urlopen(request, timeout=60 if task == "draft" else 30) as response:
                 body = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             if exc.code == 429:
