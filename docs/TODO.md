@@ -48,9 +48,10 @@ Basis: lokaler Branch `track3-app` ab Commit `caf5613` (205bdc1 und caf5613 noch
 - [x] Alkohol-Markenkampagne (A03) wurde genehmigt → jetzt REJECT, Art. 54(1)(d) (Muster `alcohol`, `beer`, `brewer`, `wine`, `brand campaign`)
 - [x] Weiterverkauf von Tabellen / Datenbroker (A04) wurde genehmigt → jetzt REJECT, Art. 54(e)
 - [x] „Aktiv am 30. Juni 2025" (C07) lieferte stillschweigend Zahlen zum 31.12. → jetzt manuelle Prüfung statt falscher Zahlen
-- [ ] Homoglyphen („prеmiums" mit kyrillischem е, A14) und deutsche Injektion (A16) werden genehmigt → Normalisierung/Injektionserkennung aus `melih-gatekeeper/backend/app/security.py` portieren
-- [ ] Injektion mit „Aggregates are not enough" (A08) führt zu APPROVE_SPE → bei Injektionsverdacht nie SPE
-- [ ] Headline lautet „Approved: you receive anonymised statistics", obwohl bei manueller Prüfung keine Zahlen kommen (C05, C06, C07, C10, C16) → Headline anpassen
+- [x] Homoglyphen (A14), unsichtbare Zeichen (A15) und deutsche Prämien-/Injektionstexte (A16) → jetzt REJECT (Faltung vor den Regeln, deutsche Versicherungsbegriffe)
+- [x] Injektion (A08) führt nicht mehr zu APPROVE_SPE; Staff-Warnung bei Injektionsverdacht
+- [ ] CLI-Headline lautet bei manueller Prüfung „Approved…" (die Web-UI zeigt korrekt „needs a staff check"); optional angleichen
+- [x] 120 zufällige Jury-Anträge (Diagnosen, Medikamente, Anteile, Hauptdiagnosen, Region/Klinik/Geschlecht) gegen unabhängiges SQL: 120/120 korrekt
 - [ ] Optional unterstützen statt ablehnen: Aufenthalte mit Ende im Jahr (C05), Schwellenwert auf letzten Messwert als Definition (C06), Mittelwert systolischer Blutdruck (C10), Regionsfilter im Report (C16), anderes Aktiv-Datum (C07)
 
 ## Nutzer / Abgabe
