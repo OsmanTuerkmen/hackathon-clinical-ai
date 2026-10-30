@@ -246,6 +246,26 @@ def test_gemini_rest_request_parses_structured_output_and_uses_cache(tmp_path, m
     assert body["generationConfig"]["responseJsonSchema"] == schema
     assert timeout == 30
 
+    monkeypatch.setenv("ACCESSDESK_AI_MODEL", "gemini-3.6-flash")
+    third = assistant.call("purpose", "system prompt", "request text", schema)
+    assert third["cached"] is False
+    assert len(requests) == 2
+    assert requests[1][0].full_url.endswith("/gemini-3.6-flash:generateContent")
+
+    monkeypatch.delenv("ACCESSDESK_AI_MODEL")
+    monkeypatch.setenv("ACCESSDESK_AI_PROVIDER", "claude")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
+    client = FakeAnthropic(response({"prohibited": True}))
+    monkeypatch.setattr(
+        assistant,
+        "_anthropic_module",
+        lambda: SimpleNamespace(Anthropic=lambda **kwargs: client),
+    )
+    fourth = assistant.call("purpose", "system prompt", "request text", schema)
+    assert fourth["provider"] == "claude"
+    assert fourth["cached"] is False
+    assert len(client.messages.calls) == 1
+
 
 def test_gemini_quota_error_returns_a_clear_reason_without_raising(tmp_path, monkeypatch):
     from accessdesk import ai
@@ -318,6 +338,67 @@ def test_startup_with_gemini_enabled_and_empty_cache_makes_no_network_calls(
         assert calls == []
     finally:
         desk.store.con.close()
+
+
+def test_new_submission_makes_only_the_live_purpose_call(tmp_path, data_dir, monkeypatch):
+    from accessdesk import ai
+
+    monkeypatch.setenv("ACCESSDESK_AI", "on")
+    monkeypatch.setenv("ACCESSDESK_AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    body = {
+        "login": "Dr. Sophie Lechner",
+        "request": {
+            "applicant": {
+                "name": "Dr. Sophie Lechner",
+                "organisation": "Danube Institute for Diabetes Research",
+                "country": "AT",
+            },
+            "requested_as": "health data request",
+            "purpose": "Scientific research on a newly described condition.",
+            "question": "How many adults have this condition?",
+            "definitions": ["New condition = term not present in the code list."],
+        },
+    }
+    calls = []
+    response_body = {
+        "candidates": [{
+            "content": {"parts": [{"text": json.dumps({
+                "prohibited": False,
+                "category": "none",
+                "allowed_purposes": ["e"],
+                "statistics_sufficient": True,
+                "evidence_quote": "",
+                "explanation_en": "Scientific research is allowed.",
+                "explanation_de": "Wissenschaftliche Forschung ist erlaubt.",
+            })}]},
+            "finishReason": "STOP",
+        }],
+    }
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps(response_body).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        calls.append(request)
+        return FakeResponse()
+
+    monkeypatch.setattr(ai.urllib.request, "urlopen", fake_urlopen)
+    client = TestClient(create_app(data_dir, runtime_dir=tmp_path / "runtime"))
+
+    result = client.post("/api/submit", json=body)
+
+    assert result.status_code == 200
+    assert result.json()["id"].startswith("U")
+    assert len(calls) == 1
 
 
 def test_staff_ai_opinion_is_live_cached_and_holds_a_disagreement(

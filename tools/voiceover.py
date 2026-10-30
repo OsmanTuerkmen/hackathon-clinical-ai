@@ -1,15 +1,20 @@
 """Generate and mix a German voiceover for the local demo."""
 import argparse
+import base64
+import difflib
 import hashlib
 import json
 import os
 import re
+import time
 import subprocess
 import sys
 import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+import wave
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,7 +30,12 @@ MODEL = "eleven_multilingual_v2"
 # Premade Rachel voice ID from ElevenLabs' Voice Picker, checked 2026-10-30:
 # https://ui.elevenlabs.io/docs/components/voice-picker
 DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"
+GEMINI_TTS_MODEL = "gemini-3.8-flash-tts"
+GEMINI_TEXT_MODEL = "gemini-3.8-flash"
+DEFAULT_GEMINI_VOICE = "Charon"
+ALTERNATE_GEMINI_VOICE = "Kore"
 ELEVENLABS_API = "https://api.elevenlabs.io/v1"
+GEMINI_API = "https://generativelanguage.googleapis.com/v1beta/models"
 TOTAL_SECONDS = 120.0
 OUTPUT_FORMAT = "mp3_44100_128"
 SPEAKER_SETTINGS = {
@@ -34,6 +44,7 @@ SPEAKER_SETTINGS = {
     "style": 0.15,
     "use_speaker_boost": True,
 }
+_gemini_last_request = 0.0
 
 
 @dataclass(frozen=True)
@@ -98,12 +109,26 @@ def cache_key(text, voice, model, settings):
     return hashlib.sha256(encoded).hexdigest()[:16]
 
 
-def cached_voice_clip(text, voice, model, settings, key, cache_dir=VOICE_DIR):
+def cached_voice_clip(
+    text,
+    voice,
+    model,
+    settings,
+    key,
+    cache_dir=VOICE_DIR,
+    provider="elevenlabs",
+    force=False,
+):
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
     digest = cache_key(text, voice, model, settings)
     destination = cache_dir / f"{digest}.mp3"
-    if not destination.exists():
+    if force or not destination.exists():
+        if provider == "gemini":
+            _gemini_tts_to_mp3(text, voice, model, key, destination)
+            return destination
+        if provider != "elevenlabs":
+            raise VoiceoverError(f"Unsupported voice provider: {provider}")
         url = (
             f"{ELEVENLABS_API}/text-to-speech/"
             f"{urllib.parse.quote(voice, safe='')}?output_format={OUTPUT_FORMAT}"
@@ -118,6 +143,61 @@ def cached_voice_clip(text, voice, model, settings, key, cache_dir=VOICE_DIR):
         temporary.write_bytes(audio)
         temporary.replace(destination)
     return destination
+
+
+def _gemini_tts_to_mp3(text, voice, model, key, destination):
+    response = _gemini_request(
+        model,
+        key,
+        {
+            "contents": [{"parts": [{"text": text}]}],
+            "generationConfig": {
+                "responseModalities": ["AUDIO"],
+                "speechConfig": {
+                    "voiceConfig": {
+                        "prebuiltVoiceConfig": {"voiceName": voice},
+                    },
+                },
+            },
+        },
+    )
+    try:
+        audio_part = next(
+            part for part in response["candidates"][0]["content"]["parts"]
+            if isinstance(part.get("inlineData"), dict)
+        )["inlineData"]
+        audio = base64.b64decode(audio_part["data"], validate=True)
+        mime = str(audio_part.get("mimeType") or "").casefold()
+    except (KeyError, IndexError, StopIteration, TypeError, ValueError) as exc:
+        raise VoiceoverError("Gemini TTS response did not contain valid audio data.") from exc
+
+    with tempfile.TemporaryDirectory(prefix="accessdesk-gemini-tts-") as temporary_dir:
+        wav_path = Path(temporary_dir) / "clip.wav"
+        if audio.startswith(b"RIFF") and audio[8:12] == b"WAVE":
+            wav_path.write_bytes(audio)
+        else:
+            rate = re.search(r"rate=(\d+)", mime)
+            sample_rate = int(rate.group(1)) if rate else 24_000
+            if len(audio) % 2:
+                raise VoiceoverError("Gemini returned an odd-length 16-bit PCM payload.")
+            if "l16" in mime:
+                audio = b"".join(
+                    audio[offset:offset + 2][::-1] for offset in range(0, len(audio), 2)
+                )
+            with wave.open(str(wav_path), "wb") as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(sample_rate)
+                wav_file.writeframes(audio)
+        converted = Path(temporary_dir) / "clip.mp3"
+        _run_ffmpeg([
+            "-i", str(wav_path), "-vn", "-c:a", "libmp3lame",
+            "-b:a", "128k", str(converted),
+        ])
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        temporary = destination.with_suffix(".mp3.tmp")
+        temporary.write_bytes(converted.read_bytes())
+        temporary.replace(destination)
 
 
 def tempo_for_slot(duration, slot, margin=0.3, max_speed=1.10):
@@ -140,8 +220,8 @@ def _parse_time(value):
     return minutes * 60 + seconds
 
 
-def _api_key():
-    value = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+def _configured_key(name):
+    value = os.environ.get(name, "").strip()
     if value:
         return value
     env_path = ROOT / ".env"
@@ -153,13 +233,21 @@ def _api_key():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
-        name, value = line.split("=", 1)
-        if name.strip() == "ELEVENLABS_API_KEY":
+        key_name, value = line.split("=", 1)
+        if key_name.strip() == name:
             value = value.strip()
             if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
                 value = value[1:-1]
             return value or None
     return None
+
+
+def _api_key():
+    return _configured_key("ELEVENLABS_API_KEY")
+
+
+def _gemini_key():
+    return _configured_key("GEMINI_API_KEY")
 
 
 def _request(url, key, method="GET", payload=None, accept="application/json"):
@@ -183,6 +271,65 @@ def _request(url, key, method="GET", payload=None, accept="application/json"):
         raise VoiceoverError(f"ElevenLabs request failed (HTTP {exc.code}).") from None
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise VoiceoverError(f"ElevenLabs request failed: {exc.reason if hasattr(exc, 'reason') else exc}") from None
+
+
+def _retry_after_seconds(error):
+    headers = error.headers or {}
+    value = headers.get("Retry-After")
+    if value:
+        try:
+            return min(60.0, max(0.0, float(value)))
+        except ValueError:
+            pass
+    try:
+        body = json.loads(error.read().decode("utf-8"))
+        details = body.get("error", {}).get("details", [])
+        for detail in details:
+            retry = detail.get("retryDelay", "")
+            match = re.fullmatch(r"([\d.]+)s", retry)
+            if match:
+                return min(60.0, max(0.0, float(match.group(1))))
+    except (AttributeError, UnicodeDecodeError, ValueError, TypeError):
+        pass
+    return 7.0
+
+
+def _gemini_request(model, key, payload, attempts=3):
+    global _gemini_last_request
+    url = f"{GEMINI_API}/{urllib.parse.quote(model, safe='.-')}:generateContent"
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": key},
+        method="POST",
+    )
+    for attempt in range(attempts):
+        wait = 7.0 - (time.monotonic() - _gemini_last_request)
+        if _gemini_last_request and wait > 0:
+            time.sleep(wait)
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                _gemini_last_request = time.monotonic()
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            _gemini_last_request = time.monotonic()
+            if exc.code == 429 and attempt + 1 < attempts:
+                time.sleep(_retry_after_seconds(exc))
+                continue
+            if exc.code == 429:
+                raise VoiceoverError("Gemini TTS quota/rate limit remains exceeded after 3 attempts.") from None
+            if exc.code in (401, 403):
+                raise VoiceoverError(f"Gemini API key was rejected (HTTP {exc.code}).") from None
+            raise VoiceoverError(f"Gemini API request failed (HTTP {exc.code}).") from None
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            _gemini_last_request = time.monotonic()
+            raise VoiceoverError(
+                f"Gemini API request failed: {exc.reason if hasattr(exc, 'reason') else exc}"
+            ) from None
+        except json.JSONDecodeError:
+            _gemini_last_request = time.monotonic()
+            raise VoiceoverError("Gemini API returned invalid JSON.") from None
+    raise VoiceoverError("Gemini API retry limit exceeded.")
 
 
 def _ffprobe_duration(path):
@@ -382,12 +529,161 @@ def _generate(rows, args, key, settings):
         _mix_into_video(SILENT_VIDEO, mix_path, OUTPUT_SUBTITLED_VIDEO, subtitles=True)
 
 
+def _transcribe_gemini(path, expected_text, key):
+    mime = "audio/mpeg" if Path(path).suffix.casefold() == ".mp3" else "audio/wav"
+    payload = {
+        "contents": [{
+            "parts": [
+                {"text": "Transcribe the spoken words verbatim. Return only the transcript field."},
+                {
+                    "inlineData": {
+                        "mimeType": mime,
+                        "data": base64.b64encode(Path(path).read_bytes()).decode("ascii"),
+                    },
+                },
+            ],
+        }],
+        "generationConfig": {
+            "maxOutputTokens": 2048,
+            "responseMimeType": "application/json",
+            "responseJsonSchema": {
+                "type": "object",
+                "properties": {"transcript": {"type": "string"}},
+                "required": ["transcript"],
+                "additionalProperties": False,
+            },
+        },
+    }
+    response = _gemini_request(GEMINI_TEXT_MODEL, key, payload)
+    try:
+        text = next(
+            part["text"]
+            for part in response["candidates"][0]["content"]["parts"]
+            if isinstance(part.get("text"), str)
+        )
+        transcript = json.loads(text)["transcript"]
+        if not isinstance(transcript, str):
+            raise ValueError("transcript must be text")
+    except (KeyError, IndexError, StopIteration, TypeError, ValueError) as exc:
+        raise VoiceoverError("Gemini transcription response was not valid structured JSON.") from exc
+    score, boundaries_ok = transcript_score(expected_text, transcript)
+    return transcript, score, boundaries_ok
+
+
+def _words(text):
+    normalized = re.sub(r"[^\w]+", " ", text.casefold(), flags=re.UNICODE)
+    tokens = normalized.split()
+    return [
+        token.replace(".", "").replace(",", "")
+        for token in tokens
+    ]
+
+
+def transcript_score(expected, actual):
+    expected_words, actual_words = _words(expected), _words(actual)
+    score = difflib.SequenceMatcher(
+        None, expected_words, actual_words, autojunk=False,
+    ).ratio()
+    boundaries_ok = bool(
+        expected_words
+        and actual_words
+        and expected_words[0] == actual_words[0]
+        and expected_words[-1] == actual_words[-1]
+    )
+    return score, boundaries_ok
+
+
+def _generate_gemini(rows, args, key):
+    VOICE_DIR.mkdir(parents=True, exist_ok=True)
+    voice_settings = {"response_modalities": ["AUDIO"]}
+    generated = []
+    variants = [(row, args.voice, False) for row in rows]
+    variants.append((rows[0], args.alternate_first_voice, True))
+
+    with tempfile.TemporaryDirectory(prefix="accessdesk-gemini-voice-") as temp:
+        temp_path = Path(temp)
+        primary_clips = {}
+        for row, voice, alternate in variants:
+            cached = cached_voice_clip(
+                row.text,
+                voice,
+                args.model,
+                voice_settings,
+                key,
+                VOICE_DIR,
+                provider="gemini",
+            )
+            duration = _ffprobe_duration(cached)
+            transcript, score, boundaries_ok = _transcribe_gemini(cached, row.text, key)
+            if score < 0.9 or not boundaries_ok:
+                cached_voice_clip(
+                    row.text,
+                    voice,
+                    args.model,
+                    voice_settings,
+                    key,
+                    VOICE_DIR,
+                    provider="gemini",
+                    force=True,
+                )
+                duration = _ffprobe_duration(cached)
+                transcript, score, boundaries_ok = _transcribe_gemini(cached, row.text, key)
+            print(
+                f"Transcript row {_clock(row.start)} voice={voice}: "
+                f"overlap={score:.3f}, boundaries={'ok' if boundaries_ok else 'extra-edge-words'}"
+            )
+            if score < 0.9 or not boundaries_ok:
+                raise VoiceoverError(
+                    f"Transcript check failed for row {_clock(row.start)} voice {voice}: "
+                    f"overlap {score:.3f}, boundary match {boundaries_ok}."
+                )
+            try:
+                factor = tempo_for_slot(duration, row.slot_seconds)
+            except ValueError as exc:
+                raise VoiceoverError(
+                    f"Row {_clock(row.start)} voice {voice} is too long ({duration:.2f}s): {exc}"
+                ) from None
+
+            clip_path = cached
+            if factor > 1.0:
+                clip_path = temp_path / f"{row.start}-{voice}-fast.mp3"
+                _run_ffmpeg([
+                    "-i", str(cached), "-filter:a", f"atempo={factor:.6f}",
+                    "-vn", "-c:a", "libmp3lame", "-b:a", "128k", str(clip_path),
+                ])
+                fitted = _ffprobe_duration(clip_path)
+                if fitted > row.slot_seconds - 0.3:
+                    raise VoiceoverError(
+                        f"Row {_clock(row.start)} still takes {fitted:.2f}s "
+                        "after 1.10x; use shorter text."
+                    )
+            generated.append((row, voice, clip_path, duration, factor, score))
+            if not alternate:
+                primary_clips[row.start] = VoiceClip(clip_path, float(row.start))
+
+        print("Gemini voice clips:")
+        for row, voice, clip_path, duration, factor, score in generated:
+            print(
+                f"{_clock(row.start)} voice={voice} duration={duration:.2f}s "
+                f"atempo={factor:.3f} transcript={score:.3f} cache={clip_path.name}"
+            )
+        mix_path = temp_path / "voiceover.wav"
+        mix_audio(
+            [primary_clips[row.start] for row in rows],
+            mix_path,
+        )
+        _mix_into_video(SILENT_VIDEO, mix_path, OUTPUT_VIDEO)
+        _mix_into_video(SILENT_VIDEO, mix_path, OUTPUT_SUBTITLED_VIDEO, subtitles=True)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--provider", choices=("elevenlabs", "gemini"), default="elevenlabs")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--list-voices", action="store_true")
-    parser.add_argument("--voice", default=DEFAULT_VOICE_ID)
-    parser.add_argument("--model", default=MODEL)
+    parser.add_argument("--voice")
+    parser.add_argument("--alternate-first-voice", default=ALTERNATE_GEMINI_VOICE)
+    parser.add_argument("--model")
     parser.add_argument("--stability", type=float, default=SPEAKER_SETTINGS["stability"])
     parser.add_argument("--similarity", type=float, default=SPEAKER_SETTINGS["similarity_boost"])
     parser.add_argument("--style", type=float, default=SPEAKER_SETTINGS["style"])
@@ -403,16 +699,27 @@ def main(argv=None):
         if args.dry_run:
             _print_dry_run(rows)
             return 0
-        key = _api_key()
+        if args.provider == "gemini":
+            key = _gemini_key()
+        else:
+            key = _api_key()
         if not key:
-            raise VoiceoverError(
-                "ELEVENLABS_API_KEY is missing from the environment and accessdesk2/.env."
-            )
+            key_name = "GEMINI_API_KEY" if args.provider == "gemini" else "ELEVENLABS_API_KEY"
+            raise VoiceoverError(f"{key_name} is missing from the environment and accessdesk2/.env.")
         if args.list_voices:
+            if args.provider != "elevenlabs":
+                raise VoiceoverError("--list-voices is available for ElevenLabs; Gemini uses prebuilt voice names.")
             _list_voices(key)
             return 0
-        settings = _settings(args)
-        _generate(rows, args, key, settings)
+        if args.provider == "gemini":
+            args.voice = args.voice or DEFAULT_GEMINI_VOICE
+            args.model = args.model or GEMINI_TTS_MODEL
+            _generate_gemini(rows, args, key)
+        else:
+            args.voice = args.voice or DEFAULT_VOICE_ID
+            args.model = args.model or MODEL
+            settings = _settings(args)
+            _generate(rows, args, key, settings)
         return 0
     except VoiceoverError as exc:
         print(str(exc), file=sys.stderr)

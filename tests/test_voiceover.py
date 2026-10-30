@@ -3,6 +3,8 @@ import os
 import re
 import subprocess
 import urllib.error
+import base64
+import wave
 from pathlib import Path
 
 import pytest
@@ -134,6 +136,46 @@ def test_elevenlabs_permission_errors_name_required_access(monkeypatch, method, 
             method=method,
             payload={"text": "hello"} if method == "POST" else None,
         )
+
+
+@pytest.mark.parametrize("wav_container", [True, False])
+def test_gemini_tts_wraps_raw_pcm_or_accepts_wav(tmp_path, monkeypatch, wav_container):
+    source = tmp_path / "synthetic.wav"
+    subprocess.run(
+        [
+            "ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=0.25",
+            "-ar", "24000", "-ac", "1", "-c:a", "pcm_s16le", str(source),
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    with wave.open(str(source), "rb") as wav:
+        pcm = wav.readframes(wav.getnframes())
+    payload = source.read_bytes() if wav_container else pcm
+    mime_type = "audio/wav" if wav_container else "audio/pcm;rate=24000"
+    captured = {}
+
+    def fake_request(model, key, body):
+        captured.update({"model": model, "key": key, "body": body})
+        return {"candidates": [{
+            "content": {"parts": [{
+                "inlineData": {
+                    "mimeType": mime_type,
+                    "data": base64.b64encode(payload).decode("ascii"),
+                },
+            }]},
+        }]}
+
+    monkeypatch.setattr(voiceover, "_gemini_request", fake_request)
+    output = tmp_path / "cached.mp3"
+    voiceover._gemini_tts_to_mp3("Sprechtext", "Charon", "gemini-3.8-flash-tts", "fake", output)
+
+    assert output.is_file()
+    assert captured["model"] == "gemini-3.8-flash-tts"
+    assert captured["body"]["contents"] == [{"parts": [{"text": "Sprechtext"}]}]
+    assert captured["body"]["generationConfig"]["responseModalities"] == ["AUDIO"]
+    assert voiceover._ffprobe_duration(output) == pytest.approx(0.25, abs=0.08)
 
 
 def test_tempo_for_slot_only_speeds_up_within_the_cap():

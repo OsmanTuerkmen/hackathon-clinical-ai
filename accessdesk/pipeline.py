@@ -115,7 +115,7 @@ class AccessDesk:
 
         t = time.perf_counter()
         ai_mapper = (
-            (lambda name, body: self._map_term(name, body, cache_only=not ai_live))
+            (lambda name, body: self._map_term(name, body, cache_only=True))
             if ai_status["enabled"] else None
         )
         plan = parser.parse(request, self.store, ai_mapper=ai_mapper)
