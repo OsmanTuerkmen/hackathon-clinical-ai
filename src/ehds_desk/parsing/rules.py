@@ -121,7 +121,14 @@ _RECORD_PATTERNS = {
     "observations": re.compile(r"\bobservations?\b|\bmeasurements?\b|\blab(?:oratory|s)?\b|\bvalues?\b", re.I),
     "encounters": re.compile(r"\bencounters?\b|\bvisits?\b|\bstays?\b|\badmissions?\b", re.I),
 }
-_VALUE_WORDS = re.compile(r"((?:[\w/+-]+\s+){0,2}[\w/+-]+)\s+values?\b", re.I)
+_MEASUREMENT_NOUN = re.compile(r"\b(?:values?|measurements?|observations?)\b", re.I)
+_RECORD_BOUNDARY = re.compile(
+    r"[.,;:!?]|\b(?:provide|supply|include|request|need|want|have|has|having|with|without)\b", re.I
+)
+_RECORD_FILLER = re.compile(
+    r"\b(?:please|pseudonymi[sz]ed|all|any|the|a|an|at|least|one|individual|level|patient|patients|"
+    r"lab|laboratory|conditions?|medications?|records?|data)\b", re.I
+)
 
 
 @dataclass
@@ -292,6 +299,8 @@ def _parse_bands(text: str) -> list[AgeBand] | None:
 
 
 def _default_bands(width: int) -> list[AgeBand]:
+    if width <= 0:
+        return []
     bands, lo = [], 0
     while lo + width <= 90:
         bands.append(AgeBand(label=f"{lo}-{lo + width - 1}", min=lo, max=lo + width - 1))
@@ -395,7 +404,10 @@ def _dimension(chunk: str, st: _State, ctx: Context) -> Dimension | str | None:
             bands = st.bands
             if bands is None and (w := re.search(r"(\d+)[- ]year", c)):
                 bands = _default_bands(int(w.group(1)))
-                ctx.note(f"No age bands defined; {w.group(1)}-year bands were used.")
+                if bands:
+                    ctx.note(f"No age bands defined; {w.group(1)}-year bands were used.")
+                else:
+                    ctx.note("Age band width must be positive.")
             return Dimension(kind="age_band", bands=bands) if bands else None
     return "patient" if _PATIENT_DIM.search(c) else None
 
@@ -417,19 +429,26 @@ def _dimensions(dims_text: str, st: _State, ctx: Context, *, strict: bool) -> li
 # --- Record types (access applications) ----------------------------------------------------------
 
 
-def _record_types(request: AccessRequest, ctx: Context) -> tuple[list[str], CodeSet | None]:
+def _record_types(request: AccessRequest, ctx: Context, st: _State) -> tuple[list[str], CodeSet | None]:
     text = normalise(f"{request.question} {request.purpose}")
     types = [t for t in RECORD_TYPE_ORDER if _RECORD_PATTERNS[t].search(text)]
     if "observations" not in types:
         return types, None
     prefixes: list[str] = []
-    for m in _VALUE_WORDS.finditer(text):
-        words = m.group(1).split()
-        for n in range(len(words), 0, -1):
-            cs = ctx.terminology.lookup(" ".join(words[-n:]), system="loinc")
-            if cs is not None:
-                add_unique(prefixes, cs.prefixes)
-                break
+    for i, m in enumerate(_MEASUREMENT_NOUN.finditer(text)):
+        # Keep the whole measurement name, including qualifiers; suffix lookup could turn an
+        # unknown restricted measurement into a broader known one. Record/command words merely
+        # introduce the list, while each specific name must resolve in full.
+        before = _RECORD_BOUNDARY.split(text[:m.start()])[-1]
+        for name in re.split(r"\s+(?:and|or)\s+", before, flags=re.I):
+            name = _RECORD_FILLER.sub(" ", name).strip(" -")
+            if not name:
+                continue  # generic request for observations
+            found = _measurement(name, None, ctx)
+            if found is None:
+                st.record(20_000 + i, m.group(0) + ": " + name, False)
+            else:
+                add_unique(prefixes, found[1].prefixes)
     if not prefixes:
         return types, None
     return types, CodeSet(system="loinc", prefixes=prefixes, label="requested measurements", source="lexicon")
@@ -590,7 +609,7 @@ def _build_spec(
     record_types: list[str] = []
     obs_codes = None
     if _is_access_application(request):
-        record_types, obs_codes = _record_types(request, ctx)
+        record_types, obs_codes = _record_types(request, ctx, st)
     try:
         return QuerySpec(
             unit=unit,

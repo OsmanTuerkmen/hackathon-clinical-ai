@@ -13,10 +13,10 @@ Stand: 2026-10-30 · Branch `track3-app` (Worktree `.claude/worktrees/track3-app
 | M2 – Task 6: Compiler/Engine | fertig, reviewt |
 | M2 – Task 7: Regelparser (inkl. primary_icd10, data_holder, Klartext) | fertig, 3 Fix-Runden, reviewt |
 | M2 – Task 8: SPE mit Download-Sperre und Audit | fertig, reviewt |
-| M2 – Task 9: Pipeline und CLI | fertig, reviewt; Meilenstein-Review M2 noch offen |
+| M2 – Task 9: Pipeline und CLI | fertig, reviewt; Meilenstein-Review M2 abgeschlossen, vier Befunde mit Regressionstests behoben |
 | M3: LLM-Pfad, API, Web-UI | offen |
 | M4: Referenz, Eval, eigene Anträge, README | offen |
 
-Tests: `.venv/Scripts/python -m pytest -q` → 404 passed (2026-10-30, nach Task 9).
+Tests: `.venv/Scripts/python -m pytest -q` → 416 passed in 26.65s (2026-10-30, nach M2-Reviewkorrekturen).
 Übergabe für die Weiterarbeit: `docs/HANDOFF.md`.
 Eval-Metriken: noch nicht messbar (Eval in M4).

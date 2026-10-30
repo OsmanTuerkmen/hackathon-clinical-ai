@@ -64,3 +64,8 @@ Entscheidung: Datenabgleich nur bei Jaccard > 0,5 oder wenn alle Wörter des Beg
 stehen; Qualifier direkt vor einem Lexikonbegriff („pulmonary hypertension“) heben den Treffer auf. Nicht
 abbildbare Begriffe gehen an das Personal statt falsche Zahlen zu liefern. Zeilenzahlen in der Staff-Ansicht
 zählen nur Patienten ohne Opt-out.
+
+## ADR-009: Gemeinsame Altersbandpopulation und vollständige Messphrasen
+
+Status: angenommen (2026-10-30, M2-Review).
+Statistik, SPE-Kohorte und Opt-out-Ausschlusszahl verwenden dieselbe Vereinigung der angefragten Altersbänder. Spezifische Messanforderungen gelten unabhängig vom Nomen values/measurements/observations. Ein unauflösbarer Messname oder ein nicht unterstützter Mittelwertfilter führt zur manuellen Prüfung statt stillschweigend breiterer Daten. Kosten: Mehr unübliche Formulierungen können manuelle Prüfung erfordern; Datenschutz und korrekte Bedeutung haben Vorrang.

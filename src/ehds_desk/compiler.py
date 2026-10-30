@@ -160,7 +160,12 @@ def _where_clause(ctx: _Ctx, spec: QuerySpec) -> str:
         scope = spec.encounter_scope
         assert scope is not None
         conds += _encounter_filters(ctx, "e", scope.types, scope.start_from, scope.start_to, scope.primary_icd10, scope.data_holders)
-    conds += _conjunction(ctx, spec.population, _Cols("p", "data_holder"))
+    cols = _Cols("p", "data_holder")
+    conds += _conjunction(ctx, spec.population, cols)
+    for dim in spec.group_by:
+        if dim.kind == "age_band":
+            bands = [AgeCriterion(kind="age", min=b.min, max=b.max) for b in dim.bands]
+            conds.append("(" + " OR ".join(_criterion_sql(ctx, band, cols) for band in bands) + ")")
     return f"WHERE {' AND '.join(conds)}" if conds else ""
 
 

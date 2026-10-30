@@ -133,3 +133,28 @@ def test_scope_all_uses_all_views(db):
 def test_compiles_and_runs(db, name):
     table, _ = engine.run_statistics(getattr(specs, name)(), db)
     assert table.rows
+
+
+@pytest.mark.parametrize("unit", ["patient", "encounter"])
+def test_cohort_and_optouts_respect_age_band_domain(db, unit):
+    from ehds_desk.models import AgeBand, CountMetric, Dimension, EncounterScope, QuerySpec
+
+    spec = QuerySpec(
+        unit=unit,
+        encounter_scope=EncounterScope() if unit == "encounter" else None,
+        group_by=[Dimension(kind="age_band", bands=[AgeBand(label="65+", min=65)])],
+        metrics=[CountMetric(kind="count", name="units", label="Units")],
+    )
+    ids = set(engine.cohort_patient_ids(spec, db))
+    expected_ids = {r[0] for r in db.cursor().execute("SELECT patient_id FROM pat WHERE age >= 65").fetchall()}
+    if unit == "encounter":
+        expected_ids &= {r[0] for r in db.cursor().execute("SELECT patient_id FROM enc").fetchall()}
+    assert ids == expected_ids
+    expected_all = {r[0] for r in db.cursor().execute("SELECT patient_id FROM pat_all WHERE age >= 65").fetchall()}
+    if unit == "encounter":
+        expected_all &= {r[0] for r in db.cursor().execute("SELECT patient_id FROM enc_all").fetchall()}
+    assert engine.opt_out_exclusions(spec, db) == len(expected_all - expected_ids)
+    if unit == "patient":
+        assert engine.opt_out_exclusions(spec, db) == 148
+        table, _ = engine.run_statistics(spec, db)
+        assert table.rows[0].cells["units"].n == len(ids)

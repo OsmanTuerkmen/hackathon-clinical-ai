@@ -660,3 +660,62 @@ def test_unused_term_mentioned_in_failed_item_does_not_join_population(term):
     assert not report.complete
     assert spec is not None
     assert spec.population == []
+
+
+# --- M2 review regressions ----------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("noun", ["values", "measurements", "observations"])
+def test_spe_specific_measurement_nouns_limit_observation_codes(term, noun):
+    req = make_request(
+        ["Diabetes = ICD-10 E11.", "Cohort = adults with diabetes.", "Report the size of the cohort."],
+        question=f"Please supply HbA1c {noun} for the cohort.",
+        requested_as="health data access application",
+    )
+    spec, report = parse_rules(req, term)
+    assert report.complete, report.not_understood
+    assert spec.record_types == ["observations"]
+    assert spec.observation_codes is not None
+    assert spec.observation_codes.prefixes == ["4548-4"]
+
+
+def test_spe_unknown_specific_measurement_needs_review(term):
+    req = make_request(
+        ["Diabetes = ICD-10 E11.", "Cohort = adults with diabetes.", "Report the size of the cohort."],
+        question="Please supply quux measurements for the cohort.",
+        requested_as="health data access application",
+    )
+    _spec, report = parse_rules(req, term)
+    assert not report.complete
+
+
+def test_zero_year_age_band_returns_incomplete_without_hanging():
+    import subprocess
+    import sys
+    import textwrap
+
+    # Bound the original infinite loop: a regression must fail, never hang pytest.
+    code = textwrap.dedent("""\
+        from ehds_desk.config import load_settings
+        from ehds_desk.data import get_database
+        from ehds_desk.models import AccessRequest, Applicant
+        from ehds_desk.parsing import parse_rules
+        from ehds_desk.terminology import Terminology
+        req = AccessRequest(id='Z', applicant=Applicant(name='Test', organisation='Test'),
+            requested_as='health data request', purpose='Research.', question='How many patients?',
+            definitions=['Report per 0-year age band: patients.'])
+        _, report = parse_rules(req, Terminology(get_database(load_settings(env_file=None))))
+        assert not report.complete
+        """)
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=3)
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("restriction", ["above 8", "without diabetes", "values recorded after 2024"])
+def test_mean_with_unsupported_restriction_needs_review(term, restriction):
+    spec, report = parse(term, [
+        "HbA1c = LOINC 4548-4.", "Diabetes = ICD-10 E11.",
+        f"Report per region: patients, mean HbA1c {restriction}.",
+    ])
+    assert not report.complete
+    assert not any(m.kind == "mean" for m in spec.metrics)

@@ -278,3 +278,22 @@ def test_r05_row_counts_equal_source_counts(db, tmp_path, r05_manifest):
     for table, n in expected.items():
         assert n > 0
         assert r05_manifest.tables[table] == n, table
+
+
+@pytest.mark.parametrize("noun", ["measurements", "observations"])
+def test_parsed_specific_measurements_copy_only_requested_loinc(db, tmp_path, noun):
+    from ehds_desk.parsing import parse_rules
+    from ehds_desk.terminology import Terminology
+
+    req = make_request("M2-OBS").model_copy(update={
+        "question": f"Please supply HbA1c {noun} for the cohort.",
+        "definitions": [
+            "Diabetes = ICD-10 E11.", "Cohort = adults with diabetes.", "Report the size of the cohort."
+        ],
+    })
+    spec, report = parse_rules(req, Terminology(db))
+    assert report.complete, report.not_understood
+    manifest = spe.provision_spe(req, spec, db, tmp_path)
+    copied = _query(tmp_path, manifest.permit_id, "SELECT DISTINCT loinc FROM observations")
+    assert {row[0] for row in copied} == {"4548-4"}
+    assert set(manifest.tables) == {"cohort", "observations"}

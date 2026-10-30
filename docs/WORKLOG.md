@@ -24,3 +24,5 @@
 - Task 8: SPE (eigene DuckDB-Datei, Manifest, Audit-Log, Download 403-Äquivalent, nebenläufigkeitssicher).
 - Task 9: Pipeline `DeskService.process()` + CLI; Leak-Guard über das ganze Ergebnis. 404 Tests grün.
 - Sitzung wegen Nutzungslimit beendet; Übergabe in `docs/HANDOFF.md`. Task 10 nicht begonnen, M2-Review abgebrochen.
+- Codex-Fortsetzung: Baseline 404 Tests bestätigt; M2-Review über 791dcd6..6d1e439 durchgeführt. Vier Befunde behoben: SPE begrenzt spezifische measurements/observations auf die beantragten LOINCs; 0-Jahres-Altersbänder führen zu manueller Prüfung statt Endlosschleife; Mittelwerte ignorieren keine Zusatzfilter; Kohorten und Opt-out-Ausschlüsse beachten dieselbe Altersbanddomäne wie Statistiken. TDD: 9 neue Regressionen zunächst rot, abschließend 416 Tests grün; separater Review ohne offene Befunde.
+- Fehlende Skills auf Nutzerwunsch aus offiziellen Anthropic-Quellen installiert: claude-api, security-review (Command als Codex-Skill mit Name-Metadatum), webapp-testing. Nutzer erlaubt webapp-testing als Ersatz für den eingebauten, nicht separat auffindbaren /run-Skill. Task 10 folgt; kein Push oder Merge.

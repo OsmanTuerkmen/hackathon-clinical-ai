@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from ..models import CodeSet, ConditionCriterion, CountMetric, MeanMetric, PercentMetric
+from ..models import CodeSet, ConditionCriterion, CountMetric, MeanMetric, ObservationCriterion, PercentMetric
 from .phrases import REGION_NAMES, Context, Term, normalise, phrase_criteria, same_criteria, snake_case, strip_end
 
 _FORMAT_ONLY = re.compile(r"^(?:(?:with|rounded to|to|in)\s+)?(?P<n>one|two|three|\d)\s+decimals?(?:\s+places?)?$")
@@ -156,8 +156,15 @@ def parse_item(raw: str, ctx: Context, b: Metrics, entry: list[Any]) -> bool:
         rest = _LEADING.sub("", _MEAN_WORDS.sub(" ", text).strip())
         parts = re.split(r"\s+(?:of|among|in|for)\s+", rest, maxsplit=1)
         what, of = parts[0], parts[1] if len(parts) > 1 else ""
-        meas = phrase_criteria(what, ctx, used=set()).measurements
+        phrase = phrase_criteria(what, ctx, used=set())
+        meas = phrase.measurements
+        if meas and (phrase.unresolved or len(meas) != 1):
+            return False
         cs = meas[0][1] if meas else ctx.terminology.lookup(what, system="loinc")
+        if meas and any(
+            not isinstance(c, ObservationCriterion) or c.negate or c.codes != cs for c in phrase.criteria
+        ):
+            return False  # MeanMetric cannot represent extra filters on the measurement
         if cs is None:
             return False
         if of:
