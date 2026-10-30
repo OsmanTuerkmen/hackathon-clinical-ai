@@ -49,3 +49,7 @@ Python-Playwright1.64.1 ist in der bestehenden .venv installiert. Vorhandener Br
 .venv/Scripts/python -m ehds_desk serve [--port 8000]
 
 Bekannte Grenzen bleiben dokumentiert: keine echte Auth/SPE-Härtung, keine sekundäre Unterdrückung, konservativer englischer Parser, bekannte adversariale Verneinungsfälle in Art54-Regeln. R13: exakte SPE-Kohorten-/Tabellenzahlen sind von Small-Cell ausgenommen. Nichts pro Antrag hart codieren.
+
+## Aktueller Nutzerauftrag zum Zwischenstand
+
+Vor weiteren Arbeiten jetzigen Stand auf track3-app committen, dann weiterarbeiten und den finalen Teil separat committen. README/CLAUDE und Sicherheitsbericht liegen vor. Gesamt-Reviewer final_review hat zwei P1-SPE-Fälle bestätigt: negierte Recordtypen und nachgestellte Messbeschränkungen. Vollständige gebündelte Fundliste steht noch aus; danach genau eine gebündelte Fixrunde mit TDD und scoped Nachreview. Letzte frische Controllerprüfung:616 Tests51.34s, Referenz14/14, Kern10/10,6/6,0,10/10,max0.527s; Extras10/10,8/8,0,10/10,max0.202s. Werte echt, aber vor SPE-Korrektur. Kein Fertigmelden, Push oder Merge. Eigener Demo-Server62499/Session92712/PID16260 muss nach Python-Korrektur neu gestartet werden.

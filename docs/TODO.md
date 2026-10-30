@@ -26,3 +26,7 @@ Später / bekannte Grenzen: sekundäre Unterdrückung (Differenzbildung, Komplem
 Begriff („stroke, hemorrhagic“), föderierte Ausführung. Verneinungs-Erkennung in den Art.-54-Regeln ist
 regex-basiert: konstruierte Sätze wie „No, we will use the data for advertising.“ rutschen ohne LLM durch
 (ADR-007, Ruling R11); Einschübe mit „but“ nach „not,“ ebenso.
+
+- [ ] Finale P1-Korrektur: negierte SPE-Recordtypen sicher ausschließen oder manuell prüfen
+- [ ] Finale P1-Korrektur: nachgestellte Messartenbeschränkungen sicher eingrenzen oder manuell prüfen
+- [ ] Danach Regressionen, scoped Nachreview, finale Suite/Referenz/Eval und separater Abschlusscommit
