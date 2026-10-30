@@ -115,7 +115,13 @@ def load(data_dir):
             "CREATE TABLE observations (patient_id VARCHAR, loinc VARCHAR, name VARCHAR, "
             "value VARCHAR, value10 INTEGER, unit VARCHAR, date DATE)"
         )
-        con.executemany("INSERT INTO observations VALUES (?, ?, ?, ?, ?, ?, ?)", observations)
+        con.execute("BEGIN TRANSACTION")
+        try:
+            con.executemany("INSERT INTO observations VALUES (?, ?, ?, ?, ?, ?, ?)", observations)
+            con.execute("COMMIT")
+        except Exception:
+            con.execute("ROLLBACK")
+            raise
         con.execute(
             "CREATE TABLE encounters AS SELECT s.encounter_id, s.patient_id, s.data_holder, s.type, "
             "s.start_date, s.end_date, s.primary_icd10, "

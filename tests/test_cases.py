@@ -5,6 +5,7 @@ import pytest
 
 from accessdesk.cases import CaseRegistry
 from accessdesk.config import build_desk
+from accessdesk.api import create_app
 
 
 @pytest.fixture
@@ -41,6 +42,21 @@ def test_startup_processes_all_cases_under_five_seconds(data_dir, tmp_path):
         assert elapsed < 5
     finally:
         desk.store.con.close()
+
+
+def test_warm_app_start_with_persisted_ledger_under_ten_seconds(data_dir, tmp_path):
+    runtime = tmp_path / "warm-runtime"
+    first = create_app(data_dir, runtime_dir=runtime)
+    first.state.desk.store.con.close()
+
+    started = time.perf_counter()
+    app = create_app(data_dir, runtime_dir=runtime)
+    elapsed = time.perf_counter() - started
+    try:
+        assert len(app.state.cases.list()) == 15
+        assert elapsed < 10
+    finally:
+        app.state.desk.store.con.close()
 
 
 def test_case_registry_filters_and_searches(cases):
