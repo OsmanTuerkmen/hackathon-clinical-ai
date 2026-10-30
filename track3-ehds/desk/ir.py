@@ -107,8 +107,8 @@ def validate(ir: dict) -> None:
     _ref_cycles(concepts, errs)
 
     dims = ir.get("dimensions")
-    if not isinstance(dims, list) or len(dims) > 3:
-        errs.append("dimensions must be a list of at most 3 entries")
+    if not isinstance(dims, list) or len(dims) > len(DIMS) or len({d.get("type") for d in dims if isinstance(d, dict)}) < len(dims):
+        errs.append(f"dimensions must be a list of at most {len(DIMS)} different groupings")
         dims = []
     total = 1
     for d in dims:

@@ -127,7 +127,7 @@
   {
     "name": "Evaluation tab shows the five metrics",
     "ok": true,
-    "detail": "10/10 Correct decisions (decision + articles) | 6/6 Correct numbers (approved requests) | 0 Privacy leaks | 10/10 Consistent across 3 runs | 0.24 s Slowest answer (R09), target < 60 s"
+    "detail": "10/10 Correct decisions (decision + articles) | 6/6 Correct numbers (approved requests) | 0 Privacy leaks | 10/10 Consistent across 3 runs | 0.23 s Slowest answer (R09), target < 60 s"
   },
   {
     "name": "Mobile layout (390 px) has no horizontal overflow",

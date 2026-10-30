@@ -219,8 +219,19 @@ function selectExample(id) {
 }
 
 function loadRequestText(text, label) {
+  text = text.replace(/^\uFEFF/, "");  // files saved with a byte-order mark
   try {
     const r = JSON.parse(text);
+    if (!r || typeof r !== "object" || Array.isArray(r) || !("purpose" in r)) {
+      // a list, a wrapped request or other key names: submit it as is, the desk normalises it
+      jsonBox.value = text;
+      if (!advanced.open) {
+        form.keepRawJson = true;
+        advanced.open = true;
+      }
+      $("#editor-hint").textContent = `Loaded ${label} in its original format. Doccess will normalise it when you submit.`;
+      return;
+    }
     requestToForm(r);
     jsonBox.value = JSON.stringify(r, null, 2);
     $("#editor-hint").textContent = `Loaded ${label}. Check or edit the fields, then submit (Ctrl/⌘ + Enter).`;
