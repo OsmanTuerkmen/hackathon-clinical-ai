@@ -10,7 +10,7 @@ def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] == "evaluate":
         from .evaluate import main as evaluate_main
         return evaluate_main(sys.argv[2:])
-    ap = argparse.ArgumentParser(prog="python3 -m desk", description="Health Data Access Desk (hackathon simulation)")
+    ap = argparse.ArgumentParser(prog="python3 -m desk", description="Doccess - health data access desk (hackathon simulation)")
     sub = ap.add_subparsers(dest="cmd")
     s = sub.add_parser("serve", help="start the web app (default)")
     s.add_argument("--host", default=None)

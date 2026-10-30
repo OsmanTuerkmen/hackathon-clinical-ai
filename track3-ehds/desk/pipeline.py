@@ -45,12 +45,14 @@ class Desk:
             self._counter = max((int(c["case_id"][2:]) for c in self.cases), default=0)
 
     # ------------------------------------------------------------------ main entry
-    def process(self, raw, source: str = "api") -> dict:
+    def process(self, raw, source: str = "api", identity: dict | None = None) -> dict:
+        """identity: verified applicant (simulated ID Austria) - recorded for accountability, never used to decide."""
         t0 = time.perf_counter()
         with self._lock:
             self._counter += 1
             case_id = f"C-{self._counter:04d}"
-        case: dict = {"case_id": case_id, "source": source, "received_at": time.strftime("%Y-%m-%d %H:%M:%S")}
+        case: dict = {"case_id": case_id, "source": source, "received_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                      "identity": identity}
         try:
             req = parse_request(raw)
         except RequestError as exc:
@@ -186,6 +188,8 @@ def applicant_view(case: dict) -> dict:
         "patient_data_queried": case.get("patient_data_queried"),
         "privacy_summary": privacy_summary(case.get("privacy_checks", [])),
         "elapsed_ms": case.get("elapsed_ms"),
+        "submitted_by": ({k: case["identity"][k] for k in ("name", "method", "eidas_loa")}
+                         if case.get("identity") else None),
     }
 
 
@@ -200,6 +204,7 @@ def staff_view(case: dict, spe: SPEManager | None = None) -> dict:
         "privacy_checks": case.get("privacy_checks"),
         "received_at": case.get("received_at"),
         "fingerprint": case.get("fingerprint"),
+        "identity": case.get("identity"),
     })
     res = case.get("result") or {}
     if res.get("kind") == "spe" and spe is not None:

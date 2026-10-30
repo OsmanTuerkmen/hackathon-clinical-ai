@@ -15,6 +15,7 @@ import re
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import parse_qs, urlparse
 from decimal import Decimal
 from pathlib import Path
 
@@ -96,10 +97,23 @@ class InProcessClient:
 class HttpClient:
     def __init__(self, url: str):
         self.url = url.rstrip("/")
+        self.token = None
+        self.token = self._login()
+
+    def _login(self) -> str:
+        """Submitting needs a session: sign in as a test person through the simulated ID Austria flow."""
+        _, out = self._call("/idp-sim/approve", json.dumps({"person": "thomas", "state": "evaluation",
+                                                            "redirect_uri": "/"}).encode())
+        code = parse_qs(urlparse(out["redirect"]).query)["code"][0]
+        _, out = self._call("/api/auth/token", json.dumps({"code": code}).encode())
+        return out["token"]
 
     def _call(self, path: str, data: bytes | None = None):
+        headers = {"Content-Type": "application/json"}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
         req = urllib.request.Request(self.url + path, data=data, method="POST" if data is not None else "GET",
-                                     headers={"Content-Type": "application/json"})
+                                     headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=120) as r:
                 return r.status, json.loads(r.read())
@@ -194,7 +208,7 @@ def _answer(view: dict):
 
 def render(report: dict) -> str:
     m = report["metrics"]
-    lines = ["Health Data Access Desk - evaluation on the 10 supplied requests", f"mode: {m['mode']}, runs: {m['runs']}",
+    lines = ["Doccess - evaluation on the 10 supplied requests", f"mode: {m['mode']}, runs: {m['runs']}",
              "", f"{'req':4} {'decision':20} {'articles':14} {'dec':4} {'numbers':8} {'leaks':6} {'consistent':10} "
                  f"{'max ms':>8}",
              "-" * 82]

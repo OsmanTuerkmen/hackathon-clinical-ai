@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ID Austria – simulated sign-in · Doccess</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/idp.js" defer></script>
+</head>
+<body class="idp-body">
+  <main class="idp">
+    <div class="idp-card">
+      <div class="idp-head">
+        <div class="ida-mark big">ID</div>
+        <div>
+          <h1>ID Austria</h1>
+          <p>Simulated identity provider · hackathon demo</p>
+        </div>
+      </div>
+      <p class="idp-note">In production this is the official ID Austria login (idp.id-austria.gv.at) and you confirm in
+        the ID Austria app. Here you pick a <b>fictional test person</b>. No real identity is used.</p>
+      <p class="idp-client">Sign in to <b>Doccess</b> · requested: name, eIDAS level, sector pseudonym (bPK-GH)</p>
+      <div id="idp-persons" class="idp-persons" role="radiogroup" aria-label="Test persons"></div>
+      <div class="idp-actions">
+        <a class="btn secondary" href="/">Cancel</a>
+        <button class="btn primary" id="idp-confirm" type="button" disabled>Confirm in the ID Austria app</button>
+      </div>
+      <div id="idp-status" class="idp-status hidden"><span class="spinner"></span> Waiting for confirmation in the ID Austria
+        app…</div>
+      <p id="idp-error" class="idp-error hidden"></p>
+    </div>
+  </main>
+</body>
+</html>

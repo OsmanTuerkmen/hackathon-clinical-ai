@@ -20,9 +20,19 @@
     "detail": "filter 'COPD' -> R10"
   },
   {
+    "name": "Submitting without sign-in is blocked",
+    "ok": true,
+    "detail": "hint shown, nothing submitted"
+  },
+  {
+    "name": "Sign in with ID Austria (simulated OpenID Connect code flow)",
+    "ok": true,
+    "detail": "Dr. Lena Gruber; form restored after the redirect"
+  },
+  {
     "name": "R10 nicotine pouches -> REJECT, Art. 54, no data queried",
     "ok": true,
-    "detail": "answered in 118 ms; stepper stops at the purpose check"
+    "detail": "answered in 110 ms; stepper stops at the purpose check"
   },
   {
     "name": "R08 statistics -> APPROVE_STATISTICAL with <10 and suppressed cells",
@@ -112,7 +122,7 @@
   {
     "name": "Evaluation tab shows the five metrics",
     "ok": true,
-    "detail": "10/10 Correct decisions (decision + articles) | 6/6 Correct numbers (approved requests) | 0 Privacy leaks | 10/10 Consistent across 3 runs | 0.22 s Slowest answer (R09), target < 60 s"
+    "detail": "10/10 Correct decisions (decision + articles) | 6/6 Correct numbers (approved requests) | 0 Privacy leaks | 10/10 Consistent across 3 runs | 0.25 s Slowest answer (R09), target < 60 s"
   },
   {
     "name": "Mobile layout (390 px) has no horizontal overflow",

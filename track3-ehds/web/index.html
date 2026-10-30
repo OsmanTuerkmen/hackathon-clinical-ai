@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Health Data Access Desk · EHDS hackathon simulation</title>
+  <title>Doccess · health data access · EHDS hackathon simulation</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/styles.css">
   <script src="/static/app.js" defer></script>
@@ -13,8 +13,8 @@
     <div class="brand">
       <img class="logo" src="/static/favicon.svg" alt="" width="46" height="46">
       <div>
-        <h1>Health Data Access Desk</h1>
-        <p>European Health Data Space · secondary use · Regulation (EU) 2025/327, Chapter IV</p>
+        <h1>Doccess</h1>
+        <p>Health data access desk · European Health Data Space · Regulation (EU) 2025/327, Chapter IV</p>
         <div class="pills">
           <span class="sim-badge" id="sim-banner" role="note"
                 title="Decisions are generated automatically by rules for demonstration">Hackathon simulation · synthetic
@@ -48,6 +48,18 @@
           <form id="request-form" class="form" autocomplete="off">
             <fieldset>
               <legend>Applicant</legend>
+              <div class="identity" id="identity-box">
+                <div id="identity-out" class="identity-row">
+                  <button type="button" class="btn idaustria" id="idaustria-btn"><span class="ida-mark">ID</span>
+                    Sign in with ID Austria</button>
+                  <small>Required before submitting. Simulated for the hackathon with fictional test persons.</small>
+                </div>
+                <div id="identity-in" class="identity-row hidden">
+                  <span class="id-check" aria-hidden="true">✓</span>
+                  <div class="id-text"><b id="identity-name"></b><small id="identity-meta"></small></div>
+                  <button type="button" class="link-btn" id="logout-btn">Sign out</button>
+                </div>
+              </div>
               <div class="row3">
                 <label>Name<input id="f-name" placeholder="Dr. Jane Doe"></label>
                 <label>Organisation<input id="f-org" placeholder="University, authority or company"></label>
@@ -142,6 +154,7 @@
               <div class="decision-code" id="decision-code"></div>
             </div>
             <p class="reason" id="reason"></p>
+            <p class="receive" id="receive"></p>
             <ul class="notes" id="decision-notes"></ul>
             <ol class="stepper" id="stepper" aria-label="Processing steps"></ol>
             <div class="meta" id="meta"></div>
@@ -192,8 +205,9 @@
   </main>
 
   <footer>
-    AIM Austria Hackathon · Track 3 European Health Data Space · Prototype for demonstration only. All patients are
-    synthetic. The decision engine is deterministic and rule-based; it cites the articles it applied.
+    Doccess (Doctor/Document + Access) · AIM Austria Hackathon · Track 3 European Health Data Space · Prototype for
+    demonstration only. All patients are synthetic and the ID Austria sign-in is simulated. The decision engine is
+    deterministic and rule-based; it cites the articles it applied.
   </footer>
 </body>
 </html>

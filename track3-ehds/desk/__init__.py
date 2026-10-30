@@ -1,3 +1,3 @@
-"""Health Data Access Desk - EHDS secondary-use hackathon prototype (synthetic data only)."""
+"""Doccess (Doctor/Document + Access) - EHDS secondary-use health data access desk, hackathon prototype (synthetic data only)."""
 
 __version__ = "1.0.0"

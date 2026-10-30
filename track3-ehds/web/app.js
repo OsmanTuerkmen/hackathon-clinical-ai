@@ -139,6 +139,7 @@ $("#request-filter").addEventListener("input", renderRequestList);
 // The applicant fills in a form; the JSON in the challenge format is built behind the scenes (and stored by the
 // desk). Power users can still upload a file or open the advanced JSON panel.
 const form = { id: null, edited: false, keepRawJson: false };
+const auth = { token: sessionStorage.getItem("doccess.token"), identity: null };  // simulated ID Austria session
 const jsonBox = $("#request-json");
 const advanced = $("#json-advanced");
 
@@ -186,6 +187,7 @@ function requestToForm(r) {
   ["#f-purpose", "#f-question"].forEach(s => autoGrow($(s)));
   form.id = r.id ? String(r.id) : null;
   form.edited = false;
+  if (auth.identity) $("#f-name").value = auth.identity.name;  // the verified name wins
 }
 
 function formToRequest() {
@@ -194,7 +196,7 @@ function formToRequest() {
   return {
     id,
     submitted: new Date().toISOString(),
-    applicant: { name: $("#f-name").value.trim(), organisation: $("#f-org").value.trim(),
+    applicant: { name: auth.identity ? auth.identity.name : $("#f-name").value.trim(), organisation: $("#f-org").value.trim(),
       country: $("#f-country").value.trim().toUpperCase() },
     requested_as: document.querySelector('input[name="f-type"]:checked').value,
     requested_format: $("#f-format").value,
@@ -297,10 +299,82 @@ $("#request-panel").addEventListener("keydown", (ev) => {
 $("#submit-btn").addEventListener("click", submitRequest);
 requestToForm({});
 
+// ------------------------------------------------------------------ simulated ID Austria sign-in (OIDC code flow)
+const authHeaders = () => (auth.token ? { Authorization: `Bearer ${auth.token}` } : {});
+
+function renderIdentity() {
+  const signedIn = Boolean(auth.identity);
+  $("#identity-out").classList.toggle("hidden", signedIn);
+  $("#identity-in").classList.toggle("hidden", !signedIn);
+  $("#identity-box").classList.remove("attention");
+  $("#f-name").readOnly = signedIn;
+  if (signedIn) {
+    $("#identity-name").textContent = auth.identity.name;
+    $("#identity-meta").textContent = `Verified via ${auth.identity.method} · eIDAS level ${auth.identity.eidas_loa} · ` +
+      `pseudonym ${auth.identity.bpk_gh}`;
+    $("#f-name").value = auth.identity.name;
+  }
+}
+
+function clearSession() {
+  auth.token = null;
+  auth.identity = null;
+  sessionStorage.removeItem("doccess.token");
+  renderIdentity();
+}
+
+$("#idaustria-btn").addEventListener("click", () => {
+  const state = Array.from(crypto.getRandomValues(new Uint32Array(4)), n => n.toString(36)).join("");
+  sessionStorage.setItem("doccess.state", state);
+  sessionStorage.setItem("doccess.form", JSON.stringify(formToRequest()));  // the form survives the redirect
+  const q = new URLSearchParams({ response_type: "code", client_id: `${location.origin}/`, redirect_uri: "/",
+    scope: "openid profile", state });
+  location.assign(`/idp-sim/authorize?${q}`);
+});
+$("#logout-btn").addEventListener("click", async () => {
+  await api("/api/auth/logout", { method: "POST", headers: authHeaders() });
+  clearSession();
+  $("#editor-hint").textContent = "Signed out.";
+});
+
+async function initAuth() {
+  const params = new URLSearchParams(location.search);
+  if (params.get("code")) {  // back from the identity provider: check state, exchange the one-time code
+    const stateOk = params.get("state") && params.get("state") === sessionStorage.getItem("doccess.state");
+    sessionStorage.removeItem("doccess.state");
+    history.replaceState(null, "", "/");
+    if (stateOk) {
+      const r = await api("/api/auth/token", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: params.get("code") }) });
+      if (r.ok) {
+        auth.token = r.body.token;
+        auth.identity = r.body.identity;
+        sessionStorage.setItem("doccess.token", auth.token);
+      }
+    }
+    try {
+      const saved = JSON.parse(sessionStorage.getItem("doccess.form") || "{}");
+      if (saved.purpose || saved.question || (saved.definitions || []).length) requestToForm(saved);
+    } catch (e) { /* nothing to restore */ }
+    sessionStorage.removeItem("doccess.form");
+  } else if (auth.token) {
+    const r = await api("/api/auth/me", { headers: authHeaders() });
+    if (r.ok) auth.identity = r.body; else clearSession();
+  }
+  renderIdentity();
+}
+
+function askToSignIn(message) {
+  $("#editor-hint").textContent = message;
+  $("#identity-box").classList.add("attention");
+  $("#identity-box").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
 async function submitRequest() {
   const btn = $("#submit-btn");
   const text = advanced.open ? jsonBox.value.trim() : JSON.stringify(formToRequest());
   if (!text) { $("#editor-hint").textContent = "Fill in the form, load an example or upload a request first."; return; }
+  if (!auth.token) { askToSignIn("Please sign in with ID Austria first (top of the form)."); return; }
   if (btn.disabled) return;
   btn.disabled = true;
   btn.replaceChildren(el("span", { class: "spinner" }), "Processing…");
@@ -308,8 +382,15 @@ async function submitRequest() {
   $("#busy").classList.remove("hidden");
   const t0 = performance.now();
   try {
-    const res = await fetch("/api/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: text });
+    const res = await fetch("/api/submit", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: text });
     const view = await res.json();
+    if (res.status === 401) {
+      clearSession();
+      $("#answer-empty").classList.remove("hidden");
+      askToSignIn("Your sign-in has expired. Please sign in with ID Austria again.");
+      return;
+    }
     view._roundtrip_ms = Math.round(performance.now() - t0);
     renderAnswer(view);
   } catch (e) {
@@ -379,6 +460,7 @@ function renderAnswer(view) {
     $("#decision-label").textContent = "Request not valid";
     $("#decision-code").textContent = "INVALID_REQUEST";
     $("#reason").textContent = "The request does not follow the expected JSON format, so it was not assessed.";
+    $("#receive").textContent = "";
     result.append(el("div", { class: "callout amber" }, el("h3", {}, icon("alert"), "Problems found"),
       el("ul", {}, (view.errors || []).map(e => el("li", { text: e })))));
     $("#result-title").textContent = "No answer";
@@ -396,11 +478,14 @@ function renderAnswer(view) {
       el("b", { text: `Art. ${a}` }), ` · ${d.article_titles[a] || ""}`));
   }
   $("#reason").textContent = d.reason;
+  $("#receive").replaceChildren(el("b", { text: "What you receive: " }), receiveText(d, view.fulfilment || {}));
   for (const n of d.notes || []) $("#decision-notes").append(el("li", { text: n }));
 
   const ps = view.privacy_summary || {};
   $("#meta").replaceChildren(...[
     el("span", {}, "Case ", el("b", { text: view.case_id })),
+    view.submitted_by ? el("span", {}, "Submitted by ", el("b", { text: view.submitted_by.name }),
+      ` (${view.submitted_by.method})`) : null,
     el("span", { text: `Request ${view.request_id}` }),
     el("span", { text: `Answered in ${view.elapsed_ms} ms (round trip ${view._roundtrip_ms ?? "?"} ms)` }),
     el("span", {}, "Patient data queried: ",
@@ -442,6 +527,23 @@ function renderAnswer(view) {
   }
 }
 
+// Plain-language summary of what the applicant gets (and may download) for each outcome.
+function receiveText(d, f) {
+  if (d.outcome === "REJECT") return "nothing. The purpose is prohibited (Art. 54), so no data is released.";
+  if (d.outcome === "NO_DECISION") return "nothing yet. A staff member reviews the request.";
+  if (d.outcome === "APPROVE_SPE") {
+    return "access to pseudonymised records inside the secure processing environment (Art. 73). Records cannot be " +
+      "downloaded; only aggregate results that pass the disclosure check may leave it.";
+  }
+  if (f.status === "NOT_PRODUCED" || f.status === "WITHHELD") {
+    return "no numbers yet: the request could not be computed safely (see below).";
+  }
+  return (d.articles || []).includes("66")
+    ? "anonymised statistics instead of records, because the access application does not explain why statistics " +
+      "are not enough (Art. 66). You can download the table; it contains no patient records."
+    : "anonymised statistics (Art. 69). You can download the table; it contains no patient records.";
+}
+
 function renderStatistics(root, res, view) {
   $("#result-title").textContent = "Anonymised statistics (small-cell rule applied)";
   const maskedCells = res.rows.reduce((n, r) => n + res.columns.filter(c => isMasked(r.cells[c.id])).length, 0);
@@ -479,7 +581,8 @@ function renderStatistics(root, res, view) {
     el("span", {}, masked("suppressed"), " percentage or mean based on fewer than 10"),
     el("span", { text: "Rounded to one decimal, halves up" })));
   root.append(el("div", { class: "result-actions" }, el("button", { class: "btn secondary small", id: "csv-btn", type: "button",
-    onclick: () => downloadCsv(res, view) }, icon("download"), "Download table (CSV)")));
+    onclick: () => downloadCsv(res, view) }, icon("download"), "Download anonymised statistics (CSV)"),
+    el("span", { class: "hint", text: "Only the aggregated table above: no patient records." })));
 }
 
 function downloadCsv(res, view) {
@@ -565,7 +668,8 @@ function renderSpe(root, res) {
       el("div", { class: "result-actions" }, el("button", { class: "btn secondary small", type: "button", onclick: () =>
         downloadCsv({ dimensions: [{ label: column }], columns: [{ id: "p", label: "Patients" }],
           rows: rows.map(x => ({ group: [String(x.value)], label: String(x.value), cells: { p: x.patients } })) },
-          { request_id: `${res.workspace_id}-${table}-${column}` }) }, icon("download"), "Export aggregated result (CSV)")));
+          { request_id: `${res.workspace_id}-${table}-${column}` }) }, icon("download"), "Export reviewed aggregate (CSV)"),
+        el("span", { class: "hint", text: "Non-personal result that passed the small-cell check (Art. 73(2))." })));
   } }, "Run aggregate query");
   root.append(el("div", { class: "callout blue spe-console" },
     el("h3", {}, icon("shield"), "Work inside the secure processing environment"),
@@ -626,6 +730,8 @@ async function selectCase(id) {
   const fact = (k, val) => el("div", { class: "fact" }, el("small", { text: k }), el("span", { text: val }));
   root.append(el("div", { class: "facts" },
     fact("Applicant", ap.organisation || ap.name || "—"),
+    fact("Verified identity", v.identity ? `${v.identity.name} · ${v.identity.method}, eIDAS ${v.identity.eidas_loa}`
+      : "not verified (API or evaluation)"),
     fact("Requested as", req.requested_as || "—"),
     fact("Articles", (d.articles || []).map(a => `Art. ${a}`).join(", ") || "—"),
     fact("Fulfilment", (v.fulfilment || {}).status || "—"),
@@ -760,5 +866,6 @@ function renderEvaluation(rep) {
 }
 
 // ------------------------------------------------------------------ start
+initAuth();
 loadRequests();
 api("/api/evaluation").then(({ body }) => { if (body && body.metrics) renderEvaluation(body); });

@@ -1,9 +1,13 @@
-# Health Data Access Desk (EHDS, Track 3)
+# Doccess: health data access desk (EHDS, Track 3)
 
-> **Hackathon simulation.** All patients are synthetic. This is **not** a real government approval system.
+> **Hackathon simulation.** All patients are synthetic, and the ID Austria sign-in is simulated. This is
+> **not** a real government approval system.
 
-A browser-based desk for a Health Data Access Body under the European Health Data Space Regulation
-(EU) 2025/327, Chapter IV. An applicant submits a request in the challenge JSON format. The desk then:
+**Doccess** = **Doc**tor / **Doc**ument + Ac**cess**. It is a browser-based desk for a Health Data Access Body
+under the European Health Data Space Regulation (EU) 2025/327, Chapter IV.
+
+An applicant signs in (simulated ID Austria) and submits a request through a form; the desk stores it in the
+challenge JSON format. The desk then:
 
 1. decides `REJECT`, `APPROVE_STATISTICAL` or `APPROVE_SPE` and cites the articles,
 2. for statistics, generates a query plan from the request's definitions and computes the numbers with
@@ -32,9 +36,45 @@ Then open **http://127.0.0.1:8000**. Use `python3 -m desk serve --port 8080` to 
 | Start the web app | `python3 -m desk` |
 | Evaluate R01–R10 three times against `expected.json` | `python3 -m desk evaluate` (add `--save` to write `reports/`) |
 | Same evaluation through the running web server | `python3 -m desk evaluate --url http://127.0.0.1:8000` |
-| Unit and integration tests (90) | `python3 -m unittest discover -s tests -t .` |
-| Browser end-to-end test (25 checks, needs Node ≥ 22 and Chrome) | `node tests/e2e/browser_flow.mjs http://127.0.0.1:8000` |
+| Unit and integration tests (92) | `python3 -m unittest discover -s tests -t .` |
+| Browser end-to-end test (27 checks, needs Node ≥ 22 and Chrome) | `node tests/e2e/browser_flow.mjs http://127.0.0.1:8000` |
 | Process one file on the command line | `python3 -m desk run new_requests/N01.json [--staff]` |
+
+### Sign-in: simulated ID Austria
+
+Applicants must sign in before they can submit (HTTP 401 otherwise). The staff view stays open for the demo.
+The sign-in follows the same flow as the real ID Austria, the OpenID Connect authorization code flow, against a
+local mock identity provider ([desk/identity.py](desk/identity.py)):
+
+1. *Sign in with ID Austria* sends the browser to `/idp-sim/authorize` with `response_type=code`, `state` and
+   `redirect_uri`.
+2. The applicant picks a fictional test person and confirms. This stands in for the confirmation in the
+   ID Austria app.
+3. The browser comes back with a one-time `code` (valid for 2 minutes). The page checks `state` and exchanges
+   the code at `/api/auth/token` for a session token (valid for 8 hours).
+
+What is protected:
+- open redirects are refused;
+- codes work only once;
+- signing out ends the session;
+- a filled-in form survives the redirect.
+
+What a case stores:
+- the display name;
+- the eIDAS assurance level;
+- a sector pseudonym modelled on the Austrian bPK for health (`GH:…`).
+
+It never stores a real identifier. The identity is recorded for accountability and is never used for the
+decision.
+
+To switch to the real ID Austria:
+1. Register Doccess as a service provider in the IDA-SPR. This gives you a `client_secret` and the allowed
+   `redirect_uri`.
+2. Point the authorize and token calls to `idp.ref.id-austria.gv.at` (reference environment) or
+   `idp.id-austria.gv.at` (production).
+3. Validate the returned ID token against the published JWKs.
+
+The rest of the desk stays the same.
 
 ### Running it online
 
@@ -242,6 +282,10 @@ If any check fails, the answer is **withheld** rather than released.
 - **Optional LLM fallback** ([desk/llm.py](desk/llm.py)). Set `DESK_LLM_PROVIDER=anthropic|openai`,
   `DESK_LLM_MODEL=<model>` and the matching API key to enable it. It is called only when the rule-based
   interpreter fails.
+  - Any OpenAI-compatible gateway works, e.g. OpenRouter:
+    `DESK_LLM_PROVIDER=openai DESK_LLM_BASE_URL=https://openrouter.ai/api/v1
+    DESK_LLM_MODEL=mistralai/mistral-small-3.2-24b-instruct OPENAI_API_KEY=<key> python3 -m desk`
+    (Mistral is an EU provider).
   - Only the request text is sent: `requested_as`, `requested_format`, `purpose`, `question`,
     `definitions`. The applicant identity and patient data are never sent.
   - The model's JSON plan must pass the same IR validator before any query. Unknown codes are flagged, and
@@ -313,7 +357,12 @@ CSV files directly. That calculation shares no code with the desk.
   - a period named only in the question is refused;
   - the case register and SPE access log survive a restart;
   - SPE analyses need the permit token and mask small cells.
-- `tests/e2e/browser_flow.mjs`: headless Chrome through the DevTools protocol (no npm packages), 25 checks:
+- `tests/test_server.py` also covers the simulated sign-in:
+  - submitting without a session is refused;
+  - the identity is recorded in the case;
+  - open redirects, code reuse and use after sign-out are rejected.
+- `tests/e2e/browser_flow.mjs`: headless Chrome through the DevTools protocol (no npm packages), 27 checks.
+  It includes submitting without sign-in (blocked) and the full ID Austria redirect flow, plus:
   - the demo flow: R10 rejection, R08/R01 statistics, R05 SPE with blocked download, access log and an
     aggregate analysis inside the SPE, N01,
   - the processing steps and the CSV export,
@@ -354,13 +403,15 @@ CSV files directly. That calculation shares no code with the desk.
     analyses inside the SPE and export them after the small-cell check.
   - Record downloads are always blocked.
   - The case register (`state/cases.jsonl`, no patient data) and the SPE access log are persisted.
-  - There is no remote desktop, no login and no identity verification beyond the permit token.
+  - There is no remote desktop.
+- **Identity is simulated.** The sign-in uses fictional test persons and a mock identity provider (see
+  *Sign-in*). Real ID Austria needs a registered service provider. Staff have no separate login in the demo.
 
 ## Two-minute demo script
 
 | Time | Action | What to say |
 |---|---|---|
-| 0:00 | Open http://127.0.0.1:8000 | "A Health Data Access Desk for EHDS secondary use. This is a hackathon simulation with synthetic data, as the badge in the header says." |
+| 0:00 | Open http://127.0.0.1:8000, click **Sign in with ID Austria**, pick a test person | "Doccess is a health data access desk for EHDS secondary use. Applicants identify themselves first; here the ID Austria sign-in is simulated. All data is synthetic, as the badge in the header says." |
 | 0:10 | Select **R10** → *Submit* | "A nicotine-pouch company wants COPD statistics. It is rejected under Art. 54(1)(d) before any data is touched: *Patient data queried: no*." |
 | 0:30 | Select **R08** → *Submit* | "A research request, approved as anonymised statistics under Art. 53 and 69. The numbers come from a query plan generated from the definitions. Regions under 10 show `<10` and the means are suppressed. Opted-out patients are excluded and values are rounded half-up." |
 | 0:55 | Select **R05** → *Submit*, then click **Download records** | "A model-training application that explains why aggregates are not enough, so it gets an SPE under Art. 53, 66, 68 and 73. Exactly 1 152 patients are selected, with only conditions, medications and HbA1c values copied in. A download attempt returns HTTP 403 and is logged." |

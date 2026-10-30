@@ -8,6 +8,7 @@ import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from desk.datastore import DataStore
 from desk.pipeline import Desk
@@ -34,6 +35,8 @@ class ServerTest(unittest.TestCase):
         cls.base = f"http://127.0.0.1:{cls.httpd.server_address[1]}"
         cls.thread = threading.Thread(target=cls.httpd.serve_forever, daemon=True)
         cls.thread.start()
+        cls.token = None
+        cls.token = cls.sign_in("lena")
 
     @classmethod
     def tearDownClass(cls):
@@ -42,14 +45,57 @@ class ServerTest(unittest.TestCase):
         cls.desk.store.close()
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
-    def call(self, path, data=None, method=None):
-        req = urllib.request.Request(self.base + path, data=data, method=method or ("POST" if data else "GET"))
+    @classmethod
+    def raw_call(cls, path, data=None, method=None, token=None):
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        req = urllib.request.Request(cls.base + path, data=data, method=method or ("POST" if data else "GET"),
+                                     headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
                 return r.status, r.read()
         except urllib.error.HTTPError as e:
             with e:
                 return e.code, e.read()
+
+    @classmethod
+    def sign_in(cls, person, state="s1"):
+        """Simulated ID Austria flow: approve at the mock IdP, then exchange the one-time code for a session."""
+        _, body = cls.raw_call("/idp-sim/approve", json.dumps({"person": person, "state": state,
+                                                               "redirect_uri": "/"}).encode())
+        code = parse_qs(urlparse(json.loads(body)["redirect"]).query)["code"][0]
+        _, body = cls.raw_call("/api/auth/token", json.dumps({"code": code}).encode())
+        return json.loads(body)["token"]
+
+    def call(self, path, data=None, method=None):
+        return self.raw_call(path, data, method, token=self.token if path == "/api/submit" else None)
+
+    def test_submitting_requires_the_simulated_id_austria_sign_in(self):
+        payload = json.dumps(SPE_REQUEST).encode()
+        status, body = self.raw_call("/api/submit", payload)
+        self.assertEqual(status, 401)
+        self.assertIn("ID Austria", json.loads(body)["message"])
+        status, body = self.call("/api/submit", payload)
+        view = json.loads(body)
+        self.assertEqual((status, view["submitted_by"]["name"]), (200, "Dr. Lena Gruber"))
+        status, body = self.raw_call(f"/api/cases/{view['case_id']}")
+        identity = json.loads(body)["identity"]
+        self.assertEqual((identity["eidas_loa"], identity["method"]), ("high", "ID Austria (simulated)"))
+        self.assertTrue(identity["bpk_gh"].startswith("GH:"))
+
+    def test_id_austria_simulation_rejects_misuse(self):
+        status, _ = self.raw_call("/idp-sim/approve", json.dumps({"person": "lena", "state": "x",
+                                                                  "redirect_uri": "https://evil.example/"}).encode())
+        self.assertEqual(status, 400, "open redirect")
+        _, body = self.raw_call("/idp-sim/approve", json.dumps({"person": "lena", "state": "x",
+                                                                "redirect_uri": "/"}).encode())
+        code = parse_qs(urlparse(json.loads(body)["redirect"]).query)["code"][0]
+        self.assertEqual(self.raw_call("/api/auth/token", json.dumps({"code": code}).encode())[0], 200)
+        self.assertEqual(self.raw_call("/api/auth/token", json.dumps({"code": code}).encode())[0], 400, "code reuse")
+        token = self.sign_in("sophie")
+        self.assertEqual(self.raw_call("/api/auth/me", token=token)[0], 200)
+        self.raw_call("/api/auth/logout", b"{}", token=token)
+        self.assertEqual(self.raw_call("/api/auth/me", token=token)[0], 401)
+        self.assertEqual(self.raw_call("/api/submit", json.dumps(SPE_REQUEST).encode(), token=token)[0], 401)
 
     def test_spe_download_is_blocked_and_logged(self):
         status, body = self.call("/api/submit", json.dumps(SPE_REQUEST).encode())

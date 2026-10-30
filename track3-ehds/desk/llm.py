@@ -148,7 +148,8 @@ def _http_json(url: str, headers: dict, body: dict) -> dict:
 def from_environment() -> LLMPlanner | None:
     provider = (os.environ.get("DESK_LLM_PROVIDER") or "").strip().lower()
     model = (os.environ.get("DESK_LLM_MODEL") or "").strip()
-    base = (os.environ.get("DESK_LLM_BASE_URL") or "").strip().rstrip("/")  # e.g. an EU-hosted gateway or a test server
+    # e.g. an EU-hosted gateway, OpenRouter (https://openrouter.ai/api/v1) or a test server; "/v1" is added below
+    base = re.sub(r"/v1$", "", (os.environ.get("DESK_LLM_BASE_URL") or "").strip().rstrip("/"))
     if not provider:
         return None
     if not model:

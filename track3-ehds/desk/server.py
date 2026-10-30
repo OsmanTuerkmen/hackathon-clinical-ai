@@ -25,6 +25,7 @@ from urllib.parse import unquote, urlparse
 
 from . import __version__
 from .config import HOST, NEW_REQUESTS_DIR, PORT, REQUESTS_DIR, STATE_DIR, WEB_DIR
+from .identity import IdentityError, IdentityProvider
 from .pipeline import Desk, applicant_view, staff_view
 from .request_schema import MAX_BYTES
 
@@ -69,13 +70,14 @@ class App:
     def __init__(self, desk: Desk | None = None, quiet: bool = False):
         self.desk = desk or Desk()
         self.quiet = quiet
+        self.idp = IdentityProvider()
         self.eval_lock = threading.Lock()
         self.last_evaluation: dict | None = None
 
 
 def make_handler(app: App):
     class Handler(BaseHTTPRequestHandler):
-        server_version = f"HealthDataAccessDesk/{__version__}"
+        server_version = f"Doccess/{__version__}"
         protocol_version = "HTTP/1.1"
 
         def log_message(self, fmt, *args):  # quieter console
@@ -110,6 +112,23 @@ def make_handler(app: App):
                 self._json(413, {"error": f"request body larger than {MAX_BYTES // 1024} KB"})
                 return None
             return self.rfile.read(length) if length else b""
+
+        def _bearer(self) -> str | None:
+            h = self.headers.get("Authorization") or ""
+            return h[7:].strip() if h.lower().startswith("bearer ") else None
+
+        def _json_body(self) -> dict | None:
+            body = self._body()
+            if body is None:
+                return None
+            try:
+                q = json.loads(body or b"{}")
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                q = None
+            if not isinstance(q, dict):
+                self._json(400, {"error": "invalid JSON body"})
+                return None
+            return q
 
         def _guarded(self, fn):
             try:
@@ -149,6 +168,13 @@ def make_handler(app: App):
             desk = app.desk
             if path in ("/", "/index.html"):
                 return self._static("index.html")
+            if path == "/idp-sim/authorize":  # simulated ID Austria identity provider page
+                return self._static("idp.html")
+            if path == "/api/auth/persons":
+                return self._json(200, IdentityProvider.persons())
+            if path == "/api/auth/me":
+                ident = app.idp.session(self._bearer())
+                return self._json(200, ident) if ident else self._json(401, {"error": "login_required"})
             if path.startswith("/static/"):
                 return self._static(path[len("/static/"):])
             if path == "/api/health":
@@ -187,9 +213,30 @@ def make_handler(app: App):
                 body = self._body()
                 if body is None:
                     return
-                case = app.desk.process(body, source="web")
+                identity = app.idp.session(self._bearer())
+                if identity is None:
+                    return self._json(401, {"error": "login_required",
+                                            "message": "Please sign in with ID Austria before submitting a request."})
+                case = app.desk.process(body, source="web", identity=identity)
                 status = 400 if case["status"] == "INVALID_REQUEST" else 200
                 return self._json(status, applicant_view(case))
+            if path in ("/idp-sim/approve", "/api/auth/token"):
+                q = self._json_body()
+                if q is None:
+                    return
+                try:
+                    if path == "/idp-sim/approve":
+                        return self._json(200, {"redirect": app.idp.approve(str(q.get("person", "")),
+                                                                            str(q.get("state", "")),
+                                                                            str(q.get("redirect_uri", "/")))})
+                    token, claims = app.idp.exchange(str(q.get("code", "")))
+                    return self._json(200, {"token": token, "identity": claims})
+                except IdentityError as exc:
+                    return self._json(400, {"error": str(exc)})
+            if path == "/api/auth/logout":
+                self._body()
+                app.idp.logout(self._bearer())
+                return self._json(200, {"ok": True})
             m = re.fullmatch(r"/api/spe/([a-z0-9-]+)/download(?:/([a-z]+))?", path)
             if m:
                 self._body()
@@ -238,7 +285,7 @@ def case_summary(c: dict) -> dict:
 
 def serve(host: str | None = None, port: int | None = None) -> None:
     host, port = host or HOST, port or PORT
-    print("Health Data Access Desk - HACKATHON SIMULATION, synthetic data only, not a real approval system")
+    print("Doccess - health data access desk - HACKATHON SIMULATION, synthetic data only, not a real approval system")
     print("Loading synthetic data ...", flush=True)
     t0 = time.perf_counter()
     from .llm import from_environment

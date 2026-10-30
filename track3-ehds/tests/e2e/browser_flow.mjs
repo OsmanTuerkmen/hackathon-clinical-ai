@@ -132,6 +132,27 @@ try {
     if (ids.join() !== "R10") throw new Error(JSON.stringify(ids));
     return "filter 'COPD' -> R10";
   });
+  await step("Submitting without sign-in is blocked", async () => {
+    await evaluate(`document.querySelector('[data-id="R10"]').click()`);
+    await waitFor(`document.querySelector('#request-json').value.includes('"R10"')`, 5000, "R10 loaded");
+    await evaluate(`document.querySelector('#submit-btn').click()`);
+    await waitFor(`${text("#editor-hint")}.includes("sign in with ID Austria") && document.querySelector('#identity-box').classList.contains('attention')`, 5000, "sign-in hint");
+    if (!(await evaluate(`document.querySelector('#answer').classList.contains('hidden')`))) throw new Error("answer shown without sign-in");
+    return "hint shown, nothing submitted";
+  });
+  await step("Sign in with ID Austria (simulated OpenID Connect code flow)", async () => {
+    await evaluate(`document.querySelector('#idaustria-btn').click()`);
+    await sleep(500);
+    await waitFor(`location.pathname === '/idp-sim/authorize' && document.querySelectorAll('.idp-person input').length === 3`, 10000, "simulated IdP page");
+    await shot("00-idaustria-login");
+    await evaluate(`document.querySelector('.idp-person input[value="lena"]').click(); document.querySelector('#idp-confirm').click()`);
+    await sleep(1500);
+    await waitFor(`location.pathname === '/' && !document.querySelector('#identity-in').classList.contains('hidden')`, 15000, "signed in");
+    const who = await evaluate(text("#identity-name"));
+    const restored = await evaluate(`document.querySelector('#f-purpose').value.length > 0`);
+    if (who !== "Dr. Lena Gruber" || !restored) throw new Error(`${who} restored=${restored}`);
+    return `${who}; form restored after the redirect`;
+  });
   await step("R10 nicotine pouches -> REJECT, Art. 54, no data queried", async () => {
     const ms = await submit("R10");
     const code = await evaluate(text("#decision-code"));
