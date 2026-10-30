@@ -1,4 +1,5 @@
 import json
+import time
 
 import pytest
 
@@ -27,6 +28,19 @@ def test_case_registry_loads_official_and_demo_cases(cases):
     assert by_id["D03"]["status"] == "held_identity"
     assert by_id["D04"]["status"] == "review_needed"
     assert len(by_id["R01"]["five_safes"]) == 5
+
+
+def test_startup_processes_all_cases_under_five_seconds(data_dir, tmp_path):
+    desk = build_desk(data_dir, runtime_dir=tmp_path / "startup-runtime")
+    try:
+        started = time.perf_counter()
+        registry = CaseRegistry(desk, data_dir)
+        elapsed = time.perf_counter() - started
+
+        assert len(registry.list()) == 15
+        assert elapsed < 5
+    finally:
+        desk.store.con.close()
 
 
 def test_case_registry_filters_and_searches(cases):
