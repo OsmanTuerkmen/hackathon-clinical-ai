@@ -1,10 +1,12 @@
-# EHDS Access Desk
+# Doccess
 
-A local hackathon demo for **Clinical AI, Track 3: European Health Data Space**. Submit a health-data request as JSON and follow it from purpose assessment to an explained decision, protected statistics or a local secure-processing workspace.
+Doccess is a local hackathon demo for **Clinical AI, Track 3: European Health Data Space**. Submit a health-data request as JSON and follow it from purpose assessment to an explained decision, protected statistics or a local secure-processing workspace.
 
 The demo uses **20,000 synthetic patients** from the separately supplied Track 3 dataset. It runs without an LLM. Applicant and Staff views explain the same result at different levels: applicants see the decision and next step; staff see the rule trace, terminology mapping, structured query, SQL, opt-out exclusions and disclosure notes.
 
-![R01 in the Applicant view](docs/img/r01-applicant-desktop.png)
+![R01 in the Applicant view of Doccess](docs/img/r01-applicant-desktop.png)
+
+The interface uses only local assets. Instrument Sans and IBM Plex Mono are self-hosted under the SIL Open Font License (`web/assets/fonts/`).
 
 ## Setup and start
 
@@ -190,7 +192,7 @@ The measurement is local and offline on the supplied synthetic data: **no live L
 
 An independent standard-library CSV reference matches **14/14** numerical cases (six original and eight extra), without importing the application, DuckDB or Pydantic. The evaluation also checks opt-out membership, the SPE schema, the entire selected cohort and copied records **including multiplicity**, rather than relying only on counts. Ten extra requests cover main diagnosis, hospital grouping, code-free terminology, prohibited-purpose boundaries, cessation research, a different SPE record type, many small cells and access fallback.
 
-Additional recorded verification: **702 pytest tests passed**, and **133 real Edge browser checks** covered Applicant/Staff, both SPEs, desktop and a **375 px** viewport. See [STATUS](docs/STATUS.md) and [WORKLOG](docs/WORKLOG.md) for the runs. The [security review](docs/SECURITY_REVIEW.md) records the static checks, the subsequently closed scope findings and the local demo limits.
+Additional recorded verification: **714 pytest tests passed**, and **133 real Edge browser checks** covered Applicant/Staff, both SPEs, desktop and a **375 px** viewport. See [STATUS](docs/STATUS.md) and [WORKLOG](docs/WORKLOG.md) for the runs. The [security review](docs/SECURITY_REVIEW.md) records the static checks, the subsequently closed scope findings and the local demo limits.
 
 ## Known limits
 

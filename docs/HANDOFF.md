@@ -2,6 +2,10 @@
 
 Stand: 2026-10-30. Tasks 1–15 und die finalen Korrekturen sind abgeschlossen und verifiziert. Der Abschlusscommit enthält diese Dokumentation; seinen Hash mit git log -1 lesen. Der vom Nutzer gewünschte Zwischencommit ist 44200f9. Danach wurde ausdrücklich ohne weiteren Zwischencommit weitergearbeitet. Kein Push, Merge oder Eingriff in Track 1.
 
+## Doccess-Redesign
+
+Die UI heißt jetzt Doccess (ADR-014, Richtung J Compliance). Geändert wurden `web/` und `tests/test_web.py`; Fachlogik, API und Tests dazu blieben unverändert. Das QA-Skript `.superpowers/sdd/2026-10-29-ehds-access-desk/final-browser.py` prüft weiterhin 133 Punkte; angepasst wurden nur die Position des Entscheidungs-Badges (jetzt im Kopf statt im Applicant-Panel) und der neue Rotton. Aktuell 714 Python-Tests.
+
 ## Arbeitsort und Daten
 
 - Worktree: C:/Users/BüsraTürkmen/Documents/Hackathon/hackathon-clinical-ai/.claude/worktrees/track3-app; Branch track3-app.

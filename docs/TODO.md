@@ -18,11 +18,16 @@ Stand: 2026-10-30. Implementierung und Verifikation abgeschlossen; kein Push/Mer
 - [x] Fokussierte Regressionen, scoped Nachreviews und Sicherheitsnachreview
 - [x] Frische702Tests,14/14Referenzen,60POST-Eval und133Browserchecks nach allen Korrekturen
 - [x] Trackingprüfung: keineCSV, var/, .env oderDuckDB-Dateien versioniert
+- [x] Doccess-Redesign (Richtung J Compliance): Marke, Sidebar, Entscheidungsleiter, Applicant/Staff/SPE, lokale OFL-Schriften, neue Screenshots
 
 ## Nutzer / Abgabe
 
 - [ ] Bis2Minuten Demo-Video aufnehmen (Ablauf im README)
 - [ ] Bei Bedarf ausdrückliche Freigabe für Push/PR/Merge und öffentliche Repository-Sichtbarkeit erteilen
+
+## Optional
+
+- [ ] Paketmetadaten, FastAPI-Titel und CLI-Beschreibung von „EHDS Access Desk“ auf Doccess umstellen (Backend, daher nicht Teil des UI-Auftrags)
 
 ## Bewusste Grenzen für spätere Weiterentwicklung
 

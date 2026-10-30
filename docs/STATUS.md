@@ -13,7 +13,13 @@ Die Implementierung der Tasks 1–15 und die abschließenden Prüfungen sind abg
 | Tasks 13–14 | unabhängige stdlib-CSV-Referenz, gehärteter Drei-Lauf-Eval und zehn eigene Anträge fertig/reviewt |
 | Task 15 / Abschlussreview | englisches README, Mermaid, Screenshots, Grenzen und Sicherheitsbericht aktualisiert; alle vier abschließenden Parserbefunde geschlossen |
 
-## Frische Nachweise nach allen Korrekturen
+## Doccess-Redesign (2026-10-30)
+
+Oberfläche unter dem Namen Doccess neu gestaltet (Richtung J Compliance, ADR-014): Sidebar mit Inbox und Suche, Entscheidungsleiter neben den Ergebnissen, Staff mit Abschnittsnavigation, klar abgegrenzter SPE-Arbeitsbereich, Desktop und 375 px. Nur `web/` und `tests/test_web.py` geändert. Unabhängiger UI-Review: Textausgabe, Raceguards, Manual-Review-Gate und Requests unverändert; alle relevanten Befunde behoben.
+
+Frische Nachweise nach dem Redesign: 714 Python-Tests bestanden (62.94 s, EHDS_LLM=off), 133 Edge-Browserchecks, CSV-Referenz 14/14. Die Eval-Zahlen stehen in `eval/results.md`.
+
+## Frische Nachweise nach allen Korrekturen (vor dem Redesign)
 
 - Volle Python-Suite: 702 passed in 82.69 s unter EHDS_LLM=off, Exit 0.
 - Unabhängige CSV-Referenz: 14/14 (sechs Originale, acht genehmigte Extras), Exit 0.
