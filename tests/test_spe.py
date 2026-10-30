@@ -1,5 +1,6 @@
 import json
 import re
+import threading
 
 import duckdb
 import pytest
@@ -178,3 +179,102 @@ def test_audit_event_fields(r05_manifest, tmp_path):
     assert ev.action == "provisioned"
     assert ev.permit_id == r05_manifest.permit_id
     assert ev.timestamp.endswith("+00:00")
+
+
+def test_concurrent_provisions_of_different_permits(db, tmp_path):
+    results: dict[str, object] = {}
+
+    def run(rid: str) -> None:
+        try:
+            results[rid] = spe.provision_spe(make_request(rid), specs.r05(), db, tmp_path)
+        except Exception as exc:  # noqa: BLE001 - surfaced by the assertion below
+            results[rid] = exc
+
+    threads = [threading.Thread(target=run, args=(rid,)) for rid in ("C1", "C2", "C3", "C4")]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert all(isinstance(m, spe.SpeManifest) for m in results.values()), results
+    assert len({m.permit_id for m in results.values()}) == 4
+    assert all(m.patient_count == 1152 for m in results.values())
+
+
+def test_concurrent_provisions_of_same_permit(db, tmp_path):
+    errors: list[Exception] = []
+
+    def run() -> None:
+        try:
+            spe.provision_spe(make_request("SAME"), specs.r05(), db, tmp_path)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [threading.Thread(target=run) for _ in range(3)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors
+
+
+def test_failed_reprovision_leaves_no_stale_manifest(db, tmp_path, monkeypatch):
+    m = spe.provision_spe(make_request(), specs.r05(), db, tmp_path)
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("cohort failure")
+
+    monkeypatch.setattr(spe, "cohort_patient_ids", boom)
+    with pytest.raises(RuntimeError):
+        spe.provision_spe(make_request(), specs.r05(), db, tmp_path)
+    with pytest.raises(spe.SpeNotFound):
+        spe.load_manifest(m.permit_id, tmp_path)
+
+
+def test_download_of_unknown_table_is_audited_and_raises(r05_manifest, tmp_path):
+    pid = r05_manifest.permit_id
+    for bad in ("raw_patients", "encounters"):
+        with pytest.raises(ValueError):
+            spe.attempt_download(pid, bad, tmp_path)
+    events = [e for e in spe.audit_log(pid, tmp_path) if e.action == "download_blocked"]
+    assert len(events) == 2
+    assert all(e.table is None or e.table in spe.TABLE_WHITELIST for e in events)
+    assert all("blocked" in e.detail for e in events)
+
+
+def test_copy_filters_opted_out_even_if_cohort_contains_them(db, tmp_path, monkeypatch):
+    opted_out = [
+        r[0] for r in db.cursor().execute("SELECT patient_id FROM raw_patients WHERE opted_out LIMIT 5").fetchall()
+    ]
+    consented = cohort_patient_ids(specs.r05(), db)[:5]
+    assert opted_out
+    monkeypatch.setattr(spe, "cohort_patient_ids", lambda spec, database: consented + opted_out)
+    spec = QuerySpec(
+        population=[specs.ADULT],
+        output="cohort_size",
+        record_types=["patients", "conditions", "medications", "observations", "encounters"],
+    )
+    m = spe.provision_spe(make_request("OPT"), spec, db, tmp_path)
+    assert m.patient_count == len(consented)
+    for table in m.tables:
+        ids = {r[0] for r in _query(tmp_path, m.permit_id, f"SELECT DISTINCT patient_id FROM {table}")}
+        assert not (ids & set(opted_out)), table
+        assert ids <= set(consented), table
+
+
+def test_r05_row_counts_equal_source_counts(db, tmp_path, r05_manifest):
+    cohort = cohort_patient_ids(specs.r05(), db)
+    cur = db.cursor()
+    try:
+        cur.execute("CREATE TEMP TABLE t_cohort (patient_id VARCHAR)")
+        cur.executemany("INSERT INTO t_cohort VALUES (?)", [[p] for p in cohort])
+        sub = "patient_id IN (SELECT patient_id FROM t_cohort)"
+        expected = {
+            "conditions": cur.execute(f"SELECT count(*) FROM cond WHERE {sub}").fetchone()[0],
+            "medications": cur.execute(f"SELECT count(*) FROM med WHERE {sub}").fetchone()[0],
+            "observations": cur.execute(f"SELECT count(*) FROM obs WHERE loinc = '4548-4' AND {sub}").fetchone()[0],
+        }
+    finally:
+        cur.close()
+    for table, n in expected.items():
+        assert n > 0
+        assert r05_manifest.tables[table] == n, table

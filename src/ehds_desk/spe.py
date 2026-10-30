@@ -16,6 +16,7 @@ import hashlib
 import json
 import re
 import threading
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -31,7 +32,6 @@ ARTICLES: list[str] = ["53", "66", "68", "73", "71"]
 PREVIEW_MAX_ROWS = 20
 
 _PERMIT_ID = re.compile(r"[A-Za-z0-9_-]+")
-_ATTACH_ALIAS = "spe_target"
 _COHORT_TMP = "spe_cohort_tmp"
 
 # Whitelisted table -> source SELECT on the opt-out-filtered views (never the *_all views).
@@ -46,6 +46,7 @@ _SOURCES: dict[str, str] = {
 TABLE_WHITELIST: frozenset[str] = frozenset({"cohort", *_SOURCES})
 
 _audit_lock = threading.Lock()
+_provision_lock = threading.Lock()  # ATTACH aliases and files are instance-wide: provision one SPE at a time
 
 
 class SpeNotFound(Exception):
@@ -147,17 +148,41 @@ def audit_log(permit_id: str, var_dir: Path) -> list[AuditEvent]:
 
 
 def provision_spe(request: AccessRequest, spec: QuerySpec, db: Database, var_dir: Path) -> SpeManifest:
-    """(Re-)create the SPE of this request: cohort plus the requested record types, no opted-out patients."""
+    """(Re-)create the SPE of this request: cohort plus the requested record types, no opted-out patients.
+
+    Serialised by a module-level lock: ATTACH/DETACH act on the shared in-memory database, and the
+    same permit must not be rebuilt by two threads at once.
+    """
     permit_id = permit_id_for(request)
     directory = _permit_dir(permit_id, var_dir)
     directory.mkdir(parents=True, exist_ok=True)
+    with _provision_lock:
+        manifest = _provision_locked(request, spec, db, permit_id, directory)
+    _log(
+        permit_id,
+        var_dir,
+        "provisioned",
+        None,
+        f"Secure processing environment provisioned for request {request.id}: {manifest.patient_count} patients, "
+        f"tables {', '.join(manifest.tables)}.",
+        actor="system",
+    )
+    return manifest
+
+
+def _provision_locked(
+    request: AccessRequest, spec: QuerySpec, db: Database, permit_id: str, directory: Path
+) -> SpeManifest:
     db_file = directory / "spe.duckdb"
-    for stale in (db_file, directory / "spe.duckdb.wal"):
-        stale.unlink(missing_ok=True)  # the audit log is deliberately kept
+    # Remove the old SPE and its manifest first: a failed run must not leave a manifest that
+    # describes a missing or half-built database. The audit log is deliberately kept.
+    for stale in (db_file, directory / "spe.duckdb.wal", directory / "manifest.json"):
+        stale.unlink(missing_ok=True)
 
     patient_ids = cohort_patient_ids(spec, db)
     record_types = list(dict.fromkeys(spec.record_types))
     observation_codes = list(spec.observation_codes.prefixes) if spec.observation_codes else []
+    alias = "spe_" + uuid.uuid4().hex  # unique per call; ATTACH is instance-wide
 
     counts: dict[str, int] = {}
     con = db.cursor()
@@ -165,24 +190,24 @@ def provision_spe(request: AccessRequest, spec: QuerySpec, db: Database, var_dir
         con.execute(f"CREATE TEMP TABLE {_COHORT_TMP} (patient_id VARCHAR)")
         if patient_ids:
             con.executemany(f"INSERT INTO {_COHORT_TMP} VALUES (?)", [[pid] for pid in patient_ids])
+        # Defence in depth: only patients visible in the opt-out-filtered view may enter the SPE.
+        consented = f"patient_id IN (SELECT patient_id FROM pat) AND patient_id IN (SELECT patient_id FROM {_COHORT_TMP})"
         attach_path = str(db_file).replace("'", "''")
-        con.execute(f"ATTACH '{attach_path}' AS {_ATTACH_ALIAS}")
+        con.execute(f"ATTACH '{attach_path}' AS {alias}")
         try:
-            con.execute(
-                f"CREATE TABLE {_ATTACH_ALIAS}.cohort AS SELECT patient_id FROM {_COHORT_TMP} ORDER BY patient_id"
-            )
-            counts["cohort"] = len(patient_ids)
+            con.execute(f"CREATE TABLE {alias}.cohort AS SELECT patient_id FROM {_COHORT_TMP} WHERE patient_id IN (SELECT patient_id FROM pat) ORDER BY patient_id")
+            counts["cohort"] = con.execute(f"SELECT count(*) FROM {alias}.cohort").fetchone()[0]
             for table in record_types:
                 # `table` is validated by the QuerySpec Literal and looked up in the _SOURCES whitelist.
-                sql = f"CREATE TABLE {_ATTACH_ALIAS}.{table} AS {_SOURCES[table]} WHERE patient_id IN (SELECT patient_id FROM {_COHORT_TMP})"
+                sql = f"CREATE TABLE {alias}.{table} AS {_SOURCES[table]} WHERE {consented}"
                 params: list[str] = []
                 if table == "observations" and observation_codes:
                     sql += " AND (" + " OR ".join("starts_with(loinc, ?)" for _ in observation_codes) + ")"
                     params = observation_codes
                 con.execute(sql, params)
-                counts[table] = con.execute(f"SELECT count(*) FROM {_ATTACH_ALIAS}.{table}").fetchone()[0]
+                counts[table] = con.execute(f"SELECT count(*) FROM {alias}.{table}").fetchone()[0]
         finally:
-            con.execute(f"DETACH {_ATTACH_ALIAS}")  # release the file lock (Windows)
+            con.execute(f"DETACH {alias}")  # release the file lock (Windows)
     finally:
         try:
             con.execute(f"DROP TABLE IF EXISTS {_COHORT_TMP}")
@@ -192,22 +217,13 @@ def provision_spe(request: AccessRequest, spec: QuerySpec, db: Database, var_dir
     manifest = SpeManifest(
         permit_id=permit_id,
         request_id=request.id,
-        patient_count=len(patient_ids),
+        patient_count=counts["cohort"],
         tables=counts,
         record_types=record_types,
         observation_codes=observation_codes,
         articles=list(ARTICLES),
     )
     (directory / "manifest.json").write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
-    _log(
-        permit_id,
-        var_dir,
-        "provisioned",
-        None,
-        f"Secure processing environment provisioned for request {request.id}: {manifest.patient_count} patients, "
-        f"tables {', '.join(counts)}.",
-        actor="system",
-    )
     return manifest
 
 
@@ -241,7 +257,22 @@ def preview(permit_id: str, table: str, var_dir: Path, limit: int = PREVIEW_MAX_
 def attempt_download(permit_id: str, table: str, var_dir: Path, actor: str = "applicant") -> AuditEvent:
     """Every download is refused (Art. 73(2)); the attempt is audited. Never returns data."""
     manifest = load_manifest(permit_id, var_dir)
-    _check_table(manifest, table)
+    try:
+        _check_table(manifest, table)
+    except ValueError:
+        # An attempt to fetch an unknown table is still a download attempt: audit it, then refuse.
+        shown = table if table in TABLE_WHITELIST else None
+        label = f"table '{shown}'" if shown else "an unknown table"
+        _log(
+            permit_id,
+            var_dir,
+            "download_blocked",
+            shown,
+            f"Download of {label} blocked: it is not part of this secure processing environment, and "
+            f"pseudonymised records may not leave it (Art. 73(2)).",
+            actor=actor,
+        )
+        raise
     return _log(
         permit_id,
         var_dir,
