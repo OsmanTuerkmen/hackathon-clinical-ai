@@ -39,6 +39,7 @@ Then open **http://127.0.0.1:8000**. Use `python3 -m desk serve --port 8080` to 
 | Unit and integration tests (92) | `python3 -m unittest discover -s tests -t .` |
 | Browser end-to-end test (27 checks, needs Node ≥ 22 and Chrome) | `node tests/e2e/browser_flow.mjs http://127.0.0.1:8000` |
 | Process one file on the command line | `python3 -m desk run new_requests/N01.json [--staff]` |
+| Record the silent demo video, about 50 s, 1920×1080 (macOS, Chrome) | `node tools/record_demo.mjs http://127.0.0.1:8000 doccess-demo.mp4` |
 
 ### Sign-in: simulated ID Austria
 
