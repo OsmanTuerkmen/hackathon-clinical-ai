@@ -9,7 +9,7 @@
     "privacy_leaks": 0,
     "consistent": 10,
     "runs": 3,
-    "slowest_ms": 229.4,
+    "slowest_ms": 214.4,
     "slowest_request": "R09",
     "mode": "in-process (fresh data load per run)"
   },
@@ -24,12 +24,12 @@
       "numbers_ok": true,
       "problems": [],
       "leaks": [],
-      "ms": 183.3,
+      "ms": 181.5,
       "fingerprint": "e4efb1357fcce6f3",
       "download_status": null,
       "fulfilment": "RELEASED",
       "consistent": true,
-      "ms_max": 183.3
+      "ms_max": 181.5
     },
     "R02": {
       "decision": "REJECT",
@@ -40,12 +40,12 @@
       "numbers_ok": null,
       "problems": [],
       "leaks": [],
-      "ms": 1.1,
+      "ms": 1.2,
       "fingerprint": "e09447eedc4c7d7d",
       "download_status": null,
       "fulfilment": "NONE",
       "consistent": true,
-      "ms_max": 1.1
+      "ms_max": 1.2
     },
     "R03": {
       "decision": "APPROVE_STATISTICAL",
@@ -57,12 +57,12 @@
       "numbers_ok": true,
       "problems": [],
       "leaks": [],
-      "ms": 127.3,
+      "ms": 124.8,
       "fingerprint": "07472fdb4560d6d0",
       "download_status": null,
       "fulfilment": "RELEASED",
       "consistent": true,
-      "ms_max": 141.9
+      "ms_max": 124.8
     },
     "R04": {
       "decision": "REJECT",
@@ -73,12 +73,12 @@
       "numbers_ok": null,
       "problems": [],
       "leaks": [],
-      "ms": 1.0,
+      "ms": 0.9,
       "fingerprint": "e09447eedc4c7d7d",
       "download_status": null,
       "fulfilment": "NONE",
       "consistent": true,
-      "ms_max": 1.0
+      "ms_max": 1.1
     },
     "R05": {
       "decision": "APPROVE_SPE",
@@ -92,12 +92,12 @@
       "numbers_ok": true,
       "problems": [],
       "leaks": [],
-      "ms": 163.9,
+      "ms": 148.6,
       "fingerprint": "c54418091e915554",
       "download_status": 403,
       "fulfilment": "SPE_READY",
       "consistent": true,
-      "ms_max": 165.4
+      "ms_max": 149.1
     },
     "R06": {
       "decision": "REJECT",
@@ -108,7 +108,7 @@
       "numbers_ok": null,
       "problems": [],
       "leaks": [],
-      "ms": 1.0,
+      "ms": 0.9,
       "fingerprint": "e09447eedc4c7d7d",
       "download_status": null,
       "fulfilment": "NONE",
@@ -125,12 +125,12 @@
       "numbers_ok": true,
       "problems": [],
       "leaks": [],
-      "ms": 97.9,
+      "ms": 92.5,
       "fingerprint": "d87efef79b40a5ac",
       "download_status": null,
       "fulfilment": "RELEASED",
       "consistent": true,
-      "ms_max": 101.1
+      "ms_max": 95.8
     },
     "R08": {
       "decision": "APPROVE_STATISTICAL",
@@ -142,12 +142,12 @@
       "numbers_ok": true,
       "problems": [],
       "leaks": [],
-      "ms": 156.5,
+      "ms": 144.2,
       "fingerprint": "0b7bf9886d4379f5",
       "download_status": null,
       "fulfilment": "RELEASED",
       "consistent": true,
-      "ms_max": 169.8
+      "ms_max": 150.3
     },
     "R09": {
       "decision": "APPROVE_STATISTICAL",
@@ -160,12 +160,12 @@
       "numbers_ok": true,
       "problems": [],
       "leaks": [],
-      "ms": 215.9,
+      "ms": 193.1,
       "fingerprint": "3f5475573b2cda9f",
       "download_status": null,
       "fulfilment": "RELEASED",
       "consistent": true,
-      "ms_max": 229.4
+      "ms_max": 214.4
     },
     "R10": {
       "decision": "REJECT",
@@ -176,12 +176,12 @@
       "numbers_ok": null,
       "problems": [],
       "leaks": [],
-      "ms": 1.6,
+      "ms": 1.5,
       "fingerprint": "e09447eedc4c7d7d",
       "download_status": null,
       "fulfilment": "NONE",
       "consistent": true,
-      "ms_max": 1.6
+      "ms_max": 1.5
     }
   }
 }

@@ -854,7 +854,6 @@ class PlanBuilder:
             (rf"\bage[ds]?\s*>\s*(\d{{1,3}}){ref}", age_gt),
             (rf"\bage[ds]?\s*<\s*(\d{{1,3}}){ref}", age_lt),
             (rf"\bage[ds]?\s*(?:<=|≤)\s*(\d{{1,3}}){ref}", lambda m: ("atom", ("age", "<", int(m.group(1)) + 1))),
-            (rf"(?<![\w.-])(\d{{1,3}})\s*\+(?:\s+years)?{ref}(?![\w.])", age_ge),
             (rf"\baged? (?:over|above|older than) (\d{{1,3}})(?: years)?{ref}", age_gt),
             (rf"\baged? (?:under|below|younger than|less than) (\d{{1,3}})(?: years)?{ref}", age_lt),
             (rf"\b(?:who are |that are )?(?:younger than|under) (\d{{1,3}}) years?(?: old)?{ref}", age_lt),
@@ -874,6 +873,7 @@ class PlanBuilder:
         ]
         for words, op in CMP_WORDS:
             pats.append((rf"(?<![\w-]){words}\s*{NUM_RE}{UNIT_RE}(?![\w-])", cmp(op)))
+        pats.append((rf"(?<![\w.-]){NUM_RE}\s*\+{UNIT_RE}(?![\w])", cmp(">=")))  # "BMI 30+" (ages: "aged 18+" above)
         return pats
 
     def _assemble(self, items: list[Item], text: str, where: str, want_head: bool):
@@ -959,8 +959,6 @@ class PlanBuilder:
         if atleast and c.kind != "encounter":
             raise InterpretationError(f"'at least N' is only supported for encounters (got '{c.label}')", where)
         if c.kind == "set":
-            if pick:
-                raise InterpretationError(f"'{pick}' cannot apply to '{c.label}'", where)
             return {"op": "ref", "id": cid}, None
         if c.kind == "condition":
             return {"op": "has_condition", "id": cid}, None
@@ -1034,7 +1032,10 @@ class PlanBuilder:
         """A period named only in the question (not in any definition) would be silently ignored - refuse it."""
         q = re.sub(r"31 december \d{4}", " ", self.req.get("question", ""), flags=I)
         defs = " ".join(self.req.get("definitions", []))
-        missing = sorted({y for y in re.findall(r"\b((?:19|20)\d{2})\b", q) if y not in defs})
+        # years and ISO dates only - not codes such as LOINC 2093-3
+        years = re.findall(r"\b((?:19|20)\d{2})-\d{2}-\d{2}\b", q) + \
+            re.findall(r"(?<![\w.-])((?:19|20)\d{2})(?![\w-])", q)
+        missing = sorted({y for y in years if y not in defs})
         if missing:
             raise InterpretationError(f"the question refers to {', '.join(missing)}, but no definition restricts the "
                                       "data to that period", "question",

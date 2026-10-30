@@ -129,6 +129,18 @@ class DerivedValueTest(unittest.TestCase):
         self.assertIn("2024", ctx.exception.message)
 
 
+class RegressionTest(unittest.TestCase):
+    def test_threshold_written_with_plus_is_a_measurement_threshold_not_an_age(self):
+        plan = build_plan(req(["Use the latest BMI (LOINC 39156-5) per patient.", "Obesity = BMI 30+.",
+                               "Report per sex: patients with obesity."]), "statistics")
+        expr = plan["concepts"]["obesity"]["expr"]
+        self.assertEqual((expr["op"], expr["cmp"], expr["value"]), ("observation_value", ">=", "30"))  # exact decimal
+
+    def test_codes_in_the_question_are_not_years(self):
+        build_plan(req(["Use the latest HbA1c per patient.", "Report per region: patients with an HbA1c, mean HbA1c."],
+                       question="What is the mean HbA1c (code 2093-3 style) by region?"), "statistics")
+
+
 class NegationScopeTest(unittest.TestCase):
     def measure_set(self, line, question="How many patients?", extra=()):
         plan = build_plan(req(list(extra) + [line], question), "statistics")

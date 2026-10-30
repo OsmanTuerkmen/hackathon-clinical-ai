@@ -83,7 +83,8 @@ BENIGN = [
     r"prevention|control|cessation|abuse)",
     r"(against|prevent\w*|reduc\w*|treat\w*|fight\w*|tackl\w*) (?:\w+ ){0,2}(gambling|betting|smoking|tobacco|nicotine|"
     r"alcohol|drug use)",
-    r"labou?r market", r"market access",
+    r"labou?r market", r"market access", r"non-?profit", r"not-for-profit", r"brand-?name", r"pricing polic\w*",
+    r"drug pric\w* polic\w*",
 ]
 
 HARMFUL_PRODUCT = (r"\b(nicotine|tobacco|cigarettes?|cigars?|e-?cigarettes?|vap(?:e|es|ing)|snus|nicotine pouch(?:es)?|"
@@ -149,16 +150,19 @@ RED_FLAGS = [
      r"data(?:base)?)\b"),
     ("targeting prescribers or consumers", r"\btarget\w* (?:\w+ ){0,2}(?:prescribers|physicians|doctors|consumers|"
                                            r"customers|buyers|pharmacies)\b"),
-    ("pricing, profit or competition", r"\b(?:pric(?:e|es|ing)|profit\w*|revenue|market share|competitors?|"
-                                       r"commercial (?:advantage|strateg\w*)|business case|go-to-market|product launch|"
-                                       r"brand\w*)\b"),
-    ("insurance underwriting or credit", r"\b(?:underwrit\w*|actuar\w*|insurability|premiums?|loans?|lending|"
-                                         r"mortgages?|credit)\b"),
-    ("employment decisions", r"\b(?:employers?|human resources|hr department|hiring|recruit\w*|job applicants?|"
-                             r"contract renewals?|sick leave of (?:our|the) )\b"),
+    ("pricing, profit or competition",
+     r"\b(?:(?:our|their|its) (?:prices?|pricing|profits?|revenues?|margins?)|pricing strateg\w*|profit (?:margins?|"
+     r"maximi[sz]\w*)|revenue growth|market share|competitors?|commercial (?:advantage|strateg\w*)|business case|"
+     r"go-to-market|product launch|brand (?:awareness|positioning|strategy|loyalty))\b"),
+    ("insurance underwriting or credit",
+     r"\b(?:underwrit\w*|actuar\w*|insurability|premiums?|lending|mortgages?|loan (?:applications?|decisions?)|"
+     r"credit (?:scor\w*|rating|worthiness|risk|decisions?|limits?))\b"),
+    ("employment decisions", r"\b(?:employers?|human resources|hr department|hiring|job applicants?|contract renewals?|"
+                             r"recruit\w* (?:staff|employees|workers|candidates))\b"),
     ("identifying or contacting individual people",
-     r"\b(?:identify\w*|find|locate|contact\w*|reach out to|name)\b[^.]{0,30}?\b(?:individual|specific|named|single|"
-     r"particular|these|those) (?:patients?|persons?|people|individuals)\b"),
+     r"\b(?:contact\w*|reach out to|locate)\b[^.]{0,30}?\b(?:individual|specific|named|single|particular|these|those|"
+     r"the) (?:patients?|persons?|people|individuals)\b|\bidentify\w* (?:individual|specific|named|particular|single) "
+     r"(?:patients?|persons?|people|individuals)\b"),
 ]
 
 

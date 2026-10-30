@@ -65,6 +65,15 @@ class ProhibitedPurposeTest(unittest.TestCase):
             d = policy.decide(req(purpose))
             self.assertNotEqual(d.outcome, policy.REJECT, purpose)
 
+    def test_safeguard_does_not_flag_ordinary_research_wording(self):
+        for purpose in ("A non-profit patient organisation studies asthma care to improve treatment.",
+                        "University research: we will recruit participants for a clinical trial on heart failure care.",
+                        "Research comparing brand-name and generic statin use to inform prescribing policy.",
+                        "We develop decision support that helps GPs identify those patients at high risk earlier.",
+                        "The ministry evaluates drug pricing policy for public health planning."):
+            d = policy.decide(req(purpose))
+            self.assertEqual(d.outcome, policy.APPROVE_STATISTICAL, f"{purpose} -> {[f.label for f in d.prohibited]}")
+
     def test_applicant_identity_is_not_used(self):
         legit = "Research on regional differences in type 2 diabetes to plan prevention."
         for org in ("Alpenland Versicherung AG, pricing department", "Brightline Health Marketing GmbH"):

@@ -137,7 +137,7 @@ $("#request-filter").addEventListener("input", renderRequestList);
 // ------------------------------------------------------------------ applicant: request form
 // The applicant fills in a form; the JSON in the challenge format is built behind the scenes (and stored by the
 // desk). Power users can still upload a file or open the advanced JSON panel.
-const form = { id: null, edited: false };
+const form = { id: null, edited: false, keepRawJson: false };
 const jsonBox = $("#request-json");
 const advanced = $("#json-advanced");
 
@@ -217,7 +217,10 @@ function loadRequestText(text, label) {
     $("#editor-hint").textContent = `Loaded ${label}. Check or edit the fields, then submit (Ctrl/⌘ + Enter).`;
   } catch (e) {
     jsonBox.value = text;
-    advanced.open = true;
+    if (!advanced.open) {
+      form.keepRawJson = true;  // the toggle handler must not replace the invalid text with the form's JSON
+      advanced.open = true;
+    }
     $("#editor-hint").textContent = `${label} is not valid JSON (${e.message}). It is shown in the advanced panel.`;
   }
 }
@@ -250,9 +253,10 @@ $("#file-input").addEventListener("change", async (ev) => {
 
 advanced.addEventListener("toggle", () => {
   if (advanced.open) {
-    jsonBox.value = JSON.stringify(formToRequest(), null, 2);
+    if (!form.keepRawJson) jsonBox.value = JSON.stringify(formToRequest(), null, 2);
+    form.keepRawJson = false;
   } else {
-    try { const r = JSON.parse(jsonBox.value); const keepId = r.id; requestToForm(r); form.id = keepId || form.id; } catch (e) { /* keep the form */ }
+    try { requestToForm(JSON.parse(jsonBox.value)); } catch (e) { /* invalid JSON: keep the form as it is */ }
   }
 });
 jsonBox.addEventListener("input", () => {

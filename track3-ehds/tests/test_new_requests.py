@@ -4,7 +4,6 @@ The reference below reads the CSV files with the csv module and applies the rule
 no code with the desk's parser or executor.
 """
 import csv
-import json
 import unittest
 from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal
