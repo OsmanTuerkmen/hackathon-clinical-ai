@@ -164,7 +164,7 @@ Limits:
 
 ## Demo video
 
-[DEMO.md](DEMO.md) is the 2-minute story. `web/e2e/demo-video.mjs` records it with Playwright, and ffmpeg turns the recording into `docs/demo/accessdesk2-demo.mp4` (119 s). The same video is also available with German subtitles (`docs/demo/accessdesk2-demo-untertitel.mp4`, from `docs/demo/accessdesk2-demo.de.srt`). The MP4 files are not in git.
+[DEMO.md](DEMO.md) is the 2-minute story. `web/e2e/demo-video.mjs` records it with Playwright, and ffmpeg turns the recording into `docs/demo/accessdesk2-demo.mp4` (119 s). The same video is also available with German subtitles (`docs/demo/accessdesk2-demo-untertitel.mp4`, from `docs/demo/accessdesk2-demo.de.srt`). `tools/voiceover.py --provider gemini` adds a natural German voice (Gemini TTS, voice "Charon"). It checks every clip by transcription and writes `docs/demo/accessdesk2-demo-ton.mp4` and `docs/demo/accessdesk2-demo-ton-untertitel.mp4`. The free tier allows only a few speech requests per day, and finished clips are cached, so the tool simply continues the next day.
 
 A fresh clone starts in about 20 s on Windows, including creating `.venv` and installing the dependencies. Later starts take about 3 s.
 
