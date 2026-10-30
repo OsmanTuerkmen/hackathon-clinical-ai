@@ -33,7 +33,7 @@ def test_desk_serves_html_shell(client):
     assert 'id="app"' in response.text
 
 
-@pytest.mark.parametrize("path,content_type", [("/app.js", "javascript"), ("/dashboard.js", "javascript"), ("/styles.css", "text/css")])
+@pytest.mark.parametrize("path,content_type", [("/app.js", "javascript"), ("/dashboard.js", "javascript"), ("/request-form.js", "javascript"), ("/styles.css", "text/css")])
 def test_desk_assets_available(client, path, content_type):
     response = client.get(path)
     assert response.status_code == 200
@@ -80,7 +80,7 @@ def test_font_licences_ship_with_the_fonts(licence):
 
 
 def test_ui_loads_nothing_from_external_hosts():
-    sources = [WEB / "index.html", WEB / "app.js", WEB / "dashboard.js", WEB / "styles.css", WEB / "assets" / "fonts" / "fonts.css", WEB / "assets" / "favicon.svg"]
+    sources = [WEB / "index.html", WEB / "app.js", WEB / "dashboard.js", WEB / "request-form.js", WEB / "styles.css", WEB / "assets" / "fonts" / "fonts.css", WEB / "assets" / "favicon.svg"]
     for path in sources:
         hosts = set(re.findall(r"https?://([^/\"')\s]+)", path.read_text(encoding="utf-8")))
         assert hosts <= {"www.w3.org"}, path.name

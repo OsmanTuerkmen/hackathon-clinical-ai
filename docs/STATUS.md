@@ -13,6 +13,12 @@ Die Implementierung der Tasks 1–15 und die abschließenden Prüfungen sind abg
 | Tasks 13–14 | unabhängige stdlib-CSV-Referenz, gehärteter Drei-Lauf-Eval und zehn eigene Anträge fertig/reviewt |
 | Task 15 / Abschlussreview | englisches README, Mermaid, Screenshots, Grenzen und Sicherheitsbericht aktualisiert; alle vier abschließenden Parserbefunde geschlossen |
 
+## Geführtes Antragsformular (2026-10-30)
+
+„+ New request“ öffnet jetzt ein fünfstufiges Formular statt des JSON-Felds. „Assess request“ erzeugt daraus das Antrags-JSON im Browser; es ist auf der Entscheidungsseite unter „View request JSON“ sichtbar. Der Schalter Form/JSON bleibt für eingefügte Anträge. Keine Backend-Änderung (ADR-016).
+
+Nachweise: 771 Python-Tests (69.18 s, EHDS_LLM=off), 133 Edge-Browserchecks, 50 Formularprüfungen, 29 Dashboardprüfungen, CSV-Referenz 14/14. Die Eval-Zahlen stehen in `eval/results.md`. Grenze: Freie Definitionszeilen laufen weiter durch den konservativen Parser und können zur manuellen Prüfung führen.
+
 ## Dashboard, Animationen und Export (2026-10-30)
 
 Applicant zeigt jetzt eine animierte Entscheidungsleiter und ein Bento-Dashboard mit Entscheidung, Privacy-Ring, Balkendiagramm samt Metrik- und Filterwahl, Rechtsgrundlage und Records released. Gesperrte Zellen sind schraffiert. Der blockierte SPE-Download zeigt Banner, Zähler, Audit-Zeile und Toast. Freigegebene Statistik lässt sich als CSV exportieren; SPE-Datensätze bleiben gesperrt. Keine Backend-Änderung (ADR-015).

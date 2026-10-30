@@ -21,6 +21,7 @@ Stand: 2026-10-30. Implementierung und Verifikation abgeschlossen; kein Push/Mer
 - [x] Doccess-Redesign (Richtung J Compliance): Marke, Sidebar, Entscheidungsleiter, Applicant/Staff/SPE, lokale OFL-Schriften, neue Screenshots
 
 - [x] Animationen aus `hackathon-melih`, Bento-Dashboard aus `handoff/bento-dashboard`, CSV-Export freigegebener Statistik, Review-Bugfixes
+- [x] Geführtes Formular für neue Anträge mit erzeugtem JSON, Review-Bugfixes
 
 ## Nutzer / Abgabe
 

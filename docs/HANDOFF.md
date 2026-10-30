@@ -10,6 +10,10 @@ Die UI heißt jetzt Doccess (ADR-014, Richtung J Compliance). Geändert wurden `
 
 Applicant enthält Leiter-Animation, Bento-Dashboard und CSV-Export (ADR-015). `web/dashboard.js` ist reine Logik mit Node-Tests in `tests/test_dashboard_model.py`; ohne Node werden diese übersprungen. Das QA-Skript wartet nun zusätzlich auf `data-stage="done"` und prüft das rote Banner über die Hintergrundfarbe. Aktuell 739 Python-Tests. Die Branches `hackathon-melih` und `handoff/bento-dashboard` wurden nicht gemergt, nur gelesen.
 
+## Antragsformular
+
+„+ New request“ öffnet ein geführtes Formular (ADR-016). `web/request-form.js` ist reine Logik mit Node-Tests in `tests/test_request_form.py`, darunter die Beispielzeilen gegen den echten Parser. Das QA-Skript wählt vor JSON-Eingaben jetzt zuerst den Schalter „JSON“. Aktuell 771 Python-Tests. Sobald `_classify` in `decision.py` sich ändert, muss `requestKind` in `web/request-form.js` mitgehen.
+
 ## Arbeitsort und Daten
 
 - Worktree: C:/Users/BüsraTürkmen/Documents/Hackathon/hackathon-clinical-ai/.claude/worktrees/track3-app; Branch track3-app.

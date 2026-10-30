@@ -53,7 +53,7 @@ Vollständige Regeln lösen keinen LLM-Aufruf aus. Der reale Evaluationsnachweis
 | `decision.py`, `pipeline.py` | Zweckbelege, feste Leiter, Freigabegate und Applicant-/Staff-Antwort |
 | `data.py`, `compiler.py`, `engine.py` | In-Memory-DuckDB, CSV-Import, Opt-out-Views, SQL mit Parametern, Rohzellen |
 | `disclosure.py`, `spe.py` | Unterdrückung/Rundung/Leak-Guard bzw. ausgewählte SPE-Kopie, Preview, Audit |
-| `api.py`, `__main__.py`, `web/` | FastAPI/Uvicorn, JSON-CLI, HTML/CSS/Vanilla-JS ohne Build-Schritt; `web/dashboard.js` enthält die reine Diagramm-/CSV-Logik, `web/assets/` Favicon und selbst gehostete OFL-Schriften |
+| `api.py`, `__main__.py`, `web/` | FastAPI/Uvicorn, JSON-CLI, HTML/CSS/Vanilla-JS ohne Build-Schritt; `web/dashboard.js` enthält die reine Diagramm-/CSV-Logik, `web/request-form.js` die Umwandlung Formular↔Antrags-JSON, `web/assets/` Favicon und selbst gehostete OFL-Schriften |
 | `eval/reference.py`, `eval/run_eval.py` | Unabhängige stdlib-CSV-Rechnung; HTTP-Eval mit Schema-/Multiplizitätskontrolle der SPE |
 
 `AccessRequest` beschreibt den Antrag; `QuerySpec` Kohorte, Einheiten, Gruppen, Metriken und Record-Typen; `PurposeAssessment` hält Zweckbelege und `Decision` die Leiter/Artikel. `RawCount`, `RawPercent` und `RawMean` bewahren Zähler, Nenner und n bis zur Disclosure-Prüfung. `ProcessResult` enthält Applicant und Staff. Das Mermaid-Diagramm im README zeigt den vollständigen Datenfluss.

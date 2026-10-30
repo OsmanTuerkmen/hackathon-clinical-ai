@@ -1,8 +1,9 @@
 /* Doccess: local, dependency-free access desk. All untrusted values enter the DOM as text. */
 'use strict';
 const app = document.getElementById('app');
-const state = { requests: [], law: {}, dataset: null, selected: null, request: null, result: null, tab: 'applicant', epoch: 0, controller: null, played: new Set() };
+const state = { requests: [], law: {}, dataset: null, selected: null, request: null, result: null, tab: 'applicant', epoch: 0, controller: null, played: new Set(), editorMode: 'form', draft: null, base: {}, template: null };
 const { chartModel, defaultMetric, exportName, formatValue, fullyShown, protectedCells, summary, toCsv } = window.DoccessDashboard;
+const { TEMPLATES, buildRequest, fieldsFromRequest, formProblems, newRequestId, purposeHint, validateFields } = window.DoccessRequestForm;
 const number = new Intl.NumberFormat('en-GB');
 const $ = id => document.getElementById(id);
 const SVG = 'http://www.w3.org/2000/svg';
@@ -119,9 +120,7 @@ function desk() {
   const requestList = el('nav'); requestList.id = 'request-list'; requestList.className = 'request-list'; requestList.setAttribute('aria-label', 'Requests');
   append(inner, brand(), button('+ New request', newRequest, 'button new-request'), search, requestList, sidebarNote()); aside.append(inner);
   const main = el('main', null, 'case'); main.id = 'main'; main.tabIndex = -1;
-  const editor = el('section', null, 'panel'); editor.id = 'request-editor'; editor.hidden = true; heading(editor, 'New request', 1); para(editor, 'Paste an EHDS request as JSON, then submit it for assessment.', 'muted');
-  const label = el('label', 'Request JSON'); label.htmlFor = 'request-json'; const textarea = el('textarea'); textarea.id = 'request-json'; textarea.spellcheck = false; textarea.rows = 15;
-  append(editor, label, textarea, button('Assess request', submitRequest, 'button primary')); main.append(editor);
+  main.append(requestEditor());
   const head = el('header', null, 'case-head'); const summary = el('div'); summary.id = 'request-summary'; para(summary, 'Loading requests…', 'muted');
   const live = el('p', 'Select a request to begin.', 'notice'); live.id = 'processing-status'; live.setAttribute('role', 'status'); live.setAttribute('aria-live', 'polite');
   append(head, summary, live); main.append(head);
@@ -132,6 +131,108 @@ function desk() {
   }); main.append(tabs);
   ['applicant', 'staff'].forEach(name => { const content = el('div'); content.id = `${name}-panel`; content.setAttribute('role', 'tabpanel'); content.setAttribute('aria-labelledby', `${name}-tab`); content.tabIndex = 0; main.append(content); });
   append(layout, aside, main); app.append(layout); activateTab('applicant'); loadInbox();
+}
+function formField(parent, id, text, options = {}) {
+  const wrap = el('div', null, 'field'); const label = el('label', text); label.htmlFor = id; wrap.append(label);
+  const input = el(options.rows ? 'textarea' : 'input'); input.id = id;
+  if (options.rows) input.rows = options.rows; else input.type = 'text';
+  if (options.placeholder) input.placeholder = options.placeholder;
+  if (options.autocomplete) input.autocomplete = options.autocomplete;
+  if (options.maxLength) input.maxLength = options.maxLength;
+  if (options.hint) { const hint = el('p', options.hint, 'field-hint'); hint.id = `${id}-hint`; wrap.append(hint); input.setAttribute('aria-describedby', hint.id); }
+  const error = el('p', null, 'field-error'); error.id = `${id}-error`; error.hidden = true; append(wrap, input, error); parent.append(wrap); return input;
+}
+function formStep(parent, number, title, hint) {
+  const step = el('section', null, 'form-step'); const head = el('div', null, 'form-step-head');
+  append(head, el('span', number, 'form-step-number'), el('h2', title)); step.append(head); if (hint) para(step, hint, 'field-hint'); parent.append(step); return step;
+}
+function kindOption(parent, value, title, text) {
+  const label = el('label', null, 'kind-option'); const input = el('input'); input.type = 'radio'; input.name = 'request-kind'; input.value = value;
+  input.addEventListener('change', () => { $('request-purpose-hint').textContent = purposeHint(value); });
+  append(label, input, append(el('span', null, 'kind-text'), el('strong', title), el('span', text))); parent.append(label);
+}
+function definitionRow(text = '') {
+  const rows = $('definition-rows'); const row = el('div', null, 'definition-row'); const input = el('input'); input.type = 'text'; input.value = text; input.setAttribute('aria-label', `Definition line ${rows.children.length + 1}`);
+  input.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); definitionRow().focus(); } });
+  const remove = button('', () => {
+    const index = [...rows.children].indexOf(row); clearFieldError('definitions'); row.remove(); if (!rows.children.length) definitionRow(); renumberDefinitions(); updateStartFrom();
+    rows.children[Math.min(index, rows.children.length - 1)].querySelector('input').focus();
+  }, 'row-remove'); remove.append(icon('cross'));
+  append(row, input, remove); rows.append(row); renumberDefinitions(); return input;
+}
+function renumberDefinitions() {
+  [...$('definition-rows').children].forEach((row, index) => { row.querySelector('input').setAttribute('aria-label', `Definition line ${index + 1}`); row.querySelector('button').setAttribute('aria-label', `Remove line ${index + 1}`); });
+}
+function addTemplate(text) {
+  const empty = [...$('definition-rows').querySelectorAll('input')].find(input => !input.value.trim());
+  const input = empty || definitionRow(); input.value = text; input.dispatchEvent(new Event('input', { bubbles: true })); input.focus();
+}
+function requestEditor() {
+  const editor = el('section', null, 'panel'); editor.id = 'request-editor'; editor.hidden = true;
+  const head = el('div', null, 'editor-head'); const modes = el('div', null, 'mode-switch'); modes.setAttribute('role', 'group'); modes.setAttribute('aria-label', 'Request input');
+  [['form', 'Form'], ['json', 'JSON']].forEach(([mode, label]) => { const choice = button(label, () => setEditorMode(mode), 'mode-button'); choice.dataset.mode = mode; modes.append(choice); });
+  const note = el('p', null, 'field-error'); note.id = 'request-mode-error'; note.setAttribute('role', 'alert'); note.hidden = true; append(head, el('h1', 'New request'), modes); append(editor, head, note);
+  const start = button('', () => { if (state.template) { state.base = {}; fillForm(fieldsFromRequest(state.template)); } }, 'button start-from'); start.id = 'start-from'; start.hidden = true; editor.append(start);
+  const form = el('form'); form.id = 'request-form'; form.noValidate = true;
+  form.addEventListener('submit', event => { event.preventDefault(); submitRequest(); });
+  form.addEventListener('input', event => { const name = event.target.closest('.definition-row') ? 'definitions' : event.target.id.replace('request-', ''); clearFieldError(name); updateStartFrom(); });
+  const who = formStep(form, 1, 'Who is applying?'); const people = el('div', null, 'field-row'); who.append(people);
+  formField(people, 'request-name', 'Your name', { autocomplete: 'name' }); formField(people, 'request-organisation', 'Organisation', { autocomplete: 'organization' }); formField(people, 'request-country', 'Country', { placeholder: 'AT', maxLength: 2, autocomplete: 'country' });
+  const what = formStep(form, 2, 'What do you need?'); const kinds = el('div', null, 'kind-options'); kinds.setAttribute('role', 'radiogroup'); kinds.setAttribute('aria-label', 'What do you need?'); what.append(kinds);
+  kindOption(kinds, 'statistics', 'Anonymised statistics', 'Counts and percentages. Small groups stay hidden.'); kindOption(kinds, 'records', 'Pseudonymised records', 'Patient-level data in a secure workspace. Downloads are blocked.');
+  const why = formStep(form, 3, 'Why do you need the data?');
+  formField(why, 'request-purpose', 'Why do you need the data?', { rows: 3, hint: purposeHint('statistics') }).parentElement.querySelector('label').classList.add('sr-only');
+  const ask = formStep(form, 4, 'What is your question?'); formField(ask, 'request-question', 'What is your question?', { rows: 2 }).parentElement.querySelector('label').classList.add('sr-only');
+  const meaning = formStep(form, 5, 'How should we read your question?', 'One line per definition. Start with an example or write your own, and finish with a Report line that names what to count.');
+  const examples = el('div', null, 'template-row'); examples.setAttribute('role', 'group'); examples.setAttribute('aria-label', 'Add an example line');
+  TEMPLATES.forEach(template => examples.append(button(template.label, () => addTemplate(template.text), 'chip-button')));
+  const rows = el('div', null, 'definition-rows'); rows.id = 'definition-rows'; const error = el('p', null, 'field-error'); error.id = 'request-definitions-error'; error.hidden = true;
+  append(meaning, examples, rows, error, button('Add line', () => definitionRow().focus(), 'button add-line')); editor.append(form);
+  const raw = el('div', null, 'json-view'); raw.id = 'request-json-view'; raw.hidden = true; para(raw, 'Paste an EHDS request as JSON, or review the JSON generated from the form.', 'field-hint');
+  const label = el('label', 'Request JSON'); label.htmlFor = 'request-json'; const textarea = el('textarea'); textarea.id = 'request-json'; textarea.spellcheck = false; textarea.rows = 18; textarea.addEventListener('input', () => { note.hidden = true; }); append(raw, label, textarea); editor.append(raw);
+  const assess = button('Assess request', null, 'button primary'); assess.type = 'submit'; assess.setAttribute('form', form.id); editor.append(assess); return editor;
+}
+function readForm() {
+  return { name: $('request-name').value, organisation: $('request-organisation').value, country: $('request-country').value, kind: document.querySelector('input[name="request-kind"]:checked')?.value || 'statistics', purpose: $('request-purpose').value, question: $('request-question').value, definitions: [...$('definition-rows').querySelectorAll('input')].map(input => input.value) };
+}
+function fillForm(fields) {
+  ['name', 'organisation', 'country', 'purpose', 'question'].forEach(key => { $(`request-${key}`).value = fields[key]; });
+  document.querySelector(`input[name="request-kind"][value="${fields.kind}"]`).checked = true; $('request-purpose-hint').textContent = purposeHint(fields.kind);
+  $('definition-rows').replaceChildren(); fields.definitions.forEach(line => definitionRow(line)); clearFieldErrors(); updateStartFrom();
+}
+function updateStartFrom() {
+  const { name, organisation, country, purpose, question, definitions } = readForm();
+  $('start-from').hidden = !state.template || state.editorMode !== 'form' || [name, organisation, country, purpose, question, ...definitions].some(value => value.trim());
+}
+function fieldOf(name) { return name === 'definitions' ? $('definition-rows').querySelector('input') : $(`request-${name}`); }
+function clearFieldError(name) {
+  const error = $(`request-${name}-error`); if (!error) return; error.hidden = true; const field = fieldOf(name); field.removeAttribute('aria-invalid'); field.removeAttribute('aria-errormessage');
+  const described = (field.getAttribute('aria-describedby') || '').split(' ').filter(id => id && id !== error.id).join(' ');
+  if (described) field.setAttribute('aria-describedby', described); else field.removeAttribute('aria-describedby');
+}
+function clearFieldErrors() { ['name', 'organisation', 'country', 'purpose', 'question', 'definitions'].forEach(clearFieldError); }
+function showFieldErrors(errors) {
+  clearFieldErrors();
+  Object.entries(errors).forEach(([name, message]) => {
+    const error = $(`request-${name}-error`); error.textContent = message; error.hidden = false; const field = fieldOf(name);
+    field.setAttribute('aria-invalid', 'true'); field.setAttribute('aria-errormessage', error.id); field.setAttribute('aria-describedby', [field.getAttribute('aria-describedby'), error.id].filter(Boolean).join(' '));
+  });
+  const first = Object.keys(errors)[0]; if (first) fieldOf(first).focus();
+}
+function showEditorMode(mode) {
+  state.editorMode = mode; $('request-form').hidden = mode !== 'form'; $('request-json-view').hidden = mode !== 'json'; $('request-mode-error').hidden = true;
+  document.querySelectorAll('.mode-button').forEach(choice => choice.setAttribute('aria-pressed', String(choice.dataset.mode === mode))); updateStartFrom();
+}
+function refuseMode(message) { const note = $('request-mode-error'); note.textContent = message; note.hidden = false; }
+function setEditorMode(mode) {
+  if (mode === state.editorMode) return;
+  if (mode === 'json') { $('request-json').value = JSON.stringify(buildRequest(readForm(), state.draft, state.base), null, 2); showEditorMode('json'); return; }
+  let parsed;
+  try { parsed = JSON.parse($('request-json').value); } catch { refuseMode('Invalid JSON. Check the syntax and try again.'); return; }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) { refuseMode('Invalid JSON. Enter a single request object.'); return; }
+  const problems = formProblems(parsed);
+  if (problems.length) { refuseMode(`The form cannot show ${problems.join(', ')}. Correct it here or assess the JSON as it is.`); return; }
+  state.base = parsed; fillForm(fieldsFromRequest(parsed)); showEditorMode('form'); status('New request · ready for assessment.', false, true);
 }
 function inboxRow(request) {
   const item = button('', () => selectRequest(request.id), 'request-item'); item.dataset.requestId = request.id; item.title = request.purpose;
@@ -184,7 +285,7 @@ function showLoading() {
 function requestSummary(request) {
   const summary = $('request-summary'); summary.replaceChildren();
   const kicker = el('p', null, 'kicker'); append(kicker, el('span', request.id, 'request-ref'), document.createTextNode(` · ${sentenceCase(request.requested_as)} · ${request.applicant.organisation}`));
-  const definition = el('details'); definition.append(el('summary', 'Purpose and definitions'), el('p', request.purpose, 'lead-purpose')); list(definition, request.definitions);
+  const definition = el('details'); definition.append(el('summary', 'Purpose and definitions'), el('p', request.purpose, 'lead-purpose')); list(definition, Array.isArray(request.definitions) ? request.definitions : []); details(definition, 'View request JSON', request);
   append(summary, kicker, el('h1', request.question, String(request.question).length > 90 ? 'long' : null), definition);
 }
 async function selectRequest(id) {
@@ -198,17 +299,26 @@ async function selectRequest(id) {
   } catch (error) { if (task.epoch === state.epoch && error.name !== 'AbortError') { clearResult(); if (!state.request) $('request-summary').replaceChildren(); status(error.message, true); } }
 }
 function newRequest() {
+  if (!$('request-editor').hidden) { $(state.editorMode === 'json' ? 'request-json' : 'request-name').focus(); return; }
   const previous = state.request; invalidate(); selection(null); clearResult(); $('request-summary').hidden = true; $('assessment-tabs').hidden = true; $('request-editor').hidden = false;
-  $('request-json').value = JSON.stringify(previous ? { ...previous, id: 'NEW-REQUEST' } : { id: 'NEW-REQUEST', applicant: { name: '', organisation: '' }, requested_as: 'health data request', purpose: '', question: '', definitions: [] }, null, 2);
-  status('New request · ready for assessment.'); $('request-json').focus();
+  state.template = previous; if (previous) $('start-from').textContent = `Start from ${previous.id}`;
+  if (!state.draft) { state.draft = { id: newRequestId(Date.now()), submitted: new Date().toISOString() }; state.base = {}; $('request-json').value = ''; fillForm(fieldsFromRequest({})); }
+  showEditorMode(state.editorMode === 'json' && $('request-json').value ? 'json' : 'form');
+  status('New request · ready for assessment.', false, true); $(state.editorMode === 'json' ? 'request-json' : 'request-name').focus();
 }
 async function submitRequest() {
   let request;
-  try { request = JSON.parse($('request-json').value); } catch { status('Invalid JSON. Check the syntax and try again.', true); return; }
+  if (state.editorMode === 'json') {
+    try { request = JSON.parse($('request-json').value); } catch { status('Invalid JSON. Check the syntax and try again.', true); return; }
+  } else {
+    const fields = readForm(); const errors = validateFields(fields); showFieldErrors(errors);
+    if (Object.keys(errors).length) { status('Complete the highlighted fields.', true); return; }
+    request = buildRequest(fields, { ...state.draft, submitted: new Date().toISOString() }, state.base);
+  }
   const task = invalidate(); clearResult(); status('Assessing your request…');
   try {
     const result = await api('/api/process', { method: 'POST', signal: task.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) });
-    if (task.epoch !== state.epoch) return; state.request = request; state.played.delete(result.applicant.request_id); requestSummary(request); $('request-editor').hidden = true; $('request-summary').hidden = false; $('assessment-tabs').hidden = false; showResult(result); $('main').focus({ preventScroll: true });
+    if (task.epoch !== state.epoch) return; state.request = request; state.draft = null; state.played.delete(result.applicant.request_id); requestSummary(request); $('request-editor').hidden = true; $('request-summary').hidden = false; $('assessment-tabs').hidden = false; showResult(result); $('main').focus({ preventScroll: true });
   } catch (error) { if (task.epoch === state.epoch && error.name !== 'AbortError') status(error.message, true); }
 }
 function outcomeOf(result) {

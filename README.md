@@ -84,7 +84,7 @@ A complete rule parse never invokes Claude, even in `auto` mode. For incomplete 
 
 ## Demo walkthrough
 
-Select a request in the Inbox to assess it. Use **+ New request** to paste another synthetic JSON request; no request-specific SQL is entered by hand.
+Select a request in the Inbox to assess it. Use **+ New request** to answer a short guided form; **Assess request** turns the answers into the request JSON and shows it on the decision page. The **JSON** switch displays that JSON and still accepts a pasted synthetic request. No request-specific SQL is entered by hand, and definition lines the parser does not understand lead to manual review.
 
 1. **R01:** Show the Applicant decision, article references and result groups. Switch to **Staff** for the purpose evidence, rule ladder, code mapping, QuerySpec, generated SQL, opt-out exclusions and suppression notes.
 2. **R05:** Show `APPROVE_SPE` and the exact cohort of **1,152 patients**. Click **Open secure workspace** and **Download** for a listed table. **Preview** is available for local inspection; keep patient rows closed in screenshots and the submission video. The UI shows **Download blocked · HTTP 403** and the audit log gains a `download_blocked` event.
