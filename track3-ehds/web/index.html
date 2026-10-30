@@ -3,120 +3,122 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Doccess · health data access · EHDS hackathon simulation</title>
+  <title>Doccess · secure access to health data</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/styles.css">
   <script src="/static/app.js" defer></script>
 </head>
-<body>
+<body class="intro">
   <header class="topbar">
     <div class="brand">
-      <img class="logo" src="/static/favicon.svg" alt="" width="46" height="46">
+      <img class="logo" src="/static/favicon.svg" alt="" width="44" height="44">
       <div>
-        <h1>Doccess</h1>
-        <p>Health data access desk · European Health Data Space · Regulation (EU) 2025/327, Chapter IV</p>
-        <div class="pills">
-          <span class="sim-badge" id="sim-banner" role="note"
-                title="Decisions are generated automatically by rules for demonstration">Hackathon simulation · synthetic
-            data · not a real government approval system</span>
-          <span class="data-pill" id="data-pill" title="Synthetic dataset loaded into the desk">Loading synthetic data…</span>
-        </div>
+        <h1 class="wordmark"><span class="wm-doc">Doc</span><span class="wm-cess">cess</span></h1>
+        <p class="tagline">Secure access to health data for research and better care</p>
       </div>
     </div>
-    <div class="topbar-right">
-      <nav class="tabs" role="tablist">
-        <button class="tab active" data-tab="applicant" role="tab" id="tab-applicant">Applicant portal</button>
-        <button class="tab" data-tab="staff" role="tab" id="tab-staff">Access body staff</button>
-        <button class="tab" data-tab="evaluation" role="tab" id="tab-evaluation">Evaluation</button>
-      </nav>
-    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="applicant" role="tab" id="tab-applicant">Request data</button>
+      <button class="tab" data-tab="staff" role="tab" id="tab-staff">Staff review</button>
+      <button class="tab" data-tab="evaluation" role="tab" id="tab-evaluation">Evaluation</button>
+    </nav>
   </header>
+  <div class="sim-strip"><span class="sim-badge" id="sim-banner" role="note"
+    title="Decisions are generated automatically by rules for demonstration">Hackathon simulation · synthetic data · not a
+    real approval system</span></div>
 
   <main>
     <!-- ============================== APPLICANT ============================== -->
     <section class="view active" id="view-applicant">
       <div class="grid">
         <div class="panel" id="request-panel">
-          <h2><span class="step">1</span> Your request</h2>
+          <div class="step-head">
+            <span class="step">1</span>
+            <div><h2>Sign in</h2><p>Identify yourself once with ID Austria.</p></div>
+          </div>
+          <div class="identity" id="identity-box">
+            <div id="identity-out" class="identity-row">
+              <button type="button" class="btn idaustria" id="idaustria-btn"><span class="ida-mark">ID</span>
+                Sign in with ID Austria</button>
+              <small>Simulated for the hackathon with fictional test persons.</small>
+            </div>
+            <div id="identity-in" class="identity-row hidden">
+              <span class="id-check" aria-hidden="true">✓</span>
+              <div class="id-text"><b id="identity-name"></b><small id="identity-meta"></small></div>
+              <button type="button" class="link-btn" id="logout-btn">Sign out</button>
+            </div>
+          </div>
+
+          <div class="step-head">
+            <span class="step">2</span>
+            <div><h2>Describe your request</h2><p>Fill in the form, or start from an example.</p></div>
+          </div>
           <details class="examples" id="examples">
-            <summary>Load an example request (R01–R10, N01–N08)</summary>
-            <input type="search" id="request-filter" class="search" placeholder="Filter examples (ID, organisation, question)…"
-                   aria-label="Filter requests">
+            <summary>Start from an example</summary>
+            <input type="search" id="request-filter" class="search" placeholder="Search examples…" aria-label="Filter requests">
             <div class="request-list" id="request-list" aria-label="Example requests"></div>
           </details>
 
           <form id="request-form" class="form" autocomplete="off">
-            <fieldset>
-              <legend>Applicant</legend>
-              <div class="identity" id="identity-box">
-                <div id="identity-out" class="identity-row">
-                  <button type="button" class="btn idaustria" id="idaustria-btn"><span class="ida-mark">ID</span>
-                    Sign in with ID Austria</button>
-                  <small>Required before submitting. Simulated for the hackathon with fictional test persons.</small>
-                </div>
-                <div id="identity-in" class="identity-row hidden">
-                  <span class="id-check" aria-hidden="true">✓</span>
-                  <div class="id-text"><b id="identity-name"></b><small id="identity-meta"></small></div>
-                  <button type="button" class="link-btn" id="logout-btn">Sign out</button>
-                </div>
-              </div>
+            <div class="field-label">What do you need?</div>
+            <div class="choice">
+              <label class="opt"><input type="radio" name="f-type" value="health data request" checked>
+                <span><b>Anonymised statistics</b><small>Numbers per group, e.g. patients per region. No personal
+                  data.</small></span></label>
+              <label class="opt"><input type="radio" name="f-type" value="health data access application">
+                <span><b>Records in a secure workspace</b><small>Individual histories for research, analysed only inside
+                  a protected environment.</small></span></label>
+            </div>
+            <label>Organisation<input id="f-org" placeholder="e.g. Medical University, public health authority"></label>
+            <label>What is the data for? <span class="req-tag">required</span><textarea id="f-purpose" rows="3"
+              placeholder="e.g. Research to improve diabetes prevention. If statistics are not enough, explain why."></textarea></label>
+            <label>Your question <span class="req-tag">required</span><textarea id="f-question" rows="2"
+              placeholder="e.g. How many adults have type 2 diabetes in each region?"></textarea></label>
+
+            <div class="field-label">What exactly should be counted? <span class="req-tag">required</span></div>
+            <p class="help">One line per definition, ending with a line that starts with <b>“Report per …”</b>.
+              Doccess computes exactly what you define.</p>
+            <div id="f-defs" class="defs"></div>
+            <div class="def-actions">
+              <button type="button" class="link-btn" id="add-def">+ Add line</button>
+              <button type="button" class="link-btn" id="template-def">Insert an example</button>
+            </div>
+            <details class="more">
+              <summary>How do I write this?</summary>
+              <ul class="help">
+                <li>Name each term with its code, e.g. <i>Type 2 diabetes = any condition with an ICD-10 code starting
+                  with E11.</i> Common names like “statin” or “COPD” are recognised automatically.</li>
+                <li>Add groups or rules if needed, e.g. <i>Adult = aged 18 or older on 31 December 2025</i>.</li>
+                <li>Finish with the numbers you want per group, e.g. <i>Report per region: adults, adults with type 2
+                  diabetes and the share (%).</i></li>
+                <li>For records in a secure workspace, define <i>Cohort = …</i> instead of a report line.</li>
+              </ul>
+            </details>
+            <details class="more">
+              <summary>More options</summary>
               <div class="row3">
-                <label>Name<input id="f-name" placeholder="Dr. Jane Doe"></label>
-                <label>Organisation<input id="f-org" placeholder="University, authority or company"></label>
+                <label>Name<input id="f-name" placeholder="Filled in by ID Austria"></label>
+                <label>Format
+                  <select id="f-format">
+                    <option value="anonymised statistics">Anonymised statistics</option>
+                    <option value="pseudonymised records">Pseudonymised records</option>
+                  </select>
+                </label>
                 <label class="narrow">Country<input id="f-country" maxlength="2" placeholder="AT"></label>
               </div>
-            </fieldset>
-            <fieldset>
-              <legend>What are you applying for?</legend>
-              <div class="choice">
-                <label class="opt"><input type="radio" name="f-type" value="health data request" checked>
-                  <span><b>Health data request</b><small>Answered with anonymised statistics only (Art. 69)</small></span></label>
-                <label class="opt"><input type="radio" name="f-type" value="health data access application">
-                  <span><b>Health data access application</b><small>Data permit, e.g. records in a secure environment (Art. 67)</small></span></label>
-              </div>
-              <label>Requested format
-                <select id="f-format">
-                  <option value="anonymised statistics">Anonymised statistics</option>
-                  <option value="pseudonymised records">Pseudonymised records (secure processing environment)</option>
-                </select>
-              </label>
-            </fieldset>
-            <fieldset>
-              <legend>Purpose and question</legend>
-              <label>Purpose <span class="req-tag">required</span><textarea id="f-purpose" rows="3"
-                placeholder="What will the data be used for? If anonymised statistics are not enough, explain why."></textarea></label>
-              <label>Question <span class="req-tag">required</span><textarea id="f-question" rows="2"
-                placeholder="e.g. How many adults have type 2 diabetes in each region?"></textarea></label>
-            </fieldset>
-            <fieldset>
-              <legend>Definitions <span class="req-tag">required</span></legend>
-              <p class="help">The desk computes <b>exactly</b> what you define here, so this decides the answer:</p>
-              <ul class="help">
-                <li>one term per field, e.g. <i>Type 2 diabetes = any condition with an ICD-10 code starting with E11.</i>
-                  Common names such as “statin” or “COPD” are mapped to codes automatically;</li>
-                <li>optional groups or rules, e.g. <i>Adult = aged 18 or older on 31 December 2025</i>;</li>
-                <li>a final <b>“Report per …”</b> line naming the numbers per group, e.g.
-                  <i>Report per region: adults, adults with type 2 diabetes and the share (%).</i></li>
-              </ul>
-              <p class="help">For records in a secure environment, define <b>“Cohort = …”</b> instead of a report line.</p>
-              <div id="f-defs" class="defs"></div>
-              <div class="def-actions">
-                <button type="button" class="link-btn" id="add-def">+ Add definition</button>
-                <button type="button" class="link-btn" id="template-def">Insert a template</button>
-              </div>
-            </fieldset>
+            </details>
           </form>
 
           <div class="actions">
-            <label class="btn secondary file-btn">Upload request file…<input type="file" id="file-input" accept=".json,application/json"></label>
+            <label class="btn secondary file-btn">Upload file…<input type="file" id="file-input" accept=".json,application/json"></label>
             <button class="btn primary" id="submit-btn">Submit request</button>
           </div>
-          <p class="hint" id="editor-hint">Ctrl/⌘ + Enter submits. Only the request text is processed; patient-level data never leaves the desk.</p>
+          <p class="hint" id="editor-hint">Only the text of your request is processed. Patient data never leaves Doccess.</p>
 
           <details class="advanced" id="json-advanced">
-            <summary>Advanced: view or paste the request as JSON</summary>
+            <summary>For developers: view or paste the request as JSON</summary>
             <div class="editor-head">
-              <span class="label">Same format as requests/R01.json. While this panel is open, this JSON is what gets submitted.</span>
+              <span class="label">Same format as requests/R01.json. While this panel is open, this JSON is submitted.</span>
               <div class="editor-tools">
                 <button class="link-btn" id="format-btn" type="button">Format</button>
                 <button class="link-btn" id="clear-btn" type="button">Clear</button>
@@ -127,21 +129,21 @@
         </div>
 
         <div class="panel answer-panel" id="answer-panel" aria-live="polite">
-          <h2><span class="step">2</span> Decision of the health data access body</h2>
-          <div id="answer-empty" class="intro">
-            <p class="intro-lead">Submit a request to see the decision, the legal basis and the answer. The desk decides in
-              the order of the challenge rules:</p>
+          <div class="step-head">
+            <span class="step">3</span>
+            <div><h2>Decision</h2><p>Doccess checks the purpose, decides and prepares your answer.</p></div>
+          </div>
+          <div id="answer-empty" class="intro-box">
             <div class="intro-cards">
-              <div class="intro-card c-REJECT"><b>Rejected</b><span>Prohibited purpose, e.g. insurance pricing,
-                marketing or nicotine products. Art. 54. No data is touched.</span></div>
-              <div class="intro-card c-APPROVE_STATISTICAL"><b>Anonymised statistics</b><span>Health data requests, and
-                access applications without a reason for records. Art. 53, 69 (66).</span></div>
-              <div class="intro-card c-APPROVE_SPE"><b>Secure processing environment</b><span>Access applications that
-                explain why statistics are not enough. Art. 53, 66, 68, 73. No downloads.</span></div>
+              <div class="intro-card c-REJECT"><b>Rejected</b><span>If the purpose is not allowed, e.g. marketing or
+                insurance pricing. No data is touched.</span></div>
+              <div class="intro-card c-APPROVE_STATISTICAL"><b>Anonymised statistics</b><span>Numbers per group. Small
+                groups are hidden to protect privacy.</span></div>
+              <div class="intro-card c-APPROVE_SPE"><b>Secure workspace</b><span>Individual records for research, only
+                inside a protected environment. No downloads.</span></div>
             </div>
           </div>
-          <div id="busy" class="busy hidden"><span class="spinner"></span> Checking purpose, building the query plan and
-            running privacy checks…</div>
+          <div id="busy" class="busy hidden"><span class="spinner"></span> Checking your request…</div>
           <div id="answer" class="hidden">
             <div class="decision" id="decision">
               <div class="decision-main">
@@ -153,12 +155,15 @@
               </div>
               <div class="decision-code" id="decision-code"></div>
             </div>
-            <p class="reason" id="reason"></p>
             <p class="receive" id="receive"></p>
-            <ul class="notes" id="decision-notes"></ul>
-            <ol class="stepper" id="stepper" aria-label="Processing steps"></ol>
+            <p class="reason" id="reason"></p>
             <div class="meta" id="meta"></div>
-            <h2 class="result-title"><span class="step">3</span> <span id="result-title">Answer</span></h2>
+            <details class="more checks" id="checks-box">
+              <summary>How Doccess checked this request</summary>
+              <ol class="stepper" id="stepper" aria-label="Processing steps"></ol>
+              <ul class="notes" id="decision-notes"></ul>
+            </details>
+            <h3 class="result-title" id="result-title">Answer</h3>
             <div id="result"></div>
           </div>
         </div>
@@ -179,7 +184,7 @@
               <tbody></tbody>
             </table>
           </div>
-          <p class="hint">Cases submitted in this session (in memory). Click a case for the full audit trail.</p>
+          <p class="hint">All submitted cases (kept across restarts). Click a case for the full audit trail.</p>
         </div>
         <div class="panel" id="case-detail">
           <div class="empty">Select a case to see the request, the decision trace, the interpreted query plan, the
@@ -205,9 +210,9 @@
   </main>
 
   <footer>
-    Doccess (Doctor/Document + Access) · AIM Austria Hackathon · Track 3 European Health Data Space · Prototype for
-    demonstration only. All patients are synthetic and the ID Austria sign-in is simulated. The decision engine is
-    deterministic and rule-based; it cites the articles it applied.
+    <span class="data-pill" id="data-pill">Loading synthetic data…</span>
+    <p>Doccess (Doctor/Document + Access) · AIM Austria Hackathon, Track 3: European Health Data Space. Prototype for
+      demonstration only: all patients are synthetic and the ID Austria sign-in is simulated.</p>
   </footer>
 </body>
 </html>

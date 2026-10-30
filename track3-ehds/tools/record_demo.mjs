@@ -212,9 +212,9 @@ try {
   await send("Page.enable");
   await send("Runtime.enable");
   await send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: DPR, mobile: false });
-  await send("Page.navigate", { url: BASE });
-  await waitFor(`document.querySelectorAll('#request-list .req').length >= 10`);
   await send("Page.startScreencast", { format: "jpeg", quality: 88, maxWidth: W * DPR, maxHeight: H * DPR });
+  await send("Page.navigate", { url: BASE });  // recording from the first paint captures the opening animation
+  await waitFor(`document.querySelectorAll('#request-list .req').length >= 10`);
   console.log("recording ...");
   await demo();
   await send("Page.stopScreencast");

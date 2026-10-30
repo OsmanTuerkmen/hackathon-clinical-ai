@@ -1,4 +1,4 @@
-# Doccess: health data access desk (EHDS, Track 3)
+# Doccess (EHDS, Track 3)
 
 > **Hackathon simulation.** All patients are synthetic, and the ID Austria sign-in is simulated. This is
 > **not** a real government approval system.

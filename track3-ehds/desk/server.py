@@ -285,7 +285,7 @@ def case_summary(c: dict) -> dict:
 
 def serve(host: str | None = None, port: int | None = None) -> None:
     host, port = host or HOST, port or PORT
-    print("Doccess - health data access desk - HACKATHON SIMULATION, synthetic data only, not a real approval system")
+    print("Doccess - HACKATHON SIMULATION, synthetic data only, not a real approval system")
     print("Loading synthetic data ...", flush=True)
     t0 = time.perf_counter()
     from .llm import from_environment

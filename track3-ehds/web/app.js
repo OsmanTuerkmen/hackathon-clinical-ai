@@ -51,10 +51,10 @@ async function api(path, options = {}) {
 }
 
 const OUTCOME_SHORT = {
-  REJECT: "Rejected",
+  REJECT: "Request rejected",
   APPROVE_STATISTICAL: "Approved · anonymised statistics",
-  APPROVE_SPE: "Approved · secure processing environment",
-  NO_DECISION: "No automated decision",
+  APPROVE_SPE: "Approved · secure workspace",
+  NO_DECISION: "Needs a review by staff",
 };
 const OUTCOME_ICON = { REJECT: "x", APPROVE_STATISTICAL: "check", APPROVE_SPE: "lock", NO_DECISION: "alert" };
 const ARTICLE_HELP = {
@@ -94,7 +94,7 @@ document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () =>
 api("/api/health").then(({ body }) => {
   if (!body || !body.data) return;
   const s = body.data;
-  $("#data-pill").replaceChildren("Synthetic data · ", el("b", { text: fmt(s.patients_eligible) }), " patients · ",
+  $("#data-pill").replaceChildren("Synthetic data: ", el("b", { text: fmt(s.patients_eligible) }), " patients · ",
     el("b", { text: fmt(s.patients_opted_out) }), " opt-outs excluded · 3 hospitals");
 });
 
@@ -255,8 +255,8 @@ $("#template-def").addEventListener("click", () => {
   $("#editor-hint").textContent = "Template inserted: replace the term, code and groups with what you need.";
 });
 document.querySelectorAll('input[name="f-type"]').forEach(i => i.addEventListener("change", () => {
-  // sensible default: records only make sense for an access application
-  if (i.checked && i.value === "health data request") $("#f-format").value = "anonymised statistics";
+  // the two choices set the matching format; "More options" can still change it (e.g. an application for statistics)
+  if (i.checked) $("#f-format").value = i.value === "health data request" ? "anonymised statistics" : "pseudonymised records";
 }));
 
 $("#file-input").addEventListener("change", async (ev) => {
@@ -310,8 +310,8 @@ function renderIdentity() {
   $("#f-name").readOnly = signedIn;
   if (signedIn) {
     $("#identity-name").textContent = auth.identity.name;
-    $("#identity-meta").textContent = `Verified via ${auth.identity.method} · eIDAS level ${auth.identity.eidas_loa} · ` +
-      `pseudonym ${auth.identity.bpk_gh}`;
+    $("#identity-meta").textContent = "Verified with ID Austria (simulated)";
+    $("#identity-meta").title = `eIDAS level ${auth.identity.eidas_loa} · pseudonym ${auth.identity.bpk_gh}`;
     $("#f-name").value = auth.identity.name;
   }
 }
@@ -487,7 +487,6 @@ function renderAnswer(view) {
     view.submitted_by ? el("span", {}, "Submitted by ", el("b", { text: view.submitted_by.name }),
       ` (${view.submitted_by.method})`) : null,
     el("span", { text: `Request ${view.request_id}` }),
-    el("span", { text: `Answered in ${view.elapsed_ms} ms (round trip ${view._roundtrip_ms ?? "?"} ms)` }),
     el("span", {}, "Patient data queried: ",
       el("b", { class: view.patient_data_queried ? "" : "ok", text: view.patient_data_queried ? "yes" : "no" })),
     ps.total ? el("span", {}, "Privacy checks: ",
@@ -545,14 +544,7 @@ function receiveText(d, f) {
 }
 
 function renderStatistics(root, res, view) {
-  $("#result-title").textContent = "Anonymised statistics (small-cell rule applied)";
-  const maskedCells = res.rows.reduce((n, r) => n + res.columns.filter(c => isMasked(r.cells[c.id])).length, 0);
-  root.append(el("div", { class: "summary" },
-    el("span", { class: "s" }, el("b", { text: String(res.rows.length) }), " groups"),
-    el("span", { class: "s" }, el("b", { text: String(res.columns.length) }), " statistics"),
-    el("span", { class: "s" }, el("b", { text: String(maskedCells) }), " cells masked"),
-    el("span", { class: "s", text: "opt-outs excluded" }),
-    el("span", { class: "s", text: "no patient-level data" })));
+  $("#result-title").textContent = "Your anonymised statistics";
 
   const max = {};
   for (const c of res.columns) {
@@ -866,6 +858,7 @@ function renderEvaluation(rep) {
 }
 
 // ------------------------------------------------------------------ start
+setTimeout(() => document.body.classList.remove("intro"), 1800);  // the opening animation plays once
 initAuth();
 loadRequests();
 api("/api/evaluation").then(({ body }) => { if (body && body.metrics) renderEvaluation(body); });

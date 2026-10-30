@@ -117,7 +117,7 @@ try {
   });
   await step("Simulation label is visible", async () => {
     const t = await evaluate(text("#sim-banner"));
-    if (!/hackathon simulation/i.test(t) || !/not a real government approval system/i.test(t)) throw new Error(t);
+    if (!/hackathon simulation/i.test(t) || !/synthetic data/i.test(t) || !/not a real (government )?approval system/i.test(t)) throw new Error(t);
     return t.trim().slice(0, 60) + "…";
   });
   await step("Data status pill shows the synthetic dataset", async () => {
