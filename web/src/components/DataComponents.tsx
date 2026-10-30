@@ -77,7 +77,7 @@ export function DecisionTag({
 }) {
   const type = decision === "REJECT" ? "red" : decision === "APPROVE_SPE" ? "teal" : "green";
   const Icon = decision === "REJECT" ? Misuse : decision === "APPROVE_SPE" ? Locked : ChartColumn;
-  return <Tag type={type}><Icon size={16} aria-hidden="true" />{t(language, `decision.${decision}`)}</Tag>;
+  return <Tag className="decision-tag" type={type}><Icon size={16} aria-hidden="true" />{t(language, `decision.${decision}`)}</Tag>;
 }
 
 export function SafeIndicators({
@@ -116,18 +116,21 @@ export function ValueCell({
   value,
   language,
   type,
-  footnote = false,
+  footnote,
 }: {
   value: CellValue;
   language: Language;
   type?: string;
-  footnote?: boolean;
+  footnote?: number;
 }) {
   const hidden = value === "<10" || value === "suppressed";
   return (
     <span className={`value-cell${hidden ? " value-cell--hidden" : ""}`}>
       {hidden
-        ? <span className="value-chip">{formatCell(value, language, type)}{footnote && <sup>1</sup>}</span>
+        ? <span className="value-chip">
+            {formatCell(value, language, type)}
+            {footnote !== undefined && <> <sup>{footnote}</sup></>}
+          </span>
         : formatCell(value, language, type)}
     </span>
   );
@@ -167,19 +170,22 @@ export function ResultTable({
               {row.group.map((value, index) => (
                 <td key={`${released.group_dims[index]}-${value}`}>{value}</td>
               ))}
-              {released.measures.map((measure) => (
-                <td className="data-table__number" key={measure.key}>
-                  <ValueCell
-                    value={row.values[measure.key] ?? "suppressed"}
-                    language={language}
-                    type={types[measure.key]}
-                    footnote={Boolean(released.differencing?.suppressed.some(
-                      (item) => item.measure === measure.key
-                        && item.group.join("|") === row.group.join("|"),
-                    ))}
-                  />
-                </td>
-              ))}
+              {released.measures.map((measure) => {
+                const index = released.differencing?.suppressed.findIndex(
+                  (item) => item.measure === measure.key
+                    && item.group.join("|") === row.group.join("|"),
+                ) ?? -1;
+                return (
+                  <td className="data-table__number" key={measure.key}>
+                    <ValueCell
+                      value={row.values[measure.key] ?? "suppressed"}
+                      language={language}
+                      type={types[measure.key]}
+                      footnote={index >= 0 ? index + 1 : undefined}
+                    />
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -410,8 +416,10 @@ export function AustriaMap({
     ] as const),
   );
   const numeric = [...values.values()].filter((value): value is number => typeof value === "number");
-  const max = maxValue(numeric) ?? 1;
-  const thresholds = [0.2, 0.4, 0.6, 0.8].map((fraction) => max * fraction);
+  const min = numeric.length ? Math.min(...numeric) : 0;
+  const max = numeric.length ? Math.max(...numeric) : 1;
+  const span = max - min || 1;
+  const thresholds = [0.2, 0.4, 0.6, 0.8].map((fraction) => min + span * fraction);
   const color = scaleThreshold<number, string>()
     .domain(thresholds)
     .range([
@@ -478,7 +486,7 @@ export function AustriaMap({
       <figcaption className="chart-frame__legend">
         <span className="map-color-legend" aria-label={language === "de" ? "Farbskala" : "Colour scale"}>
           {[
-            [0, thresholds[0]],
+            [min, thresholds[0]],
             [thresholds[0], thresholds[1]],
             [thresholds[1], thresholds[2]],
             [thresholds[2], thresholds[3]],
@@ -486,7 +494,7 @@ export function AustriaMap({
           ].map(([from, to], index) => (
             <span className="map-color-bin" key={index}>
               <span className={`map-color-swatch map-color-swatch--${index + 1}`} aria-hidden="true" />
-              {`${formatNumber(from, language, 0)}–${formatNumber(to, language, 0)}`}
+              {`${formatNumber(from, language, measure.type === "count" ? 0 : 1)}–${formatNumber(to, language, measure.type === "count" ? 0 : 1)}${measure.type === "pct" ? " %" : ""}`}
             </span>
           ))}
         </span>
@@ -502,6 +510,14 @@ export function AustriaMap({
 export function measureLabel(label: string): string {
   const cleaned = label.replace(/^(?:the|a|an|number of)\s+/i, "").trim();
   return cleaned ? cleaned[0].toLocaleUpperCase() + cleaned.slice(1) : label;
+}
+
+export function differencingCellLabel(measure: string, part: string, language: Language): string {
+  const label = measureLabel(measure);
+  if (part === "den") {
+    return `${label} (${language === "de" ? "Nenner" : "denominator"})`;
+  }
+  return label;
 }
 
 export function PageState({

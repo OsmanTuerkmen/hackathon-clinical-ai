@@ -139,13 +139,17 @@ export const api = {
     }
     return response.blob();
   },
-  speCsv: async (permit: string, login: string) => {
+  speCsv: async (permit: string, login: string, language: Language) => {
     const response = await fetch(
       `/api/spe/${encodeURIComponent(permit)}/download?login=${encodeURIComponent(login)}`,
     );
     if (!response.ok) {
       const body = await response.json();
-      throw new Error(body?.detail?.en ?? body?.detail ?? response.statusText);
+      const detail = body?.detail;
+      const message = detail && typeof detail === "object"
+        ? detail[language] ?? detail.en ?? detail.de
+        : detail;
+      throw new Error(message ?? response.statusText);
     }
     return response.blob();
   },

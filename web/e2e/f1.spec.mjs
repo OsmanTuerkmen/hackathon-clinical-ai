@@ -144,6 +144,8 @@ test("builder templates, Art. 54 pre-check, and submission use the selected appl
   const external = trackExternalRequests(page);
   await page.goto("/#/apply/new");
   await page.locator("#identity-switch").selectOption({ label: "Dr. Sophie Lechner" });
+  await expect(page.getByRole("button", { name: "Entwurf erstellen" })).toBeDisabled();
+  await expect(page.getByText("KI ist nicht aktiv (kein API-Schlüssel).")).toBeVisible();
   await page.locator("#template-select").selectOption("prevalence-region");
   await expect(page.locator(".precheck-panel")).toContainText("COPD");
   await expect(page.locator(".precheck-panel")).toContainText("Kohortengröße");
@@ -151,13 +153,13 @@ test("builder templates, Art. 54 pre-check, and submission use the selected appl
   await page.locator("#builder-purpose").fill(
     "We are launching an advertising campaign to promote a new product based on the results.",
   );
-  await page.locator("#builder-question").fill(
-    "Which regions have the most prescriptions so that our campaign can focus there?",
-  );
+  await page.locator("#builder-question").fill("");
   await expect(page.locator(".precheck-panel")).toContainText("Art. 54");
+  await expect(page.locator(".precheck-panel")).toContainText("REJECT [54]");
   await expect(page.locator(".precheck-panel")).toContainText("advertising campaign");
 
   await page.locator("#builder-purpose").fill("Scientific research on diabetes prevention in adults.");
+  await page.locator("#builder-question").fill("How many adults are affected in each region?");
   await page.getByRole("button", { name: "Antrag einreichen" }).click();
   await expect(page).toHaveURL(/#\/apply\/case\/U\d+/);
   await expect(external).toEqual([]);
@@ -173,7 +175,7 @@ test("SPE workspace blocks raw download and permits reviewed aggregate CSV only"
   const workspaceUrl = page.url();
 
   await page.getByRole("button", { name: "Rohdaten herunterladen" }).click();
-  await expect(page.getByText(/Download blocked/)).toBeVisible();
+  await expect(page.getByText(/Download blockiert|Download blocked/)).toBeVisible();
   await page.locator("#spe-sql").fill("SELECT patient_id FROM cohort LIMIT 10");
   await page.getByRole("button", { name: "Abfrage ausführen" }).click();
   await expect(page.locator(".spe-query-result")).toContainText("patient_id");

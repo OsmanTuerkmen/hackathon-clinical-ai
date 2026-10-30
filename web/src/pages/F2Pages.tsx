@@ -101,7 +101,7 @@ export function BuilderPage() {
   }), [draft, selectedIdentity]);
 
   useEffect(() => {
-    if (!request.purpose || !request.question || !request.definitions.some((item) => item.trim())) {
+    if (!request.purpose.trim() && !request.question.trim()) {
       setPrecheck(null);
       return;
     }
@@ -196,7 +196,30 @@ export function BuilderPage() {
       <h1 className="page-heading" id="page-title" tabIndex={-1}>{t(language, "title.applyNew")}</h1>
       <div className="builder-layout">
         <div className="builder-form">
-          <div className="builder-toolbar">
+          <div className="builder-ai">
+            <TextArea id="builder-idea"
+              labelText={language === "de" ? "Ihre Frage in eigenen Worten" : "Your question in your own words"}
+              value={idea} rows={3} maxLength={2000}
+              onChange={(event) => setIdea(event.currentTarget.value)} />
+            <Button kind="tertiary" disabled={!ai.enabled || idea.trim().length < 5}
+              onClick={() => void runDraft()}>
+              {language === "de" ? "Entwurf erstellen" : "Create draft"}
+            </Button>
+            {!ai.enabled && <p className="secondary-text">{language === "de" ? "KI ist nicht aktiv (kein API-Schlüssel)." : "AI is not active (no API key)."}</p>}
+            {suggested && (
+              <span className="ai-suggestion">
+                <Tag type="blue">KI-Vorschlag</Tag>
+                <Toggletip>
+                  <ToggletipButton label={language === "de" ? "KI-Prüfungen" : "AI checks"} />
+                  <ToggletipContent><p>{language === "de"
+                    ? "Anschließend wurden derselbe Parser und die Entscheidungsregeln verwendet; Codes wurden gegen die Daten validiert."
+                    : "The same parser and decision rules ran afterwards; codes were validated against the data."}</p></ToggletipContent>
+                </Toggletip>
+              </span>
+            )}
+          </div>
+          <div className="builder-template">
+            <p>{language === "de" ? "oder Vorlage wählen" : "or choose a template"}</p>
             <Select id="template-select" labelText={language === "de" ? "Vorlage" : "Template"}
               onChange={(event) => applyTemplate(event.target.value)} value="">
               <SelectItem value="" text={language === "de" ? "Vorlage wählen" : "Choose a template"} />
@@ -205,82 +228,61 @@ export function BuilderPage() {
                   text={language === "de" ? item.title_de : item.title_en} />
               ))}
             </Select>
-            <Button kind="tertiary" onClick={() => {
-              setRaw(JSON.stringify(request, null, 2));
-              setRawMode((current) => !current);
-            }}>
-              {rawMode ? (language === "de" ? "Formular" : "Form") : (language === "de" ? "JSON anzeigen/einfügen" : "View/paste JSON")}
+          </div>
+          <RadioButtonGroup
+            name="request-kind"
+            legendText={language === "de" ? "Antragsart" : "Request type"}
+            valueSelected={draft.requested_as}
+            onChange={(value) => setField("requested_as", String(value))}
+          >
+            <RadioButton id="kind-request" value="health data request"
+              labelText={language === "de" ? "Gesundheitsdatenanfrage · Art. 69" : "Health data request · Art. 69"} />
+            <RadioButton id="kind-application" value="health data access application"
+              labelText={language === "de" ? "Zugangsantrag · Art. 67" : "Access application · Art. 67"} />
+          </RadioButtonGroup>
+          <TextArea id="builder-purpose" labelText={t(language, "case.purpose")}
+            value={draft.purpose} rows={5} maxLength={4000}
+            onChange={(event) => setField("purpose", event.currentTarget.value)} />
+          <TextArea id="builder-question" labelText={t(language, "case.question")}
+            value={draft.question} rows={4} maxLength={2000}
+            onChange={(event) => setField("question", event.currentTarget.value)} />
+          <div className="builder-definitions">
+            <h2 className="section-heading">{t(language, "case.definitions")}</h2>
+            {draft.definitions.map((definition, index) => (
+              <div className="builder-definition" key={index}>
+                <TextArea id={`builder-definition-${index}`}
+                  labelText={language === "de" ? `Definition ${index + 1}` : `Definition ${index + 1}`}
+                  value={definition} rows={2} maxLength={1000}
+                  onChange={(event) => updateDefinition(index, event.currentTarget.value)} />
+                <Button kind="ghost" size="sm" disabled={draft.definitions.length <= 1}
+                  onClick={() => removeDefinition(index)}>
+                  {language === "de" ? "Entfernen" : "Remove"}
+                </Button>
+              </div>
+            ))}
+            <Button kind="ghost" size="sm" onClick={addDefinition}>
+              {language === "de" ? "Definition hinzufügen" : "Add definition"}
             </Button>
           </div>
-          {rawMode ? (
+          {error && <InlineNotification kind="error" lowContrast title={error} />}
+          <div className="builder-actions">
+            <Button kind="primary" onClick={() => void submit()}>
+              {language === "de" ? "Antrag einreichen" : "Submit request"}
+            </Button>
+            <Button kind="ghost" onClick={() => {
+              if (!rawMode) setRaw(JSON.stringify(request, null, 2));
+              setRawMode((current) => !current);
+            }}>
+              {rawMode ? (language === "de" ? "JSON schließen" : "Close JSON") : (language === "de" ? "JSON anzeigen/einfügen" : "View/paste JSON")}
+            </Button>
+          </div>
+          {rawMode && (
             <div className="builder-raw">
               <TextArea id="builder-json" labelText="JSON" rows={18} value={raw}
                 onChange={(event) => setRaw(event.currentTarget.value)} />
-              <Button kind="primary" onClick={parseRaw}>{language === "de" ? "Übernehmen" : "Apply JSON"}</Button>
+              <Button kind="tertiary" onClick={parseRaw}>{language === "de" ? "Übernehmen" : "Apply JSON"}</Button>
             </div>
-          ) : (
-            <>
-              <RadioButtonGroup
-                name="request-kind"
-                legendText={language === "de" ? "Antragsart" : "Request type"}
-                valueSelected={draft.requested_as}
-                onChange={(value) => setField("requested_as", String(value))}
-              >
-                <RadioButton id="kind-request" value="health data request"
-                  labelText={language === "de" ? "Gesundheitsdatenanfrage · Art. 69" : "Health data request · Art. 69"} />
-                <RadioButton id="kind-application" value="health data access application"
-                  labelText={language === "de" ? "Zugangsantrag · Art. 67" : "Access application · Art. 67"} />
-              </RadioButtonGroup>
-              <TextArea id="builder-purpose" labelText={t(language, "case.purpose")}
-                value={draft.purpose} rows={5} maxLength={4000}
-                onChange={(event) => setField("purpose", event.currentTarget.value)} />
-              <TextArea id="builder-question" labelText={t(language, "case.question")}
-                value={draft.question} rows={4} maxLength={2000}
-                onChange={(event) => setField("question", event.currentTarget.value)} />
-              <div className="builder-ai">
-                <TextArea id="builder-idea" labelText={language === "de" ? "Fragestellung in eigenen Worten" : "Question in your own words"}
-                  value={idea} rows={2} maxLength={2000}
-                  onChange={(event) => setIdea(event.currentTarget.value)} />
-                <Button kind="tertiary" disabled={!ai.enabled || idea.trim().length < 5}
-                  onClick={() => void runDraft()}>
-                  {language === "de" ? "Entwurf erstellen" : "Create draft"}
-                </Button>
-                {!ai.enabled && <p className="secondary-text">{language === "de" ? "KI ist nicht aktiv (kein API-Schlüssel)." : "AI is not active (no API key)."}</p>}
-                {suggested && (
-                  <span className="ai-suggestion">
-                    <Tag type="blue">KI-Vorschlag</Tag>
-                    <Toggletip>
-                      <ToggletipButton label={language === "de" ? "KI-Prüfungen" : "AI checks"} />
-                      <ToggletipContent><p>{language === "de"
-                        ? "Anschließend wurden derselbe Parser und die Entscheidungsregeln verwendet; Codes wurden gegen die Daten validiert."
-                        : "The same parser and decision rules ran afterwards; codes were validated against the data."}</p></ToggletipContent>
-                    </Toggletip>
-                  </span>
-                )}
-              </div>
-              <div className="builder-definitions">
-                <h2 className="section-heading">{t(language, "case.definitions")}</h2>
-                {draft.definitions.map((definition, index) => (
-                  <div className="builder-definition" key={index}>
-                    <TextArea id={`builder-definition-${index}`} labelText={`${t(language, "case.definitions")} ${index + 1}`}
-                      value={definition} rows={2} maxLength={1000}
-                      onChange={(event) => updateDefinition(index, event.currentTarget.value)} />
-                    <Button kind="ghost" size="sm" disabled={draft.definitions.length <= 1}
-                      onClick={() => removeDefinition(index)}>
-                      {language === "de" ? "Entfernen" : "Remove"}
-                    </Button>
-                  </div>
-                ))}
-                <Button kind="ghost" size="sm" onClick={addDefinition}>
-                  {language === "de" ? "Definition hinzufügen" : "Add definition"}
-                </Button>
-              </div>
-            </>
           )}
-          {error && <InlineNotification kind="error" lowContrast title={error} />}
-          {!rawMode && <Button kind="primary" onClick={() => void submit()}>
-            {language === "de" ? "Antrag einreichen" : "Submit request"}
-          </Button>}
         </div>
         <PrecheckPanel precheck={precheck} loading={loadingCheck} language={language} />
       </div>
@@ -305,6 +307,7 @@ function PrecheckPanel({
       {precheck && (
         <>
           <DecisionTag decision={precheck.decision.decision} language={language} />
+          {precheck.art54.length > 0 && <p className="precheck-decision-code">REJECT [54]</p>}
           <p>{language === "de" ? precheck.decision.reason_de : precheck.decision.reason_en}</p>
           {precheck.art54.map((item) => (
             <InlineNotification key={item.category} kind="error" lowContrast
@@ -391,7 +394,7 @@ export function SPEWorkspacePage({ permitId }: { permitId: string }) {
 
   const download = async () => {
     try {
-      const blob = await api.speCsv(permitId, identity);
+      const blob = await api.speCsv(permitId, identity, language);
       saveBlob(blob, `export_${permitId}.csv`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -402,23 +405,26 @@ export function SPEWorkspacePage({ permitId }: { permitId: string }) {
     <section aria-labelledby="page-title">
       <h1 className="page-heading" id="page-title" tabIndex={-1}>{t(language, "title.spe")}</h1>
       {loading && <PageState loading language={language} />}
-      {error && <InlineNotification kind="error" lowContrast title={error} />}
+      {error && <InlineNotification className="spe-workspace__notification" kind="error" lowContrast title={error} />}
       {workspace && (
         <>
-          <dl className="permit-details">
+          <dl className="permit-details spe-workspace__meta">
             <div><dt>{language === "de" ? "Genehmigung" : "Permit"}</dt><dd className="mono">{permitId}</dd></div>
-            <div><dt>{t(language, "case.expires")}</dt><dd>{String(workspace.manifest.expires ?? "")}</dd></div>
+            <div><dt>{t(language, "case.expires")}</dt><dd>{formatIsoDate(String(workspace.manifest.expires ?? ""), language)}</dd></div>
             <div><dt>{t(language, "case.persons")}</dt><dd>{String((workspace.manifest.persons_with_access as string[] ?? []).join(", "))}</dd></div>
           </dl>
-          <div className="table-scroll" role="region" aria-label={t(language, "case.speTables")} tabIndex={0}>
+          <div className="table-scroll spe-workspace__tables" role="region" aria-label={t(language, "case.speTables")} tabIndex={0}>
             <table className="data-table">
-              <thead><tr><th>{t(language, "case.term")}</th><th>{t(language, "case.rows")}</th></tr></thead>
+              <thead><tr><th>{language === "de" ? "Tabelle" : "Table"}</th><th>{t(language, "case.rows")}</th></tr></thead>
               <tbody>{((workspace.manifest.tables_copied as Array<Record<string, unknown>>) ?? []).map((table, index) => (
-                <tr key={String(table.table ?? index)}><td>{String(table.table ?? "")}</td><td>{String(table.rows ?? "")}</td></tr>
+                <tr key={String(table.table ?? index)}>
+                  <td>{formatTableName(String(table.table ?? ""), language)}</td>
+                  <td>{formatNumber(Number(table.rows ?? 0), language, 0)}</td>
+                </tr>
               ))}</tbody>
             </table>
           </div>
-          <h2 className="section-heading">{language === "de" ? "SQL-Konsole" : "SQL console"}</h2>
+          <h2 className="section-heading spe-workspace__console-heading">{language === "de" ? "SQL-Konsole" : "SQL console"}</h2>
           <TextArea id="spe-sql" labelText="SQL" className="mono" rows={8} value={sql}
             onChange={(event) => setSql(event.currentTarget.value)}
             onKeyDown={(event) => {
@@ -427,7 +433,7 @@ export function SPEWorkspacePage({ permitId }: { permitId: string }) {
                 void runQuery();
               }
             }} />
-          <div className="page-toolbar">
+          <div className="spe-workspace__actions">
             <Button kind="primary" onClick={() => void runQuery()}>{language === "de" ? "Abfrage ausführen" : "Run query"}</Button>
             <Button kind="tertiary" onClick={() => setExportOpen(true)}>{language === "de" ? "Export zur Prüfung einreichen" : "Submit export for review"}</Button>
             <Button kind="danger--tertiary" onClick={() => void download()}>{language === "de" ? "Rohdaten herunterladen" : "Download raw data"}</Button>
@@ -479,7 +485,7 @@ function ExportList({
   language: "de" | "en";
   onDownload: (id: string) => void;
 }) {
-  if (!rows.length) return <p className="secondary-text">{t(language, "inbox.empty")}</p>;
+  if (!rows.length) return <p className="secondary-text">{language === "de" ? "Noch keine Exporte eingereicht." : "No exports submitted yet."}</p>;
   return (
     <div className="table-scroll" role="region" aria-label={language === "de" ? "Exporte" : "Exports"} tabIndex={0}>
       <table className="data-table">
@@ -504,4 +510,26 @@ function saveBlob(blob: Blob, filename: string) {
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function formatIsoDate(value: string, language: "de" | "en"): string {
+  const date = new Date(`${value.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(language === "de" ? "de-AT" : "en-GB", {
+    day: language === "de" ? "2-digit" : "numeric",
+    month: language === "de" ? "2-digit" : "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function formatTableName(table: string, language: "de" | "en") {
+  const names: Record<string, { de: string; en: string }> = {
+    conditions: { de: "Diagnosen", en: "Diagnoses" },
+    medications: { de: "Arzneimittel", en: "Medications" },
+    observations: { de: "Messwerte", en: "Measurements" },
+    cohort: { de: "Kohorte", en: "Cohort" },
+  };
+  const localized = names[table]?.[language] ?? table;
+  return <>{localized} · <span className="mono">{table}</span></>;
 }

@@ -425,6 +425,15 @@ textarea:focus-visible,
   grid-template-columns: minmax(0, 1fr);
 }
 
+.result-layout--stack {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.result-layout--stack .result-chart {
+  width: 100%;
+  max-width: 50rem;
+}
+
 .chart-frame {
   min-width: 0;
   padding: var(--cds-spacing-05);

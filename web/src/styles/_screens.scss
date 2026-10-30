@@ -104,6 +104,11 @@ body {
   color: var(--cds-text-secondary);
 }
 
+.article-list--stacked {
+  display: grid;
+  justify-items: start;
+}
+
 .case-tabs {
   display: flex;
   overflow-x: auto;
@@ -211,6 +216,12 @@ body {
   padding-block: var(--cds-spacing-05);
   margin-bottom: var(--cds-spacing-07);
   border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.decision-banner .decision-tag {
+  width: max-content;
+  max-width: 100%;
+  justify-self: start;
 }
 
 .decision-banner h2,
@@ -371,8 +382,9 @@ body {
 }
 
 .letter-page section > h2 {
-  font-size: var(--cds-heading-02-font-size);
-  line-height: var(--cds-heading-02-line-height);
+  font-size: var(--cds-heading-compact-02-font-size);
+  line-height: var(--cds-heading-compact-02-line-height);
+  font-weight: var(--cds-heading-compact-02-font-weight);
 }
 
 .letter-operative {
@@ -460,6 +472,27 @@ body {
 
 .builder-toolbar .cds--select {
   flex: 1 1 20rem;
+}
+
+.builder-template {
+  display: grid;
+  gap: var(--cds-spacing-03);
+}
+
+.builder-template p {
+  margin: 0;
+}
+
+.builder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.precheck-decision-code {
+  font-family: var(--accessdesk-font-mono);
+  font-weight: 600;
 }
 
 .builder-raw,
@@ -569,6 +602,31 @@ body {
 
 .public-register__intro {
   max-width: 80ch;
+}
+
+.inbox-kind {
+  white-space: nowrap;
+}
+
+.spe-workspace__notification {
+  margin-block-end: var(--cds-spacing-06);
+}
+
+.spe-workspace__meta,
+.spe-workspace__tables {
+  margin-block-end: var(--cds-spacing-06);
+}
+
+.spe-workspace__console-heading {
+  margin-block-start: var(--cds-spacing-06);
+}
+
+.spe-workspace__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-block: var(--cds-spacing-04);
 }
 
 @media (max-width: 1055px) {

@@ -32,6 +32,14 @@ const routes = [
   { name: "letter-R05", route: "/letter/R05" },
   { name: "register", route: "/register" },
 ];
+const selectedNames = process.env.SCREEN_ROUTES?.split(",").map((name) => name.trim()).filter(Boolean);
+const selectedRoutes = selectedNames
+  ? routes.filter((route) => selectedNames.includes(route.name))
+  : routes;
+if (selectedNames && selectedRoutes.length !== selectedNames.length) {
+  const missing = selectedNames.find((name) => !routes.some((route) => route.name === name));
+  throw new Error(`Unknown screen name: ${missing}`);
+}
 const nonLocalRequests = [];
 
 await fs.mkdir(outputRoot, { recursive: true });
@@ -39,7 +47,7 @@ const browser = await chromium.launch({ channel: "chrome", headless: true });
 try {
   for (const theme of ["white", "g100"]) {
     for (const width of [1440, 390]) {
-      for (const route of routes) {
+      for (const route of selectedRoutes) {
         const context = await browser.newContext({
           viewport: { width, height: width < 500 ? 844 : 1000 },
         });
@@ -68,14 +76,12 @@ try {
           await page.locator("#builder-purpose").fill(
             "We are launching an advertising campaign to promote a new product.",
           );
-          await page.locator("#builder-question").fill(
-            "Which regions have the most prescriptions so our campaign can focus there?",
-          );
-          await page.getByText(/advertising campaign/).waitFor();
+          await page.getByText("REJECT [54]").waitFor();
+          await page.locator(".precheck-panel").getByText(/advertising campaign/).waitFor();
         }
         if (route.action === "blocked") {
           await page.getByRole("button", { name: "Rohdaten herunterladen" }).click();
-          await page.getByText(/Download blocked/).waitFor();
+          await page.getByText(/Download blockiert|Download blocked/).waitFor();
         }
         if (route.action === "audit") {
           await page.getByRole("button", { name: "Kette prüfen" }).click();

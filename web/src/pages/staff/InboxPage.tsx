@@ -127,6 +127,8 @@ export function InboxPage() {
     if (filter === "automatic") return t(language, "inbox.automatic");
     return t(language, `status.${filter}`);
   };
+  const kindLabel = (kind: CaseSummary["kind"]) =>
+    t(language, `kind.${kind}`).replace(/\s+(Art\.)/u, " · $1");
 
   return (
     <>
@@ -206,7 +208,7 @@ export function InboxPage() {
                   id: item.id,
                   received: formatDateTime(item.received_at, language),
                   applicant: item.applicant.name,
-                  kind: t(language, `kind.${item.kind}`),
+                  kind: kindLabel(item.kind),
                   decision: item.decision,
                   status: item.status,
                   safes: "",
@@ -258,7 +260,7 @@ export function InboxPage() {
                               <br />
                               <span className="secondary-text">{item.applicant.organisation}</span>
                             </TableCell>
-                            <TableCell>{t(language, `kind.${item.kind}`)}</TableCell>
+                            <TableCell className="inbox-kind">{kindLabel(item.kind)}</TableCell>
                             <TableCell><DecisionTag decision={item.decision} language={language} /></TableCell>
                             <TableCell><StatusTag status={item.status} language={language} /></TableCell>
                             <TableCell><SafeIndicators safes={item.five_safes} language={language} compact /></TableCell>

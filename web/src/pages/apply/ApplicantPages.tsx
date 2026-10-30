@@ -2,7 +2,7 @@ import { Button, Tag, Toggletip, ToggletipButton, ToggletipContent } from "@carb
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../api/client";
 import type { CaseSummary } from "../../api/types";
-import { DecisionTag, Funnel, PageState, ResultChart, ResultTable, StatusTag, measureLabel } from "../../components/DataComponents";
+import { DecisionTag, Funnel, PageState, ResultChart, ResultTable, StatusTag, differencingCellLabel } from "../../components/DataComponents";
 import { useAppState } from "../../state/AppContext";
 import { formatDateTime, formatNumber, t } from "../../i18n";
 
@@ -143,7 +143,7 @@ export function ApplicantCasePage({ caseId }: { caseId: string }) {
             <p>{language === "de" ? result.decision.reason_de : result.decision.reason_en}</p>
             <ul className="article-list article-list--stacked">
               {result.decision.articles_detail.map((article) => (
-                <li key={article.n}>Art. {article.n}: {language === "de" ? article.title_de : article.title_en}</li>
+                <li key={article.n}>Art. {article.n} · {language === "de" ? article.title_de : article.title_en}</li>
               ))}
             </ul>
           </div>
@@ -156,8 +156,8 @@ export function ApplicantCasePage({ caseId }: { caseId: string }) {
           ) : (
             <>
               {result.released && (
-                <div className={`result-layout${result.released.group_dims.length === 1 ? "" : " result-layout--table"}`}>
-                  <ResultChart released={result.released} language={language} />
+                <div className="result-layout result-layout--stack">
+                  <div className="result-chart"><ResultChart released={result.released} language={language} /></div>
                   <ResultTable released={result.released} language={language} />
                   <div className="gate-summary">
                     <h2 className="section-heading">{t(language, "case.gate")}</h2>
@@ -167,6 +167,12 @@ export function ApplicantCasePage({ caseId }: { caseId: string }) {
                       <div><dt>{t(language, "case.suppressedValues")}</dt><dd>
                         {result.released.gate.pct_suppressed + result.released.gate.means_suppressed}
                       </dd></div>
+                      {(result.released.differencing?.suppressed.length ?? 0) > 0 && (
+                        <div>
+                          <dt>{language === "de" ? "Differenz-Schutz" : "Differencing protection"}</dt>
+                          <dd>{result.released.differencing?.suppressed.length} {language === "de" ? "Zellen" : "cells"}</dd>
+                        </div>
+                      )}
                     </dl>
                   </div>
                 </div>
@@ -176,8 +182,8 @@ export function ApplicantCasePage({ caseId }: { caseId: string }) {
                   {result.released?.differencing?.suppressed.map((item, index) => (
                     <li key={`${item.measure}-${item.part}-${index}`}>
                       {language === "de"
-                        ? `Unterscheidet sich um ${formatNumber(item.difference, language, 0)} Personen von Ihrer früheren Antwort ${item.against.request_id} (${item.against.group.join(" · ")} · ${measureLabel(item.against.measure)}). Sonst ließe sich eine Gruppe unter 10 Personen errechnen.`
-                        : `This differs by ${formatNumber(item.difference, language, 0)} people from your earlier answer ${item.against.request_id} (${item.against.group.join(" · ")} · ${measureLabel(item.against.measure)}). Otherwise, a group of fewer than 10 people could be calculated.`}
+                        ? `Unterscheidet sich um ${formatNumber(item.difference, language, 0)} Personen von Ihrer früheren Antwort ${item.against.request_id} (${item.against.group.join(" · ")} · ${differencingCellLabel(item.against.measure, item.against.part, language)}). Sonst ließe sich eine Gruppe unter 10 Personen errechnen.`
+                        : `This differs by ${formatNumber(item.difference, language, 0)} people from your earlier answer ${item.against.request_id} (${item.against.group.join(" · ")} · ${differencingCellLabel(item.against.measure, item.against.part, language)}). Otherwise, a group of fewer than 10 people could be calculated.`}
                     </li>
                   ))}
                 </ol>

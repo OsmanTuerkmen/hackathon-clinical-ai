@@ -16,6 +16,7 @@ import {
   Funnel,
   groupDimensionLabel,
   PageState,
+  differencingCellLabel,
   measureLabel,
   ResultChart,
   ResultTable,
@@ -476,8 +477,8 @@ function ResultPanel({ detail, language }: { detail: CaseDetail; language: "de" 
       {!released ? (
         <p>{t(language, "case.noResults")}</p>
       ) : (
-        <div className={`result-layout${released.group_dims.length === 1 ? "" : " result-layout--table"}`}>
-          <ResultChart released={released} language={language} />
+        <div className="result-layout result-layout--stack">
+          <div className="result-chart"><ResultChart released={released} language={language} /></div>
           <ResultTable released={released} language={language} />
           <section>
             <h3 className="section-heading">{t(language, "case.gate")}</h3>
@@ -488,7 +489,10 @@ function ResultPanel({ detail, language }: { detail: CaseDetail; language: "de" 
                 {released.gate.pct_suppressed + released.gate.means_suppressed}
               </dd></div>
               {(released.differencing?.suppressed.length ?? 0) > 0 && (
-                <div><dt>Differencing</dt><dd>{released.differencing?.suppressed.length}</dd></div>
+                <div>
+                  <dt>{language === "de" ? "Differenz-Schutz" : "Differencing protection"}</dt>
+                  <dd>{released.differencing?.suppressed.length} {language === "de" ? "Zellen" : "cells"}</dd>
+                </div>
               )}
             </dl>
           </section>
@@ -501,8 +505,8 @@ function ResultPanel({ detail, language }: { detail: CaseDetail; language: "de" 
               {released.differencing?.suppressed.map((item, index) => (
                 <li key={`${item.measure}-${item.part}-${index}`}>
                   {language === "de"
-                    ? `Unterscheidet sich um ${formatNumber(item.difference, language, 0)} Personen von der früheren Antwort ${item.against.request_id} (${item.against.group.join(" · ")} · ${measureLabel(item.against.measure)}).`
-                    : `Differs by ${formatNumber(item.difference, language, 0)} people from earlier answer ${item.against.request_id} (${item.against.group.join(" · ")} · ${measureLabel(item.against.measure)}).`}
+                    ? `Unterscheidet sich um ${formatNumber(item.difference, language, 0)} Personen von der früheren Antwort ${item.against.request_id} (${item.against.group.join(" · ")} · ${differencingCellLabel(item.against.measure, item.against.part, language)}).`
+                    : `Differs by ${formatNumber(item.difference, language, 0)} people from earlier answer ${item.against.request_id} (${item.against.group.join(" · ")} · ${differencingCellLabel(item.against.measure, item.against.part, language)}).`}
                 </li>
               ))}
             </ol>
