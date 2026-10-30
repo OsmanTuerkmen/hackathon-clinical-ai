@@ -21,7 +21,7 @@ The product follows the **Five Safes** framework for trusted research environmen
 | Correct numbers (approved requests) | **6 / 6** | 6 / 6 |
 | Privacy leaks | **0** | 0 |
 | Consistency (same result in 3 runs) | **10 / 10** | 10 / 10 |
-| Time to answer (slowest of the 10) | **≈ 75 ms** | < 60 s |
+| Time to answer (slowest of the 10) | **≈ 80 ms** | < 60 s |
 
 Reproduce with `python evaluate.py`. The metrics are measured on the rules alone, with the AI switched off, because the AI never decides.
 
@@ -160,6 +160,12 @@ Limits:
 - **Simulated identity.** Identity services are simulated. Federation is not implemented. Deadlines, fees and cross-border access are not modelled.
 - **AI is optional.** All metrics come from the rules. Without an API key, the AI draft and the second opinion are off.
 - **Rounding can be probed.** The builder's live pre-check shows cohort sizes rounded to 10. Many prechecks with small variations could narrow a number down; a real deployment would rate-limit them or run the differencing guard on them too.
+
+## Demo video
+
+[DEMO.md](DEMO.md) is the 2-minute story. `web/e2e/demo-video.mjs` records it with Playwright, and ffmpeg turns the recording into `docs/demo/accessdesk2-demo.mp4` (119 s). The same video is also available with German subtitles (`docs/demo/accessdesk2-demo-untertitel.mp4`, from `docs/demo/accessdesk2-demo.de.srt`). The MP4 files are not in git.
+
+A fresh clone starts in about 20 s on Windows, including creating `.venv` and installing the dependencies. Later starts take about 3 s.
 
 ## Repository layout
 
