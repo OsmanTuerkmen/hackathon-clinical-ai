@@ -23,7 +23,12 @@ from tools.voiceover import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_dry_run_reports_demo_rows_slots_and_estimated_credits(capsys):
+def test_dry_run_reports_demo_rows_slots_and_estimated_credits(capsys, monkeypatch):
+    monkeypatch.setattr(
+        voiceover.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: pytest.fail("dry-run must not make a network request"),
+    )
     assert main(["--dry-run"]) == 0
     output = capsys.readouterr().out
 
