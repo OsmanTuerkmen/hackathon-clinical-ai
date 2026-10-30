@@ -12,7 +12,7 @@ Stand: 2026-10-30. Details zur Weiterarbeit: `docs/HANDOFF.md`. Reihenfolge laut
 - [x] Task 8: SPE (Kopie, Download-Sperre, Audit)
 - [x] Task 9: Pipeline und CLI
 - [x] Meilenstein-Review M2 (Range 791dcd6..6d1e439), vier Befunde behoben und separat nachgeprüft
-- [ ] Task 10: optionaler LLM-Pfad
+- [x] Task 10: optionaler LLM-Pfad (50 Tests, Codesystembindung inkl. Cache, Review abgeschlossen)
 - [ ] Task 11: HTTP-API
 - [ ] Task 12: Web-UI (Antragsteller, Staff, SPE-Arbeitsbereich)
 - [ ] Task 13: Referenzskript und Eval

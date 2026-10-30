@@ -247,7 +247,7 @@ class DeskService:
         spec = parse.spec
         complete = spec is not None and parse.report.complete
         notes: list[str] = []
-        warnings = list(decision.warnings)
+        warnings = [*decision.warnings, *parse.report.notes]
         statistics: DisclosedTable | None = None
         spe: SpeAnswer | None = None
         sql: str | None = None

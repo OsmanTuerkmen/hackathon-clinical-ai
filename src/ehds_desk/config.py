@@ -15,7 +15,7 @@ SMALL_CELL_THRESHOLD = 10
 
 # Assumes a src-layout editable install (src/ehds_desk/config.py -> repo root is parents[2]).
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_LLM_MODEL = "claude-sonnet-5-5"
+DEFAULT_LLM_MODEL = "claude-opus-5-5"
 _MARKER = Path("track3") / "requests" / "expected.json"
 
 

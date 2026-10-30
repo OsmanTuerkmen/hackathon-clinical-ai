@@ -69,3 +69,10 @@ zählen nur Patienten ohne Opt-out.
 
 Status: angenommen (2026-10-30, M2-Review).
 Statistik, SPE-Kohorte und Opt-out-Ausschlusszahl verwenden dieselbe Vereinigung der angefragten Altersbänder. Spezifische Messanforderungen gelten unabhängig vom Nomen values/measurements/observations. Ein unauflösbarer Messname oder ein nicht unterstützter Mittelwertfilter führt zur manuellen Prüfung statt stillschweigend breiterer Daten. Kosten: Mehr unübliche Formulierungen können manuelle Prüfung erfordern; Datenschutz und korrekte Bedeutung haben Vorrang.
+
+## ADR-010: Optionaler Claude-Pfad mit lokaler Reproduzierbarkeit
+
+Status: angenommen und umgesetzt (Task 10, 2026-10-30).
+Der Regelparser bleibt der erste Pfad. Nur bei unvollständigem Parsing, auto-Modus und vorhandenem Key darf das offizielle Anthropic-SDK Antragstext und einen Code-Katalog ohne Patientenzeilen übersetzen. Modell ist claude-opus-5-5; temperature und erzwungenes tool_choice werden nicht gesendet. Strukturierte Ausgabe nutzt messages.parse mit Pydantic; die lokal geprüfte SDK-Version 2.3.0 bereitet das JSON-Schema API-kompatibel auf. Volle lokale Modellvalidierung bleibt erforderlich. Reproduzierbarkeit beruht auf einem versionierten, lokal validierten Cache unter var/cache/llm; das Zeitbudget schließt die einzige erlaubte Korrekturrunde ein. Bei Fehlern bleibt das Regelergebnis mit Staff-Hinweis bestehen. Ohne echten API-Key wird ausschließlich mit Fake-Clients und transportlosen SDK-Schematests verifiziert; eine Live-API-Verifikation ist damit nicht belegt.
+
+Review-Ergänzung: Jedes Codefeld wird vor Übernahme und beim Cache-Lesen an sein Codesystem gebunden (Diagnosen/Hauptdiagnosen ICD-10, Medikamente ATC, Messungen LOINC). Ein falsches System löst eine Korrektur oder den sicheren Fallback aus; fehlende Treffer bei richtigem System bleiben Staff-Warnungen. Ein Fremdclient, der seinen Timeout ignoriert, kann nach Ablauf im Daemon-Thread weiterlaufen; dessen Ergebnis wird nicht ausgeliefert oder gecacht.

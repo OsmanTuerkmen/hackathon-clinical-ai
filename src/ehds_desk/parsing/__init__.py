@@ -10,6 +10,7 @@ from ..config import Settings
 from ..models import AccessRequest, PurposeAssessment, QuerySpec
 from ..terminology import Terminology
 from .rules import ParseReport, parse_rules
+from . import llm
 
 
 class ParseResult(BaseModel):
@@ -20,9 +21,26 @@ class ParseResult(BaseModel):
 
 
 def parse_request(request: AccessRequest, terminology: Terminology, settings: Settings) -> ParseResult:
-    """Parse the request into a QuerySpec. Rules only for now; the LLM path is attached behind this function."""
+    """Prefer complete deterministic rules; optionally translate unhandled request text."""
     spec, report = parse_rules(request, terminology)
-    return ParseResult(spec=spec, report=report, source="rules" if spec is not None else "none", llm_purpose=None)
+    result = ParseResult(spec=spec, report=report, source="rules" if spec is not None else "none")
+    if report.complete or settings.llm_mode != "auto" or not settings.anthropic_api_key:
+        return result
+    try:
+        translated, purpose, cached = llm.parse_with_llm(request, terminology, settings)
+    except (llm.LLMError, TimeoutError):
+        report.notes.append("LLM assistance unavailable or unsuccessful; rule result retained, needs manual review.")
+        return result
+    mappings = llm.verify_spec(translated, terminology)
+    return ParseResult(
+        spec=translated, llm_purpose=purpose, source="llm_cache" if cached else "llm",
+        report=ParseReport(
+            understood=[*report.understood, *report.not_understood],
+            notes=[*report.notes, "Remaining request text translated by LLM; staff should review the generated query.",
+                   *(mapping.warning for mapping in mappings if mapping.warning)],
+            mappings=mappings,
+        ),
+    )
 
 
 __all__ = ["ParseReport", "ParseResult", "parse_request", "parse_rules"]
