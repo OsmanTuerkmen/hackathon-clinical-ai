@@ -7,6 +7,7 @@ the ladder looks at besides the request itself, so the same inputs always give t
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, replace
 from typing import Literal
 
@@ -54,8 +55,8 @@ PROHIBITED_RULES: tuple[_Rule, ...] = (
     _Rule(
         "54(b)",  # insurance
         _rx(
-            r"\binsur(ance|er)\b|\bpremium",
-            r"premium|pricing|risk[- ]based|underwrit|tariff|contribution"
+            r"\binsur(ance|er)\b|\bpremium|versicherung|pr(ä|ae)mie",
+            r"premium|pr(ä|ae)mie|tarif|pricing|risk[- ]based|underwrit|tariff|contribution"
             r"|exclu\w* (them |customers |persons |people |patients )?from "
             r"(cover|coverage|insurance|policy|policies|contracts?)",
         ),
@@ -157,6 +158,43 @@ _SENTENCE_END = re.compile(r"[.;!?](?=\s|$)|\n")
 
 def _normalise(text: str) -> str:
     return " ".join(text.split()).casefold()
+
+
+# Look-alike letters (Cyrillic/Greek) and invisible characters can hide a prohibited word from the keyword rules
+# ("insurance prеmiums" with a Cyrillic е). Rules run on folded text; quotes still come from that folded text.
+_INVISIBLE = re.compile("[\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff]")
+_CONFUSABLES = str.maketrans(
+    "аеорсухіјѕԁһАВЕКМНОРСТХІЈЅοαρνυεικΑΒΕΖΗΙΚΜΝΟΡΤΥΧ",
+    "aeopcyxijsdhABEKMHOPCTXIJSoapvueikABEZHIKMNOPTYX",
+)
+
+
+def _fold(text: str) -> str:
+    return unicodedata.normalize("NFKC", _INVISIBLE.sub("", text)).translate(_CONFUSABLES)
+
+
+# Instructions addressed to the system inside the request text (prompt injection). A hit never approves
+# patient-level access and is shown to staff; it does not decide on its own.
+_INJECTION = re.compile(
+    r"\b(ignore|disregard|forget|override)\b.{0,40}\b(previous|prior|above|all|system)\b.{0,20}\b(instructions?|rules?|prompts?)"
+    r"|\b(ignoriere|vergiss|missachte)\b.{0,40}\b(anweisungen|regeln)"
+    r"|\b(you are now|act as|pretend (to be|you are)|tu so als|du bist jetzt)\b"
+    r"|\b(system prompt|systemprompt)\b|^\s*(system|assistant)\s*:|<\|[a-z_]+\|>"
+    r"|\b(decision|outcome|entscheidung)\s*[:=]\s*\"?(approve|reject|genehmigt)"
+    r"|(?-i:\bAPPROVE_(SPE|STATISTICAL)\b)"
+    r"|\b(approved|authori[sz]ed|genehmigt) by (the )?(hdab|director|access body|staff)"
+    r"|\bgenehmige\b",
+    re.I | re.M,
+)
+INJECTION_WARNING = (
+    "The request text contains instructions addressed to the system (possible prompt injection); "
+    "patient-level access is not granted automatically – staff review recommended."
+)
+
+
+def injection_suspected(request: AccessRequest) -> bool:
+    raw = "\n".join([request.purpose, request.question, *request.definitions])
+    return bool(_INVISIBLE.search(raw)) or bool(_INJECTION.search(_fold(raw)))
 
 
 def _sentences(text: str) -> list[str]:
@@ -261,7 +299,7 @@ def _verified_llm_evidence(
 
 
 def assess_purpose(request: AccessRequest, llm: PurposeAssessment | None = None) -> PurposeAssessment:
-    text = request.full_text()
+    text = _fold(request.full_text())
     prohibited = _apply_rules(PROHIBITED_RULES, text)
     permitted = _apply_rules(PERMITTED_RULES, text)
     is_access = request_kind(request) == "access_application"
@@ -349,6 +387,9 @@ def _permitted_reason(permitted: list[Evidence]) -> str:
 def decide(request: AccessRequest, assessment: PurposeAssessment) -> Decision:
     kind, kind_warning = _classify(request)
     warnings: list[str] = [kind_warning] if kind_warning else []
+    injected = injection_suspected(request)
+    if injected:
+        warnings.append(INJECTION_WARNING)
 
     if assessment.prohibited:
         return Decision(
@@ -380,7 +421,7 @@ def decide(request: AccessRequest, assessment: PurposeAssessment) -> Decision:
             warnings=warnings,
         )
 
-    if assessment.spe_justification:
+    if assessment.spe_justification and not injected:
         quote = assessment.spe_justification[0].quote
         return Decision(
             outcome="APPROVE_SPE",
