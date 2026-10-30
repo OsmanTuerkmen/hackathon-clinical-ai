@@ -93,7 +93,8 @@ def r05() -> QuerySpec:
             ObservationCriterion(kind="observation", codes=codes("loinc", "4548-4")),
         ],
         output="cohort_size",
-        record_types=["patients", "conditions", "medications", "observations"],
+        record_types=["conditions", "medications", "observations"],
+        observation_codes=codes("loinc", "4548-4"),
     )
 
 
