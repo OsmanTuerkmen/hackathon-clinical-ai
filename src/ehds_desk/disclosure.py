@@ -18,7 +18,7 @@ from .models import CountMetric, RawCount, RawMean, RawPercent, RawTable
 SMALL = f"<{SMALL_CELL_THRESHOLD}"
 SUPPRESSED = "suppressed"
 
-_PATIENT_ID = re.compile(r"p-[0-9a-f]{8}")
+PATIENT_ID_PATTERN = re.compile(r"p-[0-9a-f]{8}")
 
 CellValue = int | float | str
 
@@ -129,5 +129,5 @@ def assert_no_leak(obj: Any) -> None:
         if obj < SMALL_CELL_THRESHOLD:
             raise LeakError("output contains a count below the small-cell threshold")
     elif isinstance(obj, str):
-        if _PATIENT_ID.search(obj):
+        if PATIENT_ID_PATTERN.search(obj):
             raise LeakError("output contains a patient identifier")

@@ -8,16 +8,24 @@ passes a privacy guard before it is returned.
 from __future__ import annotations
 
 import json
-import re
 import time
 from pathlib import Path
 
 from pydantic import BaseModel
 
+from .compiler import compile_cohort
 from .config import REPO_ROOT, Settings, load_settings
 from .data import get_database
 from .decision import assess_purpose, decide, request_kind
-from .disclosure import DisclosedTable, LeakError, SuppressionNote, assert_no_leak, disclose_cell, disclose_table
+from .disclosure import (
+    PATIENT_ID_PATTERN,
+    DisclosedTable,
+    LeakError,
+    SuppressionNote,
+    assert_no_leak,
+    disclose_cell,
+    disclose_table,
+)
 from .engine import opt_out_exclusions, run_statistics
 from .law import ARTICLES
 from .models import (
@@ -60,8 +68,6 @@ _SPE_REVIEW_WARNING = (
     "Secure processing environment not provisioned – needs manual review: the cohort or the requested "
     "record types could not be interpreted completely."
 )
-
-_PATIENT_ID = re.compile(r"p-[0-9a-f]{8}")
 
 
 # --- Result models ------------------------------------------------------------------------------
@@ -259,12 +265,15 @@ class DeskService:
         elif decision.outcome == "APPROVE_SPE":
             if spec is not None and _spe_possible(spec, complete):
                 manifest = provision_spe(request, spec, self.db, self.settings.var_dir)
+                # Exact cohort and table sizes are shown on purpose: the SPE holds the records themselves, so
+                # the small-cell rule for statistics does not apply to them (controller ruling R13).
                 spe = SpeAnswer(
                     permit_id=manifest.permit_id,
                     patient_count=manifest.patient_count,
                     tables=dict(manifest.tables),
                     workspace_url=f"/spe/{manifest.permit_id}",
                 )
+                sql = compile_cohort(spec).sql
                 opt_out = disclose_cell(RawCount(n=opt_out_exclusions(spec, self.db)))
             else:
                 notes.append(MANUAL_REVIEW_NOTE)
@@ -310,7 +319,7 @@ class DeskService:
     def _guard(result: ProcessResult) -> None:
         """Last line of defence: no small count in the statistics, no patient identifier anywhere."""
         assert_no_leak(result.applicant.statistics)
-        if _PATIENT_ID.search(result.model_dump_json()):
+        if PATIENT_ID_PATTERN.search(result.model_dump_json()):
             raise LeakError("result contains a patient identifier")
 
     # --- stored requests ---

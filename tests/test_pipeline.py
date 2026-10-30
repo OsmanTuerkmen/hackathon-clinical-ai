@@ -1,17 +1,16 @@
 import dataclasses
 import json
 import os
-import re
 import subprocess
 import sys
 
 import pytest
 
+from ehds_desk.disclosure import PATIENT_ID_PATTERN, LeakError, assert_no_leak
 from ehds_desk.models import AccessRequest, Applicant
-from ehds_desk.pipeline import DeskService
+from ehds_desk.pipeline import DeskService, ProcessResult
 
 IDS = [f"R{i:02d}" for i in range(1, 11)]
-PATIENT_ID = re.compile(r"p-[0-9a-f]{8}")
 
 
 @pytest.fixture(scope="module")
@@ -56,7 +55,7 @@ def test_process_is_reproducible(service):
 
 def test_no_patient_ids_in_result(results):
     for rid, result in results.items():
-        assert not PATIENT_ID.search(result.model_dump_json()), rid
+        assert not PATIENT_ID_PATTERN.search(result.model_dump_json()), rid
 
 
 def test_staff_view_contents(results):
@@ -127,7 +126,7 @@ def test_unmappable_term_needs_review(service):
     assert result.staff.parse_report.not_understood
 
 
-def test_incomplete_spe_request_is_not_provisioned(service, tmp_path):
+def test_incomplete_spe_request_is_not_provisioned(service):
     request = _gout_request(
         id="T-GOUT-SPE",
         requested_as="data access application",
@@ -140,7 +139,8 @@ def test_incomplete_spe_request_is_not_provisioned(service, tmp_path):
     assert result.applicant.spe is None
     assert any("referred to staff for manual review" in n for n in result.applicant.notes)
     assert result.staff.warnings
-    assert not (service.settings.var_dir / "spe" / "T-GOUT-SPE").exists()
+    spe_dir = service.settings.var_dir / "spe"
+    assert not [p.name for p in spe_dir.glob("T-GOUT-SPE*")]  # permit dirs are named <id>-<8 hex>
 
 
 def test_list_requests(service, tmp_path):
@@ -196,3 +196,29 @@ def test_cli_decide_missing_file(tmp_path):
     )
     assert proc.returncode != 0
     assert b"nope.json" in proc.stderr
+
+
+def test_applicant_statistics_pass_leak_guard(results):
+    for rid, result in results.items():
+        assert_no_leak(result.applicant.statistics)  # raises LeakError on a count < 10 or a patient id
+
+
+def test_spe_staff_view_shows_cohort_query(results):
+    sql = results["R05"].staff.sql
+    assert sql and "patient_id" in sql and "SELECT" in sql.upper()
+
+
+def test_guard_blocks_patient_id(results):
+    tainted = results["R01"].model_copy(deep=True)
+    tainted.applicant.reasons.append("Contact record p-0123abcd for details.")
+    with pytest.raises(LeakError):
+        DeskService._guard(tainted)
+    DeskService._guard(results["R01"])  # the untouched result passes
+    assert isinstance(tainted, ProcessResult)
+
+
+def test_guard_blocks_small_count_in_statistics(results):
+    tainted = results["R01"].model_copy(deep=True)
+    tainted.applicant.statistics.rows[0].values["adults"] = 3
+    with pytest.raises(LeakError):
+        DeskService._guard(tainted)
