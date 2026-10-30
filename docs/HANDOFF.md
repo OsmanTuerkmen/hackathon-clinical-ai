@@ -1,79 +1,51 @@
-# Übergabe (Stand 2026-10-30)
+# Übergabe (Stand 2026-10-30, Codex-Fortsetzung)
 
-Für die nächste Agentin / den nächsten Agenten (z. B. Codex). Verbindlicher Auftrag: `docs/PROMPT_track3.md`.
-Design: `docs/superpowers/specs/2026-10-29-ehds-access-desk-design.md`. Plan mit allen Tasks:
-`docs/superpowers/plans/2026-10-29-ehds-access-desk.md`. Gesetz: `docs/LAW.md`. Entscheidungen: `docs/DECISIONS.md`.
+Verbindlicher Auftrag: docs/PROMPT_track3.md; Design und Plan unter docs/superpowers/. Aktueller Fortschritt: docs/STATUS.md, docs/TODO.md, docs/WORKLOG.md und lokales Ledger .superpowers/sdd/2026-10-29-ehds-access-desk/progress.md.
 
-## Wo der Code liegt
+## Arbeitsort und harte Regeln
 
-- Repo `OsmanTuerkmen/hackathon-clinical-ai` (privat). Lokal: `C:\Users\BüsraTürkmen\Documents\Hackathon\hackathon-clinical-ai`.
-- Arbeitsbranch **`track3-app`** (Git-Worktree unter `.claude/worktrees/track3-app`). `main` enthält nur Brief, Spec und
-  Gesetzesdoku. Nichts ist gepusht. Branch `worktree-track1-app` = verworfener Track-1-Versuch: nicht anfassen.
-- Aufgabendaten (nicht im Repo, nie kopieren): `C:\Users\BüsraTürkmen\Documents\Hackathon\track3`
-  (`data/*.csv`, `requests/R01–R10.json`, `requests/expected.json`). `config.load_settings()` findet den Ordner
-  automatisch über die Vorfahren-Verzeichnisse; alternativ ENV `TRACK3_DATA`.
+- Worktree: C:/Users/BüsraTürkmen/Documents/Hackathon/hackathon-clinical-ai/.claude/worktrees/track3-app, Branch track3-app.
+- Hauptrepo und Track-1-Branch/Worktree nicht verändern. Kein Push und kein Merge ohne ausdrückliche Nutzerfreigabe.
+- Originaldaten bleiben außerhalb: C:/Users/BüsraTürkmen/Documents/Hackathon/track3. Keine CSVs, var/, .env oder DuckDB-Dateien committen; keine Patientenzeilen an externe Dienste oder in Browser-Screenshots/Toolausgaben.
+- Interne Doku Deutsch; UI, README und Begründungen Englisch. TDD, separate Reviews, kleine Conventional Commits; vor jedem Commit git status und diff --check.
+- In dieser Codex-Session liegt der Worktree außerhalb der Sandbox-Schreibbereiche: Writes/Git/Tests/Server via exec_command mit require_escalated. Standard-Sandbox erzeugt irreführende Git-Fehler; keine Git-Konfiguration reparieren.
 
-## Befehle (Git Bash, aus dem Worktree)
+## Erledigt
 
-```bash
-python -m venv .venv && .venv/Scripts/pip install -e ".[dev,llm]"   # einmalig (existiert bereits)
-.venv/Scripts/python -m pytest -q                                  # 404 passed (2026-10-30)
-.venv/Scripts/python -m ehds_desk decide <antrag.json> [--staff]    # CLI
-```
+Tasks 1–9 bestehen wie bisher: DuckDB/Opt-out-Views, Pydantic, Disclosure, deterministische Entscheidungsleiter, Terminologie, Compiler/Engine, Regelparser, SPE und Pipeline/CLI.
 
-## Fertig (Tasks 1–9 des Plans, je mit Review und Fix-Runden)
+M2-Review über 791dcd6..6d1e439 erneut ausgeführt. Vier Befunde mit TDD behoben und nachreviewt: spezifische measurements/observations begrenzen SPE-LOINCs; Nullbreite Altersbänder hängen nicht; Mean ignoriert keine zusätzlichen Einschränkungen; Statistik/Kohorte/Opt-out nutzen dieselbe Altersbanddomäne. Commit 80c6674, 416 Tests.
 
-| Modul | Inhalt |
-|---|---|
-| `config.py`, `data.py` | Settings (`load_settings(env_file=None)` in Tests!), DuckDB in-memory, Views `pat/cond/med/obs/enc` ohne Opt-out, `*_all` mit |
-| `models.py` | Pydantic-Schnittstellen: `AccessRequest`, `QuerySpec` (Kriterien/Metriken/Dimensionen, Diskriminator `kind` Pflicht), Raw-Zellen, `Decision` |
-| `disclosure.py` | Small-Cell (`<10`, `suppressed`), `round_half_up` (Decimal), `assert_no_leak`, `PATIENT_ID_PATTERN` |
-| `law.py`, `decision.py` | Artikelkatalog; Leiter REJECT(54) → Statistik-Anfrage(53,69,71) → Zugang mit Begründung(53,66,68,73,71) → Zugang sonst(53,66,69,71); satzbezogene Regex-Regeln mit Verneinungs-Guard; LLM-Belege nur verbatim ≥3 Wörter, SPE nie allein durch LLM |
-| `terminology.py` (+ `_lexicon`) | Klartext → ICD-10/ATC/LOINC, gegen Daten verifiziert; Qualifier/unsichere Treffer → `None` (manuelle Prüfung) |
-| `compiler.py`, `engine.py` | QuerySpec → parametrisiertes SQL; leere Gruppen per Domänen-CROSS JOIN; Opt-out-Ausschlusszahl |
-| `parsing/rules.py`, `phrases.py`, `metrics.py` | Deterministischer Regelparser inkl. `primary_icd10`, `data_holder`, Klartext; Restwort-Check: nicht verstandener Text → `not_understood` statt falscher Zahlen |
-| `parsing/__init__.py` | `ParseResult`, `parse_request` (bisher nur Regeln) |
-| `spe.py` | SPE als eigene DuckDB-Datei unter `var/spe/<permit_id>/`, Manifest, Audit-Log (JSONL), Download immer blockiert |
-| `pipeline.py`, `__main__.py` | `DeskService.process()` → `ProcessResult{applicant, staff}`; Leak-Guard vor Rückgabe; CLI `decide`/`serve` (serve braucht `ehds_desk.api:app` aus Task 11) |
+Task 10 abgeschlossen (2a63b2e): optionaler Claude-Pfad mit sicherer Text-Whitelist, Pydantic structured outputs, Cache/Revalidation, Codeprüfung und Staff-Fallback. Nach Review bindet die Validation alle elf Codepositionen an ICD-10/ATC/LOINC, auch beim Cache-Lesen. 50 gezielte Tests; volle Suite 466 passed in 31.55s. Keine echte API-Anfrage.
 
-Verifiziert: R01–R10 entscheiden wie `expected.json`; R01, R03, R07, R08, R09 liefern die erwarteten Zahlen je Metrik;
-R05 Kohorte 1152 (55 Opt-outs ausgeschlossen). Parser-Probes: 211 jury-artige Formulierungen, 0 „vollständig, aber falsch“.
+Task 11 abgeschlossen (3f362e6): FastAPI create_app und lazy app-Export, health/requests/process/law, SPE manifest/preview/audit/download. Download immer403 und Audit, sichere generische Fehler, Vorschau serialisiert date/Decimal; web/ wird nur bei Existenz und ausschließlich aus diesem Ordner statisch ausgeliefert. 52 API-Tests, volle Suite 518 passed in 36.10s; separater Review Approved, CLI-Importprobe bestanden.
 
-## Offen (in dieser Reihenfolge)
+## Aktuell / nächste Schritte
 
-1. **Task 10 – optionaler Claude-Pfad** (nicht begonnen). Brief = Plan Task 10. Verbindliche API-Fakten (aus dem
-   offiziellen claude-api-Skill, 2026-10-30): Modell `claude-opus-5-5` (Default in `config.py`/`.env.example` noch
-   `claude-sonnet-5-5` → ändern); **kein** `temperature` (seit 2026-10-21 HTTP 400) → Reproduzierbarkeit nur über
-   Cache `var/cache/llm/<sha256>.json`; **kein** erzwungenes `tool_choice` (400) → strukturierte Ausgabe mit
-   `client.messages.parse(model=..., max_tokens=16000, system=..., messages=[...], output_format=<Pydantic-Modell>,
-   output_config={"effort": "medium"})`, `response.parsed_output`, vorher `stop_reason` auf `refusal`/`max_tokens` prüfen;
-   Schema-Grenzen: `anyOf` ok, `oneOf`/Rekursion/Längen-Constraints nicht → ggf. Schema nachbearbeiten;
-   optional Refusal-Fallback `client.beta.messages.parse(..., betas=["server-side-fallback-2026-07-01"], fallbacks="default")`.
-   Nur Antragstext + Code-Katalog senden, nie Patientenzeilen. LLM nur wenn Regelparser unvollständig UND Key gesetzt;
-   Fehler → Regelergebnis + Staff-Hinweis. Tests mit Fake-Client (kein Key auf dieser Maschine).
-2. **Meilenstein-Review M2** (Tasks 6–9, Range `791dcd6..6d1e439`) wurde wegen Limit abgebrochen → neu ausführen.
-3. **Task 11 – FastAPI** (`api.create_app`, `app` exportieren; `/api/process`, `/api/spe/{id}/download/{table}` → 403;
-   `web/` nur mounten, wenn vorhanden; `preview` liefert date/Decimal → JSON-serialisieren).
-4. **Task 12 – Web-UI** (Antragsteller-/Staff-Ansicht, SPE-Arbeitsbereich mit blockiertem Download, Screenshot nach `docs/img/`).
-5. **Task 13 – Eval** (`eval/reference.py` nur stdlib; `eval/run_eval.py` über TestClient, 3 Läufe, 5 Metriken → `eval/results.md`).
-6. **Task 14 – ≥ 8 eigene Anträge** in `requests/extra/` (+ `expected.json`, Zahlen aus Referenzskript).
-7. **Task 15 – README (englisch, Mermaid, Metriken, Grenzen), `security-review`, Abschluss** gemäß Prompt §7.
-   Danach Branch nach `main` mergen bzw. PR – **Push nur nach Freigabe durch den Nutzer**.
+- Task 12 abgeschlossen und task-reviewt: web/index.html, app.js, styles.css; vier Smoke-Tests, volle Suite 522 passed in 36.04s, zuletzt 53 echte Browserchecks einschließlich Desktop/375 px, R05 mit 403/Audit und XSS/Race. R01-Screenshots unter docs/img/. M3-Schnittstellenreview läuft noch. Eigener Server http://127.0.0.1:62499, Session 92712, PID 16260, EHDS_LLM=off, var/task12-browser. Bei späteren Python-Änderungen eigenen Server neu starten.
+- Danach Tasks 13,14,15 in Nutzerreihenfolge: unabhängige stdlib-Referenz plus Eval über TestClient (3 Läufe,5Metriken), mindestens8 eigene Anträge (Plan sieht10vor), englisches README mit Mermaid/Metriken/Grenzen, Sicherheitsprüfung und Abschluss nach PROMPT§7.
+- Fertig erst bei echten Eval-Zielen: Entscheidungen10/10, Zahlen6/6, Leaks0, Konsistenz10/10, langsamsterAntrag<60s. Eval-Metriken sind noch nicht erstellt.
 
-## Getroffene Entscheidungen (Kurzfassung, Details in DECISIONS.md / Commits)
+## Skills und Browser
 
-- R1 Tasks sequenziell (ein Worktree). R2 API mountet `web/` nur, wenn vorhanden.
-- R4/ADR-006 Small-Cell exakt wie Aufgabe, keine Komplement-Unterdrückung (bekannte Grenze).
-- R5–R6/ADR-007 Art.-54-Regeln satzbezogen; LLM darf verschärfen, nie allein SPE öffnen.
-- R7 Zeilenzahlen in Code-Mappings nur ohne Opt-outs. R8/ADR-008 unsichere Terminologie → manuelle Prüfung.
-- R10/R11 Verneinungs-Guard: Komma ist keine Satzteilgrenze; konstruierte Sätze wie „No, we will use the data for
-  advertising.“ rutschen ohne LLM durch (bekannte Grenze, in TODO).
-- R12 Parser: Restwort-Check überall, lieber `not_understood` als falsche Zahl.
-- R13 SPE-Patientenzahl und SPE-Tabellenzeilen exakt (Aufgabe verlangt das), keine Small-Cell-Regel dort.
+Superpowers-Skills sind installiert unter C:/Users/BüsraTürkmen/.claude/plugins/cache/anthropic-plugin-directory/superpowers/6.4.2-8ca22dba9a94/skills/ und gelesen (using-superpowers, subagent-driven-development, TDD, systematic-debugging, requesting/receiving-code-review, verification-before-completion, using-git-worktrees). Nutzerauftrag erlaubt Subagent-Workflow; Controller pflegt Doku und Commits.
 
-## Arbeitsweise (vom Nutzer verlangt)
+Auf ausdrücklichen Nutzerwunsch offizielle Anthropic-Quellen nach ~/.codex/skills installiert: claude-api, security-review (offizieller Command, nur YAML-name ergänzt), webapp-testing. Nutzer hat webapp-testing ausdrücklich als Ersatz für den eingebauten, nicht separat auffindbaren /run-Skill genehmigt.
 
-Superpowers-Workflow (TDD je Task, Review nach jedem Task und Meilenstein, `verification-before-completion`,
-`finishing-a-development-branch`); nach jedem Task `docs/STATUS.md`, `docs/TODO.md`, `docs/WORKLOG.md` pflegen;
-kleine Conventional Commits; vor jedem Commit `git status` (keine CSV, kein `var/`, keine `.env`); nichts pro Antrag
-hart kodieren; Patientendaten nie an externe Dienste. Interne Doku Deutsch, UI/README Englisch.
+Python-Playwright1.64.1 ist in der bestehenden .venv installiert. Vorhandener Browser: C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe (Chrome ebenfalls vorhanden). Headless prüfen; keine zusätzlichen Browserdownloads nötig. webapp-testing/scripts/with_server.py --help wurde gelesen. Bei Start-Process immer WindowStyle Hidden. Keine fremden Server stoppen.
+
+## Claude-API-Fakten und Grenzen
+
+- Offizieller Skill ~/.codex/skills/claude-api; lokal SDK anthropic2.3.0. Modell claude-opus-5-5.
+- KEIN temperature, KEIN erzwungenes tool_choice. Stabile client.messages.parse(output_format=LLMTranslation, output_config={effort:medium}); SDK bereitet das Schema auf, lokale volle Validation bleibt bestehen.
+- Nur requested_as/requested_format/purpose/question/definitions plus Code-Katalog ohne Zeilenzahlen. Keine IDs/Namen/Organisationen/Extras im Payload; Patient-ID-Muster verhindert Versand.
+- Cache unter var/cache/llm, versionierter Hash mit Antrag/Katalog/Schema/Modell/Prompt; atomisch und erneut validiert.
+- Gesamtbudget30s inklusive höchstens einer Schema-Korrekturrunde, SDK-Retries0. Ignoriert ein fremder Client den Timeout, kann sein Daemon-Thread weiterlaufen; verspätetes Ergebnis wird weder ausgeliefert noch gecacht. Kein Live-API-Nachweis.
+
+## Befehle
+
+.venv/Scripts/python -m pytest -q
+.venv/Scripts/python -m ehds_desk decide <antrag.json> [--staff]
+.venv/Scripts/python -m ehds_desk serve [--port 8000]
+
+Bekannte Grenzen bleiben dokumentiert: keine echte Auth/SPE-Härtung, keine sekundäre Unterdrückung, konservativer englischer Parser, bekannte adversariale Verneinungsfälle in Art54-Regeln. R13: exakte SPE-Kohorten-/Tabellenzahlen sind von Small-Cell ausgenommen. Nichts pro Antrag hart codieren.
