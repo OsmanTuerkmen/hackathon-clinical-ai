@@ -15,3 +15,12 @@
 - Task 5: `terminology.py` + Lexikon. Review-Fix: zusätzliche Synonyme („diabetes type 2“ u. a.), knappe
   Datenabgleiche und Qualifier („pulmonary hypertension“) führen zu manueller Prüfung statt falscher Codes.
 - Meilenstein M1 abgeschlossen; Meilenstein-Review beauftragt.
+
+## 2026-10-30
+
+- Task 6: SQL-Compiler und Engine; alle erwarteten Zahlen (R01, R03, R05, R07, R08, R09, R10) auf Anhieb.
+- Task 7: Regelparser; Reviews mit ~200 jury-artigen Probes, 3 Fix-Runden (Restwort-Check, Verneinungsbindung,
+  Hauptdiagnose → `primary_icd10`, englische Regionsnamen). Ergebnis: 0 falsch-vollständige Probes.
+- Task 8: SPE (eigene DuckDB-Datei, Manifest, Audit-Log, Download 403-Äquivalent, nebenläufigkeitssicher).
+- Task 9: Pipeline `DeskService.process()` + CLI; Leak-Guard über das ganze Ergebnis. 404 Tests grün.
+- Sitzung wegen Nutzungslimit beendet; Übergabe in `docs/HANDOFF.md`. Task 10 nicht begonnen, M2-Review abgebrochen.

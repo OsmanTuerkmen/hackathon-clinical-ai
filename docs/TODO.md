@@ -1,16 +1,17 @@
 # TODO
 
-Stand: 2026-10-29. Reihenfolge laut `docs/superpowers/plans/2026-10-29-ehds-access-desk.md`.
+Stand: 2026-10-30. Details zur Weiterarbeit: `docs/HANDOFF.md`. Reihenfolge laut `docs/superpowers/plans/2026-10-29-ehds-access-desk.md`.
 
 - [x] Task 1: Gerüst, Konfiguration, Datenschicht, Start-Doku
 - [x] Task 2: Modelle
 - [x] Task 3: Disclosure (Small-Cell, Rundung, Leak-Guard)
 - [x] Task 4: Gesetzeskatalog, Entscheidungsleiter
 - [x] Task 5: Terminologie
-- [ ] Task 6: Compiler und Engine
-- [ ] Task 7: Regelparser
-- [ ] Task 8: SPE (Kopie, Download-Sperre, Audit)
-- [ ] Task 9: Pipeline und CLI
+- [x] Task 6: Compiler und Engine
+- [x] Task 7: Regelparser
+- [x] Task 8: SPE (Kopie, Download-Sperre, Audit)
+- [x] Task 9: Pipeline und CLI
+- [ ] Meilenstein-Review M2 (Range 791dcd6..6d1e439) erneut ausführen
 - [ ] Task 10: optionaler LLM-Pfad
 - [ ] Task 11: HTTP-API
 - [ ] Task 12: Web-UI (Antragsteller, Staff, SPE-Arbeitsbereich)

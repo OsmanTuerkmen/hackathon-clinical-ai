@@ -1,6 +1,6 @@
 # Status
 
-Stand: 2026-10-29 · Branch `track3-app` (Worktree `.claude/worktrees/track3-app`)
+Stand: 2026-10-30 · Branch `track3-app` (Worktree `.claude/worktrees/track3-app`)
 
 | Bereich | Stand |
 |---|---|
@@ -10,9 +10,13 @@ Stand: 2026-10-29 · Branch `track3-app` (Worktree `.claude/worktrees/track3-app
 | M1 – Task 3: Disclosure (Small-Cell, ROUND_HALF_UP, Leak-Guard) | fertig, reviewt |
 | M1 – Task 4: Gesetzeskatalog, Entscheidungsleiter | fertig, reviewt; R01–R10 entscheiden wie `expected.json` |
 | M1 – Task 5: Terminologie (Lexikon + Datenabgleich) | fertig, reviewt |
-| M2: Compiler/Engine, Regelparser, SPE, Pipeline | offen |
+| M2 – Task 6: Compiler/Engine | fertig, reviewt |
+| M2 – Task 7: Regelparser (inkl. primary_icd10, data_holder, Klartext) | fertig, 3 Fix-Runden, reviewt |
+| M2 – Task 8: SPE mit Download-Sperre und Audit | fertig, reviewt |
+| M2 – Task 9: Pipeline und CLI | fertig, reviewt; Meilenstein-Review M2 noch offen |
 | M3: LLM-Pfad, API, Web-UI | offen |
 | M4: Referenz, Eval, eigene Anträge, README | offen |
 
-Tests: `.venv/Scripts/python -m pytest -q` → 147 passed (Stand nach Task 5).
+Tests: `.venv/Scripts/python -m pytest -q` → 404 passed (2026-10-30, nach Task 9).
+Übergabe für die Weiterarbeit: `docs/HANDOFF.md`.
 Eval-Metriken: noch nicht messbar (Eval in M4).
