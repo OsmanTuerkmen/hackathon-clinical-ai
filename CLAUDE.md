@@ -44,7 +44,7 @@ Vollständige Regeln lösen keinen LLM-Aufruf aus. Der reale Evaluationsnachweis
 
 ## Architektur
 
-**Tatsächliche Reihenfolge:** lokaler CSV-Loader/Codekatalog → Regelparsing und Terminologie → QuerySpec/optionale Zwecksignale → Zweckbewertung → deterministische Entscheidungsleiter → nur bei Genehmigung und vollständiger Spec parametrischer Compiler/Engine → Disclosure oder SPE → Response-Guard → FastAPI/CLI → Applicant/Staff; SPE-Vorschau, Download-Sperre und Audit laufen über eigene Workspace-Endpunkte. Ein Reject wird ebenfalls geparst, erhält aber keine Statistik/SPE. Unvollständige Interpretation liefert Hinweise für manuelle Prüfung ohne Datenfreigabe.
+**Tatsächliche Reihenfolge:** lokaler CSV-Loader/Codekatalog → Regelparsing und Terminologie → QuerySpec/optionale Zwecksignale → Zweckbewertung → deterministische Entscheidungsleiter → nur bei Genehmigung und vollständiger Spec parametrischer Compiler/Engine → Disclosure oder SPE → Response-Guard → FastAPI/CLI → Applicant/Staff; SPE-Vorschau, Download-Sperre und Audit laufen über eigene Workspace-Endpunkte. Ein Reject wird ebenfalls geparst, erhält aber keine Statistik/SPE. Unvollständige Interpretation liefert Hinweise für manuelle Prüfung ohne Datenfreigabe. Die lokal berechnete ParseReport.manual_review_required-Markierung für unaufgelösten Scope ist vor LLM und Cache unverzichtbar; sie darf nicht automatisch überschrieben werden (ADR-013).
 
 | Bereich | Verantwortung |
 |---|---|

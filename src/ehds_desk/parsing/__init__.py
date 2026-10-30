@@ -24,7 +24,7 @@ def parse_request(request: AccessRequest, terminology: Terminology, settings: Se
     """Prefer complete deterministic rules; optionally translate unhandled request text."""
     spec, report = parse_rules(request, terminology)
     result = ParseResult(spec=spec, report=report, source="rules" if spec is not None else "none")
-    if report.complete or settings.llm_mode != "auto" or not settings.anthropic_api_key:
+    if report.manual_review_required or report.complete or settings.llm_mode != "auto" or not settings.anthropic_api_key:
         return result
     try:
         translated, purpose, cached = llm.parse_with_llm(request, terminology, settings)

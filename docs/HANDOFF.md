@@ -1,55 +1,44 @@
-# Übergabe (Stand 2026-10-30, Codex-Fortsetzung)
+# Übergabe – Abschlussstand Track 3
 
-Verbindlicher Auftrag: docs/PROMPT_track3.md; Design und Plan unter docs/superpowers/. Aktueller Fortschritt: docs/STATUS.md, docs/TODO.md, docs/WORKLOG.md und lokales Ledger .superpowers/sdd/2026-10-29-ehds-access-desk/progress.md.
+Stand: 2026-10-30. Tasks 1–15 und die finalen Korrekturen sind abgeschlossen und verifiziert. Der Abschlusscommit enthält diese Dokumentation; seinen Hash mit git log -1 lesen. Der vom Nutzer gewünschte Zwischencommit ist 44200f9. Danach wurde ausdrücklich ohne weiteren Zwischencommit weitergearbeitet. Kein Push, Merge oder Eingriff in Track 1.
 
-## Arbeitsort und harte Regeln
+## Arbeitsort und Daten
 
-- Worktree: C:/Users/BüsraTürkmen/Documents/Hackathon/hackathon-clinical-ai/.claude/worktrees/track3-app, Branch track3-app.
-- Hauptrepo und Track-1-Branch/Worktree nicht verändern. Kein Push und kein Merge ohne ausdrückliche Nutzerfreigabe.
-- Originaldaten bleiben außerhalb: C:/Users/BüsraTürkmen/Documents/Hackathon/track3. Keine CSVs, var/, .env oder DuckDB-Dateien committen; keine Patientenzeilen an externe Dienste oder in Browser-Screenshots/Toolausgaben.
-- Interne Doku Deutsch; UI, README und Begründungen Englisch. TDD, separate Reviews, kleine Conventional Commits; vor jedem Commit git status und diff --check.
-- In dieser Codex-Session liegt der Worktree außerhalb der Sandbox-Schreibbereiche: Writes/Git/Tests/Server via exec_command mit require_escalated. Standard-Sandbox erzeugt irreführende Git-Fehler; keine Git-Konfiguration reparieren.
+- Worktree: C:/Users/BüsraTürkmen/Documents/Hackathon/hackathon-clinical-ai/.claude/worktrees/track3-app; Branch track3-app.
+- Externe Originaldaten: C:/Users/BüsraTürkmen/Documents/Hackathon/track3. Automatische Suche über Vorfahren oder TRACK3_DATA; niemals CSVs ins Repo kopieren.
+- Keine .env, var/ oder DuckDB-Dateien committen; keine Patientenzeilen an externe Dienste, in Screenshots oder Toolausgaben.
+- In dieser Codex-Sandbox benötigen Git, Schreibzugriffe, Tests und Serverbefehle im ausdrücklich benannten Worktree require_escalated. Irreführende Gitfehler im Standard-Sandboxmodus rechtfertigen keine Konfigurationsänderung.
 
-## Erledigt
+## Abschließende Nachweise
 
-Tasks 1–9 bestehen wie bisher: DuckDB/Opt-out-Views, Pydantic, Disclosure, deterministische Entscheidungsleiter, Terminologie, Compiler/Engine, Regelparser, SPE und Pipeline/CLI.
+702 Python-Tests bestanden im frischen Controllerlauf unter EHDS_LLM=off (82.69 s). Die unabhängige stdlib-CSV-Referenz bestätigt 14/14 genehmigte Zahlenfälle. Alle 20 Anträge wurden je dreimal über HTTP geprüft, insgesamt 60 POSTs; alle fünf Ziele sind erreicht. Aktuelle Einzelwerte stehen unverändert aus dem Lauf in eval/results.md und in STATUS.
 
-M2-Review über 791dcd6..6d1e439 erneut ausgeführt. Vier Befunde mit TDD behoben und nachreviewt: spezifische measurements/observations begrenzen SPE-LOINCs; Nullbreite Altersbänder hängen nicht; Mean ignoriert keine zusätzlichen Einschränkungen; Statistik/Kohorte/Opt-out nutzen dieselbe Altersbanddomäne. Commit 80c6674, 416 Tests.
+Die echte Edge-Prüfung umfasst 133 Checks: alle acht UI-Matrixfälle in Applicant/Staff auf Desktop und 375 px, beide SPEs mit Vorschaugrenze/403/Audit sowie Init-Race/XSS. Keine unerwarteten Netzwerkfehler, externen Requests oder JS-Fehler. R05 enthält 1152 Patienten und nur die angeforderten Typen/HbA1c; N06 enthält 294 Patienten und ausschließlich encounters+cohort; N07 zeigt alle 342 Gruppen mit unterdrückten Counts.
 
-Task 10 abgeschlossen (2a63b2e): optionaler Claude-Pfad mit sicherer Text-Whitelist, Pydantic structured outputs, Cache/Revalidation, Codeprüfung und Staff-Fallback. Nach Review bindet die Validation alle elf Codepositionen an ICD-10/ATC/LOINC, auch beim Cache-Lesen. 50 gezielte Tests; volle Suite 466 passed in 31.55s. Keine echte API-Anfrage.
+Alle vier Befunde des letzten Gesamt-Reviews sind geschlossen: Recordausschlüsse, nachgestellte Messbeschränkungen, zusätzliche cohort-size-Bedingungen und Gruppierungsqualifier. ParseReport.manual_review_required wird lokal gesetzt, in complete berücksichtigt und vor LLM/Cache erzwungen, auch im Fragepfad. Gewöhnliche übersetzbare Lücken bleiben optional LLM-fähig. 86 neue Regressionen; Details in FINAL_REVIEW, DECISIONS und SECURITY_REVIEW. Keine offene Regression im vereinbarten Reviewumfang.
 
-Task 11 abgeschlossen (3f362e6): FastAPI create_app und lazy app-Export, health/requests/process/law, SPE manifest/preview/audit/download. Download immer403 und Audit, sichere generische Fehler, Vorschau serialisiert date/Decimal; web/ wird nur bei Existenz und ausschließlich aus diesem Ordner statisch ausgeliefert. 52 API-Tests, volle Suite 518 passed in 36.10s; separater Review Approved, CLI-Importprobe bestanden.
-
-## Aktuell / nächste Schritte
-
-- Task 12 abgeschlossen und task-reviewt: web/index.html, app.js, styles.css; vier Smoke-Tests, volle Suite 522 passed in 36.04s, zuletzt 57 echte Browserchecks einschließlich Desktop/375 px, R05 mit 403/Audit und XSS/Race. R01-Screenshots unter docs/img/. Commit 8c38028. M3-Schnittstellenreview Approved ohne Critical/Important. Der kleine Initialladungs-Race der Inbox wurde mit Browser-TDD behoben und separat nachreviewt. Eigener Server http://127.0.0.1:62499, Session 92712, PID 16260, EHDS_LLM=off, var/task12-browser. Bei späteren Python-Änderungen eigenen Server neu starten.
-- Task 13 ist implementiert und nachreviewt: unabhängige stdlib-Referenz 6/6, TestClient-Eval mit eigener Runtime unter var/eval. Task14 ist erledigt; als Nächstes Task15: unabhängige stdlib-Referenz plus Eval über TestClient (3 Läufe,5Metriken), mindestens8 eigene Anträge (Plan sieht10vor), englisches README mit Mermaid/Metriken/Grenzen, Sicherheitsprüfung und Abschluss nach PROMPT§7.
-- Fertig erst bei echten Eval-Zielen: Entscheidungen10/10, Zahlen6/6, Leaks0, Konsistenz10/10, langsamsterAntrag<60s. eval/results.md belegt echte Kernziele 10/10,6/6,0,10/10,max0.506s und CSV-Referenz6/6. Der SPE-Prüfer verwendet nach Reviewkorrektur unabhängige CSV-/Vertragsspalten und Zeilenmultiplizität; 16 sichere Regressionen sowie Header-only-Probe, Nachreview ohne Restbefund. Letzte volle Suite594 passed46.53s, 72 gezielte Eval-Tests. Task14 ist ebenfalls abgeschlossen:10 neueRequests, 8 unabhängige Extra-Referenzen, insgesamt14/14 Referenzen; Kernmetriken10/10,6/6,0,10/10,max0.537s, Extrametriken10/10,8/8,0,10/10,max0.194s. Volle Suite616passed50.36s. Keine Appänderung nötig; Task14-ReviewApproved. Als NächstesTask15 README/Abschluss.
-
-## Skills und Browser
-
-Superpowers-Skills sind installiert unter C:/Users/BüsraTürkmen/.claude/plugins/cache/anthropic-plugin-directory/superpowers/6.4.2-8ca22dba9a94/skills/ und gelesen (using-superpowers, subagent-driven-development, TDD, systematic-debugging, requesting/receiving-code-review, verification-before-completion, using-git-worktrees). Nutzerauftrag erlaubt Subagent-Workflow; Controller pflegt Doku und Commits.
-
-Auf ausdrücklichen Nutzerwunsch offizielle Anthropic-Quellen nach ~/.codex/skills installiert: claude-api, security-review (offizieller Command, nur YAML-name ergänzt), webapp-testing. Nutzer hat webapp-testing ausdrücklich als Ersatz für den eingebauten, nicht separat auffindbaren /run-Skill genehmigt.
-
-Python-Playwright1.64.1 ist in der bestehenden .venv installiert. Vorhandener Browser: C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe (Chrome ebenfalls vorhanden). Headless prüfen; keine zusätzlichen Browserdownloads nötig. webapp-testing/scripts/with_server.py --help wurde gelesen. Bei Start-Process immer WindowStyle Hidden. Keine fremden Server stoppen.
-
-## Claude-API-Fakten und Grenzen
-
-- Offizieller Skill ~/.codex/skills/claude-api; lokal SDK anthropic2.3.0. Modell claude-opus-5-5.
-- KEIN temperature, KEIN erzwungenes tool_choice. Stabile client.messages.parse(output_format=LLMTranslation, output_config={effort:medium}); SDK bereitet das Schema auf, lokale volle Validation bleibt bestehen.
-- Nur requested_as/requested_format/purpose/question/definitions plus Code-Katalog ohne Zeilenzahlen. Keine IDs/Namen/Organisationen/Extras im Payload; Patient-ID-Muster verhindert Versand.
-- Cache unter var/cache/llm, versionierter Hash mit Antrag/Katalog/Schema/Modell/Prompt; atomisch und erneut validiert.
-- Gesamtbudget30s inklusive höchstens einer Schema-Korrekturrunde, SDK-Retries0. Ignoriert ein fremder Client den Timeout, kann sein Daemon-Thread weiterlaufen; verspätetes Ergebnis wird weder ausgeliefert noch gecacht. Kein Live-API-Nachweis.
-
-## Befehle
+## Befehle aus dem Worktree
 
 .venv/Scripts/python -m pytest -q
+.venv/Scripts/python eval/reference.py
+.venv/Scripts/python eval/run_eval.py
 .venv/Scripts/python -m ehds_desk decide <antrag.json> [--staff]
-.venv/Scripts/python -m ehds_desk serve [--port 8000]
+.venv/Scripts/python -m ehds_desk serve [--host 127.0.0.1] [--port 8000]
 
-Bekannte Grenzen bleiben dokumentiert: keine echte Auth/SPE-Härtung, keine sekundäre Unterdrückung, konservativer englischer Parser, bekannte adversariale Verneinungsfälle in Art54-Regeln. R13: exakte SPE-Kohorten-/Tabellenzahlen sind von Small-Cell ausgenommen. Nichts pro Antrag hart codieren.
+Eigene frisch gestartete Demo: http://127.0.0.1:62499, Unified-Exec-Session 3889, PID 8808, EHDS_LLM=off, var/task12-browser. Alter PID 16260 war bereits beendet; kein fremder Prozess wurde gestoppt. Nach späteren Python-Änderungen nur den eigenen Server mit verifizierter PID/Kommandozeile neu starten. Start-Process braucht WindowStyle Hidden. Die Screenshots unter docs/img/ zeigen ausschließlich anonymisierte R01-Statistik.
 
-## Aktueller Nutzerauftrag zum Zwischenstand
+## Optionaler Claude-Pfad
 
-Vor weiteren Arbeiten jetzigen Stand auf track3-app committen, dann weiterarbeiten und den finalen Teil separat committen. README/CLAUDE und Sicherheitsbericht liegen vor. Gesamt-Reviewer final_review hat zwei P1-SPE-Fälle bestätigt: negierte Recordtypen und nachgestellte Messbeschränkungen. Vollständige gebündelte Fundliste steht noch aus; danach genau eine gebündelte Fixrunde mit TDD und scoped Nachreview. Letzte frische Controllerprüfung:616 Tests51.34s, Referenz14/14, Kern10/10,6/6,0,10/10,max0.527s; Extras10/10,8/8,0,10/10,max0.202s. Werte echt, aber vor SPE-Korrektur. Kein Fertigmelden, Push oder Merge. Eigener Demo-Server62499/Session92712/PID16260 muss nach Python-Korrektur neu gestartet werden.
+Lokal SDK anthropic 2.3.0, Modell claude-opus-5-5. messages.parse mit Pydantic und output_config effort=medium; keine temperature und kein erzwungenes tool_choice. Nur freigegebene Antragstextfelder, Codekatalog und Schema; keine IDs, Namen, Organisationen, Extras oder Patientenzeilen. Erneut validierter Cache unter var/cache/llm einschließlich Codesystembindung.
+
+Regeln zuerst; nur geeignete unvollständige Texte bei auto+Key übersetzen. Pflicht-Scopes bleiben manuell. Insgesamt 30 s Antwortbudget, höchstens eine Schema-Korrektur, SDK-Retries 0. Ein fremder Thread kann seinen Timeout ignorieren; spätes Ergebnis wird weder ausgeliefert noch gecacht. Kein Live-API-Nachweis.
+
+## Skills und spätere Änderungen
+
+Superpowers: C:/Users/BüsraTürkmen/.claude/plugins/cache/anthropic-plugin-directory/superpowers/6.4.2-8ca22dba9a94/skills/. Nutzerauftrag erlaubt den Subagent-Workflow; Controller pflegt Doku/Commits. Offizielle claude-api, security-review und webapp-testing wurden auf Nutzerwunsch nach ~/.codex/skills installiert. webapp-testing ist als Ersatz für /run ausdrücklich freigegeben. Playwright 1.64.1 liegt in der Venv, vorhandenes Edge/Chrome wurde headless genutzt. Lokale Detailberichte und QA-Scripts bleiben im ignorierten .superpowers/sdd/2026-10-29-ehds-access-desk/ für Nachvollziehbarkeit.
+
+## Grenzen und Nutzeraktionen
+
+Lokale synthetische Demo ohne echte Auth, gehärtete SPE oder sekundäre Unterdrückung. Konservativer Parser und bekannte Art.-54-Verneinungsfälle (R11), keine vollständige rechtliche Einzelfallprüfung. Kein Modelltraining, Ergebnisexport, Föderation, OMOP/FHIR, Gebühren oder Fristen. Mehrdeutige Scopes brauchen bewusst Staff-Prüfung; exakte SPE-Größen sind laut R13 erlaubt.
+
+README enthält den 120-Sekunden-Videoablauf. Videoaufnahme, öffentliche Repository-Sichtbarkeit und Push/PR/Merge bleiben Nutzerentscheidungen. Branch und Worktree bleiben erhalten. Keine Automatismen oder neue Aufgaben eingerichtet. Der kurze Pausenwunsch wurde ausdrücklich zurückgenommen; keine Pause ist aktiv. Bei weiteren Änderungen wieder TDD, gezielter Review, echte Eval und Daten-/Secret-Check.

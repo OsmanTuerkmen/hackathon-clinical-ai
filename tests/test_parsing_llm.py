@@ -40,7 +40,7 @@ def term(db):
 
 @pytest.fixture
 def cfg(settings, tmp_path):
-    return dataclasses.replace(settings, var_dir=tmp_path, anthropic_api_key='fake-no-network')
+    return dataclasses.replace(settings, var_dir=tmp_path, llm_mode='auto', anthropic_api_key='fake-no-network')
 
 @pytest.fixture
 def access_request():

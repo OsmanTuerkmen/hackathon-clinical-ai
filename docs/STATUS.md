@@ -1,28 +1,39 @@
 # Status
 
-Stand: 2026-10-30 · Branch `track3-app` (Worktree `.claude/worktrees/track3-app`)
+Stand: 2026-10-30 · Branch track3-app · Worktree .claude/worktrees/track3-app
+
+Die Implementierung der Tasks 1–15 und die abschließenden Prüfungen sind abgeschlossen. Die endgültige Ablage erfolgt mit dem Abschlusscommit; kein Push und kein Merge nach main.
 
 | Bereich | Stand |
 |---|---|
-| Spec und Plan | fertig (`docs/superpowers/`) |
-| M1 – Task 1: Gerüst, Konfiguration, Datenschicht | fertig, reviewt (Opt-out-Views, Settings ohne `.env` in Tests) |
-| M1 – Task 2: Modelle (QuerySpec, Raw-Zellen, Decision) | fertig, reviewt |
-| M1 – Task 3: Disclosure (Small-Cell, ROUND_HALF_UP, Leak-Guard) | fertig, reviewt |
-| M1 – Task 4: Gesetzeskatalog, Entscheidungsleiter | fertig, reviewt; R01–R10 entscheiden wie `expected.json` |
-| M1 – Task 5: Terminologie (Lexikon + Datenabgleich) | fertig, reviewt |
-| M2 – Task 6: Compiler/Engine | fertig, reviewt |
-| M2 – Task 7: Regelparser (inkl. primary_icd10, data_holder, Klartext) | fertig, 3 Fix-Runden, reviewt |
-| M2 – Task 8: SPE mit Download-Sperre und Audit | fertig, reviewt |
-| M2 – Task 9: Pipeline und CLI | fertig, reviewt; Meilenstein-Review M2 abgeschlossen, vier Befunde mit Regressionstests behoben |
-| M3 – Task 10: optionaler Claude-Pfad | fertig, Fake-Client-/SDK-Schematests, separat reviewt; kein Live-API-Nachweis |
-| M3 – Task 11: FastAPI | fertig, 52 HTTP-Tests, separat reviewt |
-| M3 – Task 12: Web-UI | fertig, Applicant/Staff/SPE, 57 echte Browserchecks (Desktop/375 px), Taskreview und M3-Review Approved; Initialladungs-Race behoben |
-| M4 – Task 13: Referenz und Eval | fertig, unabhängige CSV-Kontrolle, Prüfer separat reviewt und korrigiert |
-| M4 – Task 14: zehn eigene Anträge | fertig, unabhängige Referenzen, Extra-Eval und separater Review |
-| M4 – Task 15: README und Abschluss | offen; statischer Sicherheitsreview ohne qualifizierte High/Medium-Befunde abgeschlossen |
+| Tasks 1–5 | Datenschicht, Modelle, Disclosure, Gesetzesleiter und Terminologie fertig/reviewt |
+| Tasks 6–9 / M2 | Compiler, Engine, konservativer Regelparser, SPE und Pipeline/CLI fertig; M2-Befunde korrigiert |
+| Task 10 | optionaler Claude-Pfad mit validiertem Cache, Codesystembindung und sicheren Fallbacks; Fake-/SDK-Schematests, kein Live-API-Nachweis |
+| Tasks 11–12 / M3 | FastAPI und Applicant-/Staff-/SPE-UI fertig; M3 inklusive Initialladungs-Race nachreviewt |
+| Tasks 13–14 | unabhängige stdlib-CSV-Referenz, gehärteter Drei-Lauf-Eval und zehn eigene Anträge fertig/reviewt |
+| Task 15 / Abschlussreview | englisches README, Mermaid, Screenshots, Grenzen und Sicherheitsbericht aktualisiert; alle vier abschließenden Parserbefunde geschlossen |
 
-Tests: `.venv/Scripts/python -m pytest -q` → 616 passed in 50.36s (2026-10-30, nach Task 14); UI zusätzlich 57 Browserchecks.
-Übergabe für die Weiterarbeit: `docs/HANDOFF.md`.
-Verifizierter Lauf nach Task 14: Kern 10/10 Entscheidungen, 6/6 Zahlen, Privacy 0, Konsistenz 10/10, maximal 0.537 s. Zehn Extras: 10/10 Entscheidungen, 8/8 Zahlen, Privacy 0, Konsistenz 10/10, maximal 0.194 s. Je drei Läufe, insgesamt 60 POSTs; unabhängige CSV-Referenzen 14/14. N06 kopiert 294 Patienten ausschließlich als encounters+cohort; N07 zeigt alle 342 Gruppen unterdrückt. Eval-Prüfer und Extra-Fälle separat reviewt.
+## Frische Nachweise nach allen Korrekturen
 
-Zwischenstand auf Nutzerwunsch: Der abschließende Gesamt-Review hat zwei P1-SPE-Parserfälle bestätigt: ausdrücklich ausgeschlossene Recordtypen können in der Auswahl bleiben; nachgestellte Messartenbeschränkungen wie observations for HbA1c only können unbeschränkt bleiben. Die bisherigen Benchmarkwerte sind echt, decken diese Fälle aber nicht ab. Noch kein Projektabschluss. README/CLAUDE liegen als Entwurf vor; nach Korrektur folgen Regressionen, Nachreview, neuer Eval und separater finaler Commit.
+- Volle Python-Suite: 702 passed in 82.69 s unter EHDS_LLM=off, Exit 0.
+- Unabhängige CSV-Referenz: 14/14 (sechs Originale, acht genehmigte Extras), Exit 0.
+- Echte Evaluation: 60 TestClient-POSTs, jeder der 20 Anträge dreimal; LLM off, API-Key None; ursprüngliche und Extra-SPEs mit unabhängigem Schema-/Record-/Multiplizitätsaudit.
+- Reale Edge-Browserprüfung: 133 Checks; alle acht UI-Matrixfälle in Applicant/Staff bei Desktop und375px, beide SPEs mit Vorschaugrenze, HTTP403 und Audit, Init-Race/XSS; keine unerwarteten Netzwerkfehler, externen Requests oder JS-Fehler.
+- Finaler scoped Funktionsnachreview: alle vier ursprünglichen Befunde behoben, einschließlich sechs nicht umgehbarer Gruppierungspfade mit breiterer Fake-LLM-Spec.
+- Abschließender statischer Sicherheitsnachreview: keine neue qualifizierte High-/Medium-Schwachstelle; Grenzen und zunächst funktional gefundene Fehler in docs/SECURITY_REVIEW.md ausdrücklich dokumentiert.
+
+| Metrik | Originale | Extras | Ziel |
+|---|---:|---:|---|
+| Entscheidungen/Artikel | 10/10 | 10/10 | alle korrekt |
+| Zahlen | 6/6 | 8/8 | alle genehmigten Fälle |
+| Privacy leaks, alle Läufe | 0 | 0 | 0 |
+| Applicant-Konsistenz | 10/10 | 10/10 | identisch über drei Läufe |
+| Langsamster HTTP-Lauf | 0.909 s | 0.246 s | <60s |
+
+R05:1152 Patienten, nur angeforderte Recordtypen und HbA1c; N06:294 Patienten, ausschließlich encounters+cohort. N07 zeigt alle342 Gruppen mit unterdrückten Counts. Stats/SPE werden bei unaufgelöstem Scope nicht freigegeben; eine verpflichtende Staff-Prüfung lässt sich weder durch LLM noch Cache aufheben.
+
+## Demo und Grenzen
+
+Frisch gestarteter eigener Server: http://127.0.0.1:62499, Session3889, PID8808, EHDS_LLM=off, var/task12-browser. Screenshots unter docs/img/ zeigen ausschließlich anonymisierte R01-Statistik. Start alternativ im Worktree: .venv/Scripts/python -m ehds_desk serve.
+
+Lokale synthetische Demo, keine echte Auth oder gehärtete SPE, keine sekundäre Unterdrückung. Konservativer englischer Parser und bekannte Art54-Regex-Verneinungsgrenzen; kein Live-Claude-Nachweis. Vollständige Grenzen im README. Videoaufnahme, öffentliche Freigabe, Push und Merge bleiben beim Nutzer.

@@ -86,3 +86,9 @@ Die UI nutzt lokale Assets und DOM-Textknoten statt HTML-Strings aus Anträgen o
 
 Status: angenommen und umgesetzt (Task 13, 2026-10-30).
 Die Referenz rechnet ausschließlich aus Original-CSVs mit der Standardbibliothek. Eval prüft jede der drei HTTP-Antworten und scannt auch Fehlantworten. SPE-Spalten stammen als Erwartung unabhängig aus CSV-Headern beziehungsweise dem ausdrücklich erlaubten cohort-/patients-Schema; tatsächliche DB-Spalten definieren keine Erwartung. Record-Vergleich erhält Zeilenmultiplizität. Ein eigener Runtime-Unterordner verhindert Überschneidungen mit der laufenden Browser-Demo. Bei fehlender IANA-Datenbank berechnet ein durch DST-Grenztests abgesicherter stdlib-Fallback die aktuelle Europe/Vienna-Zeit; dessen EU-Zeitregeln müssten bei künftigen gesetzlichen Änderungen angepasst werden.
+
+## ADR-013: Nicht übersteuerbare manuelle Scope-Prüfung
+
+Status: angenommen und umgesetzt (abschließende Reviewkorrektur, 2026-10-30).
+Teiltreffer dürfen weder mehr Recordtypen/Messarten noch größere Kohorten oder grobere Gruppen freigeben. Recordausschlüsse, Messbeschränkungen, Größenformulierungen und Dimensionsausdrücke werden vollständig geprüft. ParseReport.manual_review_required wird lokal berechnet und in complete berücksichtigt; bei dieser Pflichtmarkierung erfolgt keine optionale LLM-Übersetzung und keine Cache-Übernahme. Gewöhnliche Parserlücken bleiben optional übersetzbar.
+Kosten: Auch manche klare Ausschlüsse wie encounters without medications und ungewöhnliche Scopeformulierungen verlangen derzeit Staff-Prüfung. Diese zusätzliche manuelle Arbeit ist gegenüber einer stillschweigend breiteren Datenfreigabe akzeptiert. Vor-/nachgestellte und parenthetische, vollständig erkannte HbA1c-Formen werden dagegen auf ihren LOINC begrenzt. Die Gruppierungssperre gilt gleichermaßen für Definition und Frage. Keine Antrags-ID-Sonderfälle oder Änderungen an Disclosure/Opt-out/Entscheidungsleiter.

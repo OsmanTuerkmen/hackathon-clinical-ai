@@ -81,7 +81,7 @@ A complete rule parse never invokes Claude, even in `auto` mode. For incomplete 
 Select a request in the Inbox to assess it. Use **+ New request** to paste another synthetic JSON request; no request-specific SQL is entered by hand.
 
 1. **R01:** Show the Applicant decision, article references and result groups. Switch to **Staff** for the purpose evidence, rule ladder, code mapping, QuerySpec, generated SQL, opt-out exclusions and suppression notes.
-2. **R05:** Show `APPROVE_SPE` and the exact cohort of **1,152 patients**. Click **Open secure workspace**, select **Preview** for a table, then **Download**. The UI shows **Download blocked · HTTP 403** and the audit log gains a `download_blocked` event.
+2. **R05:** Show `APPROVE_SPE` and the exact cohort of **1,152 patients**. Click **Open secure workspace** and **Download** for a listed table. **Preview** is available for local inspection; keep patient rows closed in screenshots and the submission video. The UI shows **Download blocked · HTTP 403** and the audit log gains a `download_blocked` event.
 3. **R06:** Show rejection under Art. 54 for the employment-related purpose.
 4. **R09:** Show an access application falling back to statistics under Arts. 53, 66 and 69 because it does not justify record-level access.
 5. Optionally show **N01** (inpatient stays by hospital, with a primary-diagnosis filter) or **N03** (plain-language asthma and medication mapping without codes).
@@ -92,7 +92,7 @@ Select a request in the Inbox to assess it. Use **+ New request** to paste anoth
 |---|---|
 | 0-15 s | Introduce the Access Body workflow and the synthetic, local dataset. |
 | 15-40 s | R01 Applicant: clear decision, articles, groups and suppression. Staff: evidence, terminology and generated SQL. |
-| 40-75 s | R05: 1,152 patients, workspace preview, blocked download and visible audit event. |
+| 40-75 s | R05: 1,152 patients, permitted table counts, blocked download and visible audit event; keep row previews closed. |
 | 75-90 s | R06: prohibited purpose takes precedence. R09: statistics fallback. |
 | 90-105 s | N01 or N03: a new request with generated queries or code-free terminology. |
 | 105-120 s | Show the evaluation table; state offline measurement and local-demo limits. |
@@ -172,7 +172,7 @@ Art. 71 is added for opt-out handling on approvals. Purpose evidence and each la
 
 ## Measured results
 
-Provisional snapshot recorded in [eval/results.md](eval/results.md) on **2026-10-30**, commit `c00827d`:
+Recorded evaluation in [eval/results.md](eval/results.md) on **2026-10-30**, measured against the final working tree before its closing commit:
 
 | Metric | Original R01-R10 | Extra N01-N10 | Target |
 |---|---:|---:|---|
@@ -180,9 +180,9 @@ Provisional snapshot recorded in [eval/results.md](eval/results.md) on **2026-10
 | Correct numbers | 6/6 | 8/8 | All approved requests |
 | Privacy leaks (all runs) | 0 | 0 | 0 |
 | Consistency (Applicant JSON) | 10/10 | 10/10 | Identical over three runs |
-| Time to answer (slowest HTTP run) | 0.527 s | 0.202 s | < 60 s |
+| Time to answer (slowest HTTP run) | 0.909 s | 0.246 s | < 60 s |
 
-**Draft verification status:** final review subsequently identified two SPE parsing cases: negated record types could be copied, and an observation restriction after the noun (for example, “observations for HbA1c only”) could be missed. Corrections and a fresh verification run are pending. The scoping behavior described here and the measurements below require that final recheck; ambiguous restrictions must lead to manual review rather than broader data release.
+Explicitly unresolved record, measurement, cohort or grouping scopes require **mandatory Staff review**. Optional LLM translation and cached output cannot override that gate. Recognized postfix measurement forms, such as observations for HbA1c only, retain their code restriction.
 
 These are **60 actual FastAPI TestClient POSTs**: three complete runs of each original and extra request. Decisions, numbers and privacy checks cover all runs. Consistency compares the full Applicant JSON; Staff timing fields and SPE audit events are outside that comparison. Timing is POST-to-response, including SPE provisioning, with the service initialized before measurement.
 
@@ -190,7 +190,7 @@ The measurement is local and offline on the supplied synthetic data: **no live L
 
 An independent standard-library CSV reference matches **14/14** numerical cases (six original and eight extra), without importing the application, DuckDB or Pydantic. The evaluation also checks opt-out membership, the SPE schema, the entire selected cohort and copied records **including multiplicity**, rather than relying only on counts. Ten extra requests cover main diagnosis, hospital grouping, code-free terminology, prohibited-purpose boundaries, cessation research, a different SPE record type, many small cells and access fallback.
 
-Additional recorded verification: **616 pytest tests passed in 51.34 s**, and **57 real Edge browser checks** covered desktop and a **375 px** viewport. See [STATUS](docs/STATUS.md) and [WORKLOG](docs/WORKLOG.md) for the recorded runs. The [security review](docs/SECURITY_REVIEW.md) reports no qualifying High/Medium finding in its static full review and Task 14 delta; it is not a production certification.
+Additional recorded verification: **702 pytest tests passed**, and **133 real Edge browser checks** covered Applicant/Staff, both SPEs, desktop and a **375 px** viewport. See [STATUS](docs/STATUS.md) and [WORKLOG](docs/WORKLOG.md) for the runs. The [security review](docs/SECURITY_REVIEW.md) records the static checks, the subsequently closed scope findings and the local demo limits.
 
 ## Known limits
 

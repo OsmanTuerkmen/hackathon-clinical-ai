@@ -51,11 +51,12 @@ class ParseReport(BaseModel):
     not_understood: list[str] = []
     notes: list[str] = []
     mappings: list[TermMapping] = []
+    manual_review_required: bool = False
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def complete(self) -> bool:
-        return not self.not_understood
+        return not self.not_understood and not self.manual_review_required
 
 
 # --- Sentence patterns ---------------------------------------------------------------------------
@@ -73,6 +74,9 @@ _DATE_RANGE = re.compile(rf"\b{_START}between\s+(?P<a>\d{{4}}-\d{{2}}-\d{{2}})\s
 _DATE_YEAR = re.compile(rf"\b{_START}in\s+(?P<y>\d{{4}})\b")
 _REPORT = re.compile(r"^report (?:per|by|for each) (?P<dims>[^:]+):\s*(?P<items>.+)$", re.I)
 _COHORT_SIZE = re.compile(r"\breport the size of the cohort\b|\bcohort size\b", re.I)
+_COHORT_SIZE_COMPLETE = re.compile(
+    r"(?:report the size of the cohort(?: you would make available)?|(?:report )?cohort size)", re.I
+)
 
 _CODE_LIST = re.compile(
     r"\b(?:start(?:s|ing)?|begin(?:s|ning)?)\s+with\s+(?P<codes>[a-z]\d{2}[a-z0-9.]*(?:\s*(?:,|or|and)\s*[a-z]\d{2}[a-z0-9.]*)*)"
@@ -108,8 +112,8 @@ DEF_FILLER = frozenset(
 
 _DIMS: list[tuple[str, re.Pattern[str]]] = [
     ("age_band", re.compile(r"\bage\s*(?:bands?|groups?|classes?)\b|\bbands?\b")),
-    ("region", re.compile(r"\bregions?\b|\bfederal\s+states?\b|\bstates?\b|\bprovinces?\b|\bbundesl[aä]nd")),
-    ("data_holder", re.compile(r"\bhospitals?\b|\bdata[ _]holders?\b|\bclinics?\b|\bsites?\b|\bklinik")),
+    ("region", re.compile(r"regions?|federal\s+states?|states?|provinces?|bundesl(?:and|änder)")),
+    ("data_holder", re.compile(r"hospitals?|data[ _]holders?|clinics?|sites?|klinik(?:en|um|a)?")),
     ("sex", re.compile(r"\bsex\b|\bgenders?\b")),
 ]
 _PATIENT_DIM = re.compile(r"\bpatients?\b|\bperson\b|\bindividual")
@@ -121,7 +125,7 @@ _RECORD_PATTERNS = {
     "observations": re.compile(r"\bobservations?\b|\bmeasurements?\b|\blab(?:oratory|s)?\b|\bvalues?\b", re.I),
     "encounters": re.compile(r"\bencounters?\b|\bvisits?\b|\bstays?\b|\badmissions?\b", re.I),
 }
-_MEASUREMENT_NOUN = re.compile(r"\b(?:values?|measurements?|observations?)\b", re.I)
+_MEASUREMENT_NOUN = re.compile(r"\b(?:values?|measurements?|observations?|lab(?:oratory|s)?(?: results?)?)\b", re.I)
 _RECORD_BOUNDARY = re.compile(
     r"[.,;:!?]|\b(?:provide|supply|include|request|need|want|have|has|having|with|without)\b", re.I
 )
@@ -141,6 +145,7 @@ class _State:
     start_to: date | None = None
     left_out: list[Any] = field(default_factory=list)
     cohort_size: bool = False
+    manual_review_required: bool = False
     count_entry: list[Any] | None = None  # outcome of the "Count stays ..." sentence
     outcomes: list[list[Any]] = field(default_factory=list)  # [order, text, ok]
 
@@ -148,6 +153,11 @@ class _State:
         entry = [order, text, ok]
         self.outcomes.append(entry)
         return entry
+
+    def scope_error(self, order: float, text: str) -> None:
+        """A known scope restriction must remain manual even with optional translation."""
+        self.manual_review_required = True
+        self.record(order, text, False)
 
 
 # --- Definitions -------------------------------------------------------------------------------
@@ -387,7 +397,10 @@ def _other_sentence(text: str, ctx: Context, st: _State) -> bool:
         return _count_sentence(text.lower(), ctx, st)
     if _COHORT_SIZE.search(text):
         st.cohort_size = True
-        return True
+        complete = _COHORT_SIZE_COMPLETE.fullmatch(text) is not None
+        if not complete:
+            st.manual_review_required = True
+        return complete
     return False
 
 
@@ -396,16 +409,18 @@ def _other_sentence(text: str, ctx: Context, st: _State) -> bool:
 
 def _dimension(chunk: str, st: _State, ctx: Context) -> Dimension | str | None:
     """A Dimension, "patient" for a patient-level listing, or None if not understood."""
-    c = chunk.lower()
+    c = chunk.lower().strip()
+    width = re.match(r"(?P<n>\d+)[- ]year\s+", c)
+    dimension_name = c[width.end():] if width else c
     for kind, pattern in _DIMS:
-        if pattern.search(c):
+        if pattern.fullmatch(dimension_name):
             if kind != "age_band":
-                return Dimension(kind=kind)
+                return Dimension(kind=kind) if width is None else None
             bands = st.bands
-            if bands is None and (w := re.search(r"(\d+)[- ]year", c)):
-                bands = _default_bands(int(w.group(1)))
+            if bands is None and width:
+                bands = _default_bands(int(width.group("n")))
                 if bands:
-                    ctx.note(f"No age bands defined; {w.group(1)}-year bands were used.")
+                    ctx.note(f"No age bands defined; {width.group('n')}-year bands were used.")
                 else:
                     ctx.note("Age band width must be positive.")
             return Dimension(kind="age_band", bands=bands) if bands else None
@@ -422,6 +437,8 @@ def _dimensions(dims_text: str, st: _State, ctx: Context, *, strict: bool) -> li
             if all(d.kind != dim.kind for d in out):
                 out.append(dim)
         elif strict:
+            if dim is None:
+                st.manual_review_required = True
             return dim
     return out
 
@@ -429,26 +446,83 @@ def _dimensions(dims_text: str, st: _State, ctx: Context, *, strict: bool) -> li
 # --- Record types (access applications) ----------------------------------------------------------
 
 
+def _requested_measurements(text: str, ctx: Context) -> list[str] | None:
+    """Resolve each complete name; only explicit list/only syntax is discarded."""
+    text = re.sub(r"^only\s+|\s+only$", "", text.strip(), flags=re.I)
+    prefixes: list[str] = []
+    for name in re.split(r"\s+(?:and|or)\s+|\s*,\s*", text, flags=re.I):
+        name = _RECORD_FILLER.sub(" ", name).strip(" -")
+        if not name:
+            continue
+        found = _measurement(name, None, ctx)
+        if found is None:
+            return None
+        add_unique(prefixes, found[1].prefixes)
+    return prefixes
+
+
+def _measurement_suffix(text: str, ctx: Context) -> list[str] | None:
+    """A suffix is an exact measurement list or context already covered by the cohort."""
+    tail = text.strip().lower()
+    if tail == "only" or not tail:
+        return []
+    if explicit := _LOINC_DEF.fullmatch(tail):
+        return [explicit.group(1)]
+    if tail.startswith("(") and tail.endswith(")"):
+        return _requested_measurements(tail[1:-1], ctx) or None
+    if tail.startswith("for "):
+        body = tail[4:].strip()
+        names = _requested_measurements(body, ctx)
+        if names:
+            return names
+        context = phrase_criteria(body, ctx)
+        cohort = ctx.terms.get("cohort")
+        # Mapping provenance and display labels do not change a criterion's selection.
+        exclude = {"codes": {"label", "source"}, "primary_icd10": {"label", "source"}}
+        cohort_scope = [c.model_dump(exclude=exclude) for c in cohort.criteria] if cohort else []
+        if (cohort is not None and not context.unresolved and context.has_subject
+                and all(c.model_dump(exclude=exclude) in cohort_scope for c in context.criteria)):
+            return []
+    return None
+
+
 def _record_types(request: AccessRequest, ctx: Context, st: _State) -> tuple[list[str], CodeSet | None]:
     text = normalise(f"{request.question} {request.purpose}")
     types = [t for t in RECORD_TYPE_ORDER if _RECORD_PATTERNS[t].search(text)]
+    blocked: set[str] = set()
+    only_scopes: list[set[str]] = []
+    # Mentions inside exclusions are never positive provisioning instructions. Unsupported or
+    # conflicting scope stays manual; optional LLM translation cannot erase that uncertainty.
+    for i, sentence in enumerate(re.split(r"[.;!?]", text.lower())):
+        mentioned = {t for t in types if _RECORD_PATTERNS[t].search(sentence)}
+        if not mentioned:
+            continue
+        if _EXCLUSION_DEF.search(sentence):
+            blocked.update(mentioned)
+            st.scope_error(19_000 + i, sentence.strip())
+        elif re.search(r"\bonly\b", sentence):
+            only_scopes.append(mentioned)
+    types = [t for t in types if t not in blocked]
+    if any(set(types) - allowed for allowed in only_scopes):
+        st.scope_error(19_999, "Conflicting 'only' record-type instructions: " + request.question)
     if "observations" not in types:
         return types, None
     prefixes: list[str] = []
     for i, m in enumerate(_MEASUREMENT_NOUN.finditer(text)):
-        # Keep the whole measurement name, including qualifiers; suffix lookup could turn an
-        # unknown restricted measurement into a broader known one. Record/command words merely
-        # introduce the list, while each specific name must resolve in full.
         before = _RECORD_BOUNDARY.split(text[:m.start()])[-1]
-        for name in re.split(r"\s+(?:and|or)\s+", before, flags=re.I):
-            name = _RECORD_FILLER.sub(" ", name).strip(" -")
-            if not name:
-                continue  # generic request for observations
-            found = _measurement(name, None, ctx)
-            if found is None:
-                st.record(20_000 + i, m.group(0) + ": " + name, False)
-            else:
-                add_unique(prefixes, found[1].prefixes)
+        named = _requested_measurements(before, ctx)
+        # Do not consume a following record-list item as part of this measurement's suffix.
+        tail = re.split(r"[.;!?]", text[m.end():], maxsplit=1)[0]
+        for separator in re.finditer(r",|\band\b|\bor\b", tail, re.I):
+            following = tail[separator.end():].strip()
+            if any(p.match(following) for p in _RECORD_PATTERNS.values()):
+                tail = tail[:separator.start()]
+                break
+        suffix = _measurement_suffix(tail, ctx)
+        if named is None or suffix is None or (named and suffix and set(named) != set(suffix)):
+            st.scope_error(20_000 + i, m.group(0) + ": " + before.strip() + tail)
+            continue
+        add_unique(prefixes, named or suffix)
     if not prefixes:
         return types, None
     return types, CodeSet(system="loinc", prefixes=prefixes, label="requested measurements", source="lexicon")
@@ -555,6 +629,7 @@ def parse_rules(request: AccessRequest, terminology: Terminology) -> tuple[Query
         not_understood=[t for _o, t, ok in st.outcomes if not ok],
         notes=ctx.notes,
         mappings=ctx.mappings,
+        manual_review_required=st.manual_review_required,
     )
     return spec, report
 

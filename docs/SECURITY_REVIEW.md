@@ -1,36 +1,41 @@
-# Sicherheitsreview – EHDS Access Desk
+# Abschließender Sicherheitsreview
 
 Stand: 2026-10-30. Lokaler synthetischer Demo-Umfang; keine Produktionszertifizierung.
 
-## Prüfstand und Verfahren
+## Prüfverfahren und Stände
 
-- Offizieller Anthropic-security-review-Workflow: statische Unteraufgabe über main..ab49365dc25dd931944c58af44935eabc56cec11 sowie abschließender Review des Task-14-Deltas (in c00827d committet). App- und UI-Code wurden durch Task 14 nicht geändert.
-- Fokus auf konkret ausnutzbare High-/Medium-Befunde mit Confidence mindestens 0,8; Quellen/Senken und erreichbare Angriffswege. Keine aktiven Angriffe, Live-API-Aufrufe oder Patientenzeilen im Audit.
-- Keine qualifizierten Kandidaten verblieben; deshalb waren keine separaten False-Positive-Filterunteraufgaben nötig.
-- Testdateien und ausdrücklich dokumentierte Demo-Grenzen sind nach Workflowvorgaben von Sicherheitsbefunden ausgeschlossen. Funktionale Tests und Eval sind separat in WORKLOG/STATUS dokumentiert.
+Offizieller Anthropic-security-review-Workflow mit statischer Unteraufgabe, Scope- und False-Positive-Ausschlüssen. Gesamtsichtung main..ab49365dc25dd931944c58af44935eabc56cec11, Task14-Delta sowie abschließender Parser-Delta gegen44200f9cf3b4f2551d301d6532258349ffc2f89d. Die finalen Korrekturen werden mit diesem Bericht committet. Keine aktiven Angriffe, Live-API-Aufrufe oder Patientenausgaben im Sicherheitsreview. Testdateien waren nach Skillvorgabe ausgeschlossen; funktionale Tests sind separat dokumentiert.
 
-## Ergebnis
+Im abschließenden Delta wurde keine neue konkret ausnutzbare High-/Medium-Schwachstelle mit Confidence mindestens 0,8 festgestellt. Keine neuen Kandidaten verblieben für eine separate False-Positive-Unteraufgabe. Das ist eine begrenzte statische Prüfung, keine umfassende Sicherheitsgarantie.
 
-Keine konkret ausnutzbare High-/Medium-Schwachstelle im geprüften Stand festgestellt.
+## Später funktional entdeckte und behobene Befunde
 
-| Grenze | Geprüfter Schutz |
-|---|---|
-| SQL | Werte parametrisiert; Tabellen/Views/Aliase aus Whitelists oder interner Erzeugung |
-| Pfade und SPE | eingeschränkte Permit-IDs; Vorschautabellen gegen Whitelist und Manifest; statische Dateien ausschließlich unter web/ |
-| Download | keine Datensatzausgabe; protokollierter HTTP-403-Block |
-| Browser | dynamische Texte als DOM-Textknoten/textContent, keine unsicheren HTML-Senken |
-| Externer LLM | Payload nur freigegebener Antragstext, Codekatalog und Schema; kein Patientenzeilen-Pfad zum SDK |
-| Opt-out/Disclosure | gefilterte Views für Statistik/SPE; zentrale Unterdrückung statistischer Ergebniszellen und Opt-out-Kennzahl |
-| Codeausführung/Deserialisierung | keine erreichbare Command-, eval-, Pickle- oder unsichere YAML-Senke |
-| Geheimnisse | keine eingebetteten Zugangsdaten im geprüften App-Code festgestellt |
-| Extra-Evaluation | lokale stdlib-Referenzen und aggregierte Ausgaben, keine neue externe Übertragungsgrenze |
+Die erste statische Sichtung hatte die folgenden funktionalen Fehler nicht erkannt; diese Einschränkung wird ausdrücklich festgehalten.
 
-Ein Verdacht auf kleine Terminologie-Zeilenzahlen ließ sich für den gegebenen Datensatz nicht bestätigen. Eine ergänzende lokale Prüfung gab ausschließlich den Bool-Wert aus, dass keine positiven Code-Zeilenzahlen unter der Schwelle vorhanden sind; keine Codes, Zeilenzahlen oder Patientenkennungen wurden ausgegeben. Das ersetzt keine Prüfung anderer Datensätze.
+| Befund | Priorität | Abschließender Status |
+|---|---|---|
+| Ausdrücklich ausgeschlossene Recordtypen wurden ausgewählt | P1 | Closed: Typen aus Teil-Spec entfernt; unaufgelöste Ausschlüsse bleiben zwingend manuell |
+| Nachgestellte/parenthetische Messbeschränkungen konnten entfallen | P1 | Closed: ganze Messungsanforderung geprüft, erkannte HbA1c-Formen auf 4548-4 begrenzt; Rest manuell |
+| Zusätze nach cohort-size konnten eine größere Kohorte freigeben | P1 | Closed: vollständige Größenform erforderlich; inhaltliche Restbedingungen manuell |
+| Gruppierungsqualifier wurden auf bekannte Dimensionen verkürzt | P2 | Closed: vollständiger Dimensionsausdruck; unverzichtbare manuelle Prüfung im Report- und Fragepfad |
 
-## Grenzen
+ParseReport.complete berücksichtigt manual_review_required. parse_request beendet diese Fälle vor LLM-Übersetzung und Cache-Nutzung; das bestehende Pipeline-Gate gibt nur bei vollständiger Interpretation Statistik oder SPE frei. Ein breiterer schema-valider Fake-LLM kann die Pflichtmarkierung nicht aufheben. Der abschließende Funktionsnachreview bestätigt alle vier Befunde als behoben, zuletzt sechs Gruppierungspfade ohne LLM-Aufruf oder Daten-/SQL-Freigabe.
 
-Die App ist eine lokale Demo ohne echte Authentifizierung, produktionsgehärtete SPE, sekundäre Unterdrückung oder vollständige rechtliche Einzelfallprüfung. Die ausdrücklich erlaubte SPE-Vorschau zeigt ausgewählte pseudonymisierte Datensätze innerhalb der App; ein blockierter Download-Endpunkt ist kein Schutz vor Kopieren aus einer realen Browser-/Betriebssystemumgebung. Bekannte Regex-Verneinungsfälle und ein konservativer englischer Parser sind im README zu benennen. Keine Aussage zu Produktionslast, Netzwerkhärtung oder Live-Claude-Verhalten. Ausschließlich synthetische Daten verwenden.
+## Geprüfte Grenzen
 
-## Nachtrag zum Zwischenstand
+- SQL-Werte sind parametrisiert; Tabellen/Views/Aliase aus Whitelists oder interner Erzeugung.
+- Permit-IDs eingeschränkt, Vorschautabellen gegen Whitelist und Manifest; statische Dateien ausschließlich unter web/.
+- Download-Endpunkt liefert keine Datensätze, sondern HTTP 403 und Audit.
+- Dynamische UI-Texte als DOM-Textknoten/textContent; keine unsichere HTML-Senke gefunden.
+- LLM-Payload nur freigegebene Antragstextfelder, Codekatalog und Schema; kein Patientenzeilen-Pfad zum SDK.
+- Opt-out-gefilterte Views für Statistik und SPE; zentrale Disclosure für statistische Ergebniszellen und Opt-out-Kennzahl.
+- Keine neu erreichbare Command-, eval-, Pickle-, unsichere YAML- oder Netzwerksenke; keine eingebetteten Zugangsdaten im geprüften App-Code festgestellt.
+- Ein Terminologie-Metadatenverdacht wurde im gegebenen Datensatz nicht als Small-Cell-Leak bestätigt. Eine ergänzende lokale Bool-Prüfung gab ausschließlich false für positiveCodeCounts<10 aus, ohne Codes, Counts oder Patientenkennungen auszugeben.
 
-Nach der oben beschriebenen statischen Sichtung hat der abschließende funktionale Gesamt-Review zwei konkrete SPE-Datenminimierungsfehler reproduziert: ausdrücklich verneinte Recordtypen blieben auswählbar; nachgestellte Messartenbeschränkungen konnten ohne LOINC-Filter bleiben. Beide sind in diesem Zwischenstand noch offen und verhindern den Projektabschluss. Nach der gebündelten Korrektur werden Regressionen und ein gezielter Sicherheits-/Funktionsnachreview dokumentiert. Die frühere Sichtung ist keine Entwarnung für diese später gefundenen Fälle.
+## Separate dynamische Nachweise
+
+702 pytest-Tests bestanden; darunter 86 neue Release-Gate-Regressionen. Unabhängige CSV-Referenz 14/14; echter Drei-Lauf-Eval über 20 Requests/60 POSTs mit 0 detektierten Leaks.133 Edge-Browserchecks einschließlich Desktop/375px, beiden SPEs,403/Audit, Init-Race und XSS. Diese Nachweise ergänzen den statischen Review und sind keine von dessen Agenten wiederholten Tests.
+
+## Verbleibende Demo-Grenzen
+
+Keine echte Auth/Rollentrennung oder gehärtete SPE. Vorschau und lokale Dateien sind in einer realen Browser-/Betriebssystemumgebung kopierbar. Keine sekundäre Unterdrückung/Differenzsicherung. Konservativer englischer Parser, bekannte Art54-Regex-Verneinungsfälle; kein allgemeines Sprachverständnis oder vollständige rechtliche Einzelfallprüfung. Kein Live-Claude-, Produktionslast- oder Netzwerkhärtungsnachweis. Ausschließlich synthetische Daten verwenden.
